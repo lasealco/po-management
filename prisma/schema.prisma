@@ -83,6 +83,8 @@ model Tenant {
   wmsReceipts                                 WmsReceipt[]
   wmsReceivingDispositionTemplates           WmsReceivingDispositionTemplate[]
   wmsOutboundLogisticsUnits                  WmsOutboundLogisticsUnit[]
+  wmsOutboundWebhookSubscriptions             WmsOutboundWebhookSubscription[]
+  wmsOutboundWebhookDeliveries                WmsOutboundWebhookDelivery[]
   wmsInventorySerials                         WmsInventorySerial[]
   wmsLotBatches                               WmsLotBatch[]
   wmsWorkOrders                               WmsWorkOrder[]
@@ -5293,6 +5295,60 @@ model WmsOutboundLogisticsUnit {
   @@unique([tenantId, outboundOrderId, scanCode])
   @@index([tenantId, outboundOrderId])
   @@index([tenantId, outboundOrderLineId])
+}
+
+/// BF-44 — outbound webhook event kinds (tenant subscriptions choose a subset).
+enum WmsOutboundWebhookEventType {
+  RECEIPT_CLOSED
+  OUTBOUND_SHIPPED
+  BILLING_EVENT_DISPUTED
+}
+
+enum WmsOutboundWebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+model WmsOutboundWebhookSubscription {
+  id                  String                       @id @default(cuid())
+  tenantId            String
+  url                 String                       @db.VarChar(2048)
+  signingSecret       String                       @db.VarChar(256)
+  /// Last four chars of secret for UI hints (no plaintext exposure on read).
+  signingSecretSuffix String                       @db.VarChar(4)
+  eventTypes          WmsOutboundWebhookEventType[] @default([])
+  isActive            Boolean                      @default(true)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+
+  tenant      Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries  WmsOutboundWebhookDelivery[]
+
+  @@index([tenantId, isActive])
+}
+
+model WmsOutboundWebhookDelivery {
+  id               String                           @id @default(cuid())
+  tenantId         String
+  subscriptionId   String
+  idempotencyKey   String                           @db.VarChar(256)
+  eventType        WmsOutboundWebhookEventType
+  payloadJson      Json
+  status           WmsOutboundWebhookDeliveryStatus @default(PENDING)
+  attemptCount     Int                              @default(0)
+  lastHttpStatus   Int?
+  lastError        String?                          @db.VarChar(2000)
+  /// Stub for future worker retries (`computeOutboundWebhookBackoffMs`).
+  nextAttemptAt    DateTime?
+  createdAt        DateTime                         @default(now())
+  updatedAt        DateTime                         @updatedAt
+
+  tenant       Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription WmsOutboundWebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, idempotencyKey])
+  @@index([tenantId, status, nextAttemptAt])
 }
 
 enum LoadPlanStatus {

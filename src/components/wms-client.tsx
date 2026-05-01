@@ -151,6 +151,15 @@ type WmsData = {
       | null;
     updatedAt: string;
   }>;
+  /** BF-44 — tenant outbound webhooks (HMAC-signed POST bodies). */
+  outboundWebhookSubscriptions?: Array<{
+    id: string;
+    url: string;
+    eventTypes: string[];
+    isActive: boolean;
+    signingSecretSuffix: string;
+    createdAt: string;
+  }>;
   crmAccountOptions: Array<{ id: string; name: string; legalName: string | null }>;
   crmQuoteOptions: Array<{
     id: string;
@@ -763,6 +772,13 @@ export function WmsClient({
   const [bf42TplNote, setBf42TplNote] = useState("");
   const [bf42TplSuggested, setBf42TplSuggested] = useState("");
   const [bf42EditingTemplateId, setBf42EditingTemplateId] = useState<string | null>(null);
+  const [bf44WebhookUrl, setBf44WebhookUrl] = useState("");
+  const [bf44WebhookSecret, setBf44WebhookSecret] = useState("");
+  const [bf44EvtReceiptClosed, setBf44EvtReceiptClosed] = useState(true);
+  const [bf44EvtOutboundShipped, setBf44EvtOutboundShipped] = useState(false);
+  const [bf44EvtBillingDisputed, setBf44EvtBillingDisputed] = useState(false);
+  const [bf44WebhookActive, setBf44WebhookActive] = useState(true);
+  const [bf44EditingSubscriptionId, setBf44EditingSubscriptionId] = useState<string | null>(null);
   const [outboundRef, setOutboundRef] = useState("");
   const [outboundProductId, setOutboundProductId] = useState("");
   const [outboundLineQty, setOutboundLineQty] = useState("");
@@ -3168,6 +3184,230 @@ export function WmsClient({
           </div>
         ) : null}
       </section>
+
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Outbound webhooks (BF-44)</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Signed <span className="font-mono text-[11px]">POST</span> JSON to your HTTPS endpoint when milestones occur.
+          Header <span className="font-mono text-[11px]">X-WMS-Webhook-Signature</span> uses HMAC-SHA256 over the raw body
+          (same <span className="font-mono text-[11px]">sha256=&lt;hex&gt;</span> shape as BF-25 TMS inbound verification).
+          Failed deliveries record <span className="font-medium">nextAttemptAt</span> using an exponential backoff stub for a
+          future retry worker (not shipped here).
+        </p>
+        <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-100">
+          <table className="min-w-full text-xs">
+            <thead className="bg-zinc-100 text-left uppercase text-zinc-600">
+              <tr>
+                <th className="px-2 py-1.5">URL</th>
+                <th className="px-2 py-1.5">Events</th>
+                <th className="px-2 py-1.5">Secret …</th>
+                <th className="px-2 py-1.5">Active</th>
+                {canEdit ? <th className="px-2 py-1.5"> </th> : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {(!data.outboundWebhookSubscriptions || data.outboundWebhookSubscriptions.length === 0) ? (
+                <tr>
+                  <td colSpan={canEdit ? 5 : 4} className="px-2 py-3 text-zinc-500">
+                    No webhook subscriptions — add one below.
+                  </td>
+                </tr>
+              ) : (
+                (data.outboundWebhookSubscriptions ?? []).map((s) => (
+                  <tr key={s.id}>
+                    <td className="max-w-[14rem] truncate px-2 py-1.5 font-mono text-[11px]" title={s.url}>
+                      {s.url}
+                    </td>
+                    <td className="px-2 py-1.5 text-zinc-700">{s.eventTypes.join(", ") || "—"}</td>
+                    <td className="px-2 py-1.5 font-mono text-[11px] text-zinc-600">…{s.signingSecretSuffix}</td>
+                    <td className="px-2 py-1.5">{s.isActive ? "yes" : "no"}</td>
+                    {canEdit ? (
+                      <td className="space-x-1 whitespace-nowrap px-2 py-1.5">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            setBf44EditingSubscriptionId(s.id);
+                            setBf44WebhookUrl(s.url);
+                            setBf44WebhookSecret("");
+                            setBf44EvtReceiptClosed(s.eventTypes.includes("RECEIPT_CLOSED"));
+                            setBf44EvtOutboundShipped(s.eventTypes.includes("OUTBOUND_SHIPPED"));
+                            setBf44EvtBillingDisputed(s.eventTypes.includes("BILLING_EVENT_DISPUTED"));
+                            setBf44WebhookActive(s.isActive);
+                          }}
+                          className="rounded border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void runAction({
+                              action: "delete_wms_outbound_webhook_subscription_bf44",
+                              webhookSubscriptionId: s.id,
+                            })
+                          }
+                          className="rounded border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-800 disabled:opacity-40"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {canEdit ? (
+          <div className="mt-4 grid gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 sm:grid-cols-2">
+            <label className="block text-[11px] font-medium text-zinc-600 sm:col-span-2">
+              Endpoint URL (https, or http://localhost only)
+              <input
+                value={bf44WebhookUrl}
+                disabled={busy}
+                onChange={(e) => setBf44WebhookUrl(e.target.value)}
+                placeholder="https://hooks.example.com/wms"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600 sm:col-span-2">
+              Signing secret (min 8 chars){bf44EditingSubscriptionId ? " — leave blank to keep existing" : ""}
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={bf44WebhookSecret}
+                disabled={busy}
+                onChange={(e) => setBf44WebhookSecret(e.target.value)}
+                placeholder="••••••••"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <div className="flex flex-wrap gap-3 text-xs text-zinc-700 sm:col-span-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={bf44EvtReceiptClosed}
+                  disabled={busy}
+                  onChange={(e) => setBf44EvtReceiptClosed(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                RECEIPT_CLOSED
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={bf44EvtOutboundShipped}
+                  disabled={busy}
+                  onChange={(e) => setBf44EvtOutboundShipped(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                OUTBOUND_SHIPPED
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={bf44EvtBillingDisputed}
+                  disabled={busy}
+                  onChange={(e) => setBf44EvtBillingDisputed(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                BILLING_EVENT_DISPUTED
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={bf44WebhookActive}
+                  disabled={busy}
+                  onChange={(e) => setBf44WebhookActive(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                Active
+              </label>
+            </div>
+            <div className="flex flex-wrap items-end gap-2 sm:col-span-2">
+              <button
+                type="button"
+                disabled={
+                  busy ||
+                  !bf44WebhookUrl.trim() ||
+                  (!bf44EditingSubscriptionId && bf44WebhookSecret.trim().length < 8) ||
+                  (!bf44EvtReceiptClosed && !bf44EvtOutboundShipped && !bf44EvtBillingDisputed)
+                }
+                onClick={() => {
+                  const types: string[] = [];
+                  if (bf44EvtReceiptClosed) types.push("RECEIPT_CLOSED");
+                  if (bf44EvtOutboundShipped) types.push("OUTBOUND_SHIPPED");
+                  if (bf44EvtBillingDisputed) types.push("BILLING_EVENT_DISPUTED");
+                  if (bf44EditingSubscriptionId) {
+                    const body: Record<string, unknown> = {
+                      action: "update_wms_outbound_webhook_subscription_bf44",
+                      webhookSubscriptionId: bf44EditingSubscriptionId,
+                      webhookUrl: bf44WebhookUrl.trim(),
+                      webhookEventTypes: types,
+                      webhookIsActive: bf44WebhookActive,
+                    };
+                    if (bf44WebhookSecret.trim().length >= 8) {
+                      body.webhookSigningSecret = bf44WebhookSecret.trim();
+                    }
+                    void runAction(body).then((res) => {
+                      if (res) {
+                        setBf44EditingSubscriptionId(null);
+                        setBf44WebhookUrl("");
+                        setBf44WebhookSecret("");
+                        setBf44EvtReceiptClosed(true);
+                        setBf44EvtOutboundShipped(false);
+                        setBf44EvtBillingDisputed(false);
+                        setBf44WebhookActive(true);
+                      }
+                    });
+                  } else {
+                    void runAction({
+                      action: "create_wms_outbound_webhook_subscription_bf44",
+                      webhookUrl: bf44WebhookUrl.trim(),
+                      webhookSigningSecret: bf44WebhookSecret.trim(),
+                      webhookEventTypes: types,
+                      webhookIsActive: bf44WebhookActive,
+                    }).then((res) => {
+                      if (res) {
+                        setBf44WebhookUrl("");
+                        setBf44WebhookSecret("");
+                        setBf44EvtReceiptClosed(true);
+                        setBf44EvtOutboundShipped(false);
+                        setBf44EvtBillingDisputed(false);
+                        setBf44WebhookActive(true);
+                      }
+                    });
+                  }
+                }}
+                className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {bf44EditingSubscriptionId ? "Save subscription" : "Create subscription"}
+              </button>
+              {bf44EditingSubscriptionId ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setBf44EditingSubscriptionId(null);
+                    setBf44WebhookUrl("");
+                    setBf44WebhookSecret("");
+                    setBf44EvtReceiptClosed(true);
+                    setBf44EvtOutboundShipped(false);
+                    setBf44EvtBillingDisputed(false);
+                    setBf44WebhookActive(true);
+                  }}
+                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Cancel edit
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </section>
+
         </>
       ) : null}
 

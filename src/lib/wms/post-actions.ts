@@ -64,6 +64,12 @@ import {
   normalizeOutboundLogisticsUnitScanCode,
   verifyOutboundPackScanWithLogisticsUnits,
 } from "./outbound-logistics-unit-scan";
+import {
+  assertAllowedOutboundWebhookUrl,
+  parseOutboundWebhookEventTypes,
+  scheduleEmitWmsOutboundWebhooks,
+  signingSecretSuffixFromSecret,
+} from "./outbound-webhook-dispatch";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
 import { parseMmForWrite, resolveBinAisleFieldsForWrite } from "./warehouse-aisle";
@@ -2302,6 +2308,11 @@ export async function handleWmsPost(
         },
       });
     });
+    scheduleEmitWmsOutboundWebhooks(tenantId, "OUTBOUND_SHIPPED", order.id, {
+      outboundOrderId: order.id,
+      outboundNo: order.outboundNo,
+      warehouseId: order.warehouseId,
+    });
     return NextResponse.json({ ok: true });
   }
 
@@ -2776,6 +2787,144 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "create_wms_outbound_webhook_subscription_bf44") {
+    const urlRaw = input.webhookUrl?.trim();
+    const secretRaw = input.webhookSigningSecret?.trim();
+    const types = parseOutboundWebhookEventTypes(input.webhookEventTypes);
+    if (!urlRaw || !secretRaw || types.length === 0) {
+      return toApiErrorResponseFromStatus(
+        "webhookUrl, webhookSigningSecret, and non-empty webhookEventTypes required.",
+        400,
+      );
+    }
+    if (secretRaw.length < 8 || secretRaw.length > 256) {
+      return toApiErrorResponseFromStatus("webhookSigningSecret must be 8–256 characters.", 400);
+    }
+    try {
+      assertAllowedOutboundWebhookUrl(urlRaw);
+    } catch {
+      return toApiErrorResponseFromStatus(
+        "webhookUrl must be https, or http on localhost / 127.0.0.1 only.",
+        400,
+      );
+    }
+    const suffix = signingSecretSuffixFromSecret(secretRaw);
+    const row = await prisma.wmsOutboundWebhookSubscription.create({
+      data: {
+        tenantId,
+        url: urlRaw.slice(0, 2048),
+        signingSecret: secretRaw,
+        signingSecretSuffix: suffix,
+        eventTypes: types,
+        isActive: input.webhookIsActive !== false,
+      },
+      select: { id: true },
+    });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_OUTBOUND_WEBHOOK_SUBSCRIPTION",
+        entityId: row.id,
+        action: "bf44_webhook_subscription_created",
+        payload: { eventTypes: types },
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true, webhookSubscriptionId: row.id });
+  }
+
+  if (action === "update_wms_outbound_webhook_subscription_bf44") {
+    const sid = input.webhookSubscriptionId?.trim();
+    if (!sid) {
+      return toApiErrorResponseFromStatus("webhookSubscriptionId required.", 400);
+    }
+    const existing = await prisma.wmsOutboundWebhookSubscription.findFirst({
+      where: { id: sid, tenantId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return toApiErrorResponseFromStatus("Webhook subscription not found.", 404);
+    }
+    const data: Prisma.WmsOutboundWebhookSubscriptionUpdateInput = {};
+    if (input.webhookUrl !== undefined) {
+      const urlRaw = String(input.webhookUrl ?? "").trim();
+      if (!urlRaw) {
+        return toApiErrorResponseFromStatus("webhookUrl cannot be empty.", 400);
+      }
+      try {
+        assertAllowedOutboundWebhookUrl(urlRaw);
+      } catch {
+        return toApiErrorResponseFromStatus(
+          "webhookUrl must be https, or http on localhost / 127.0.0.1 only.",
+          400,
+        );
+      }
+      data.url = urlRaw.slice(0, 2048);
+    }
+    if (input.webhookSigningSecret !== undefined && String(input.webhookSigningSecret).trim() !== "") {
+      const secretRaw = String(input.webhookSigningSecret).trim();
+      if (secretRaw.length < 8 || secretRaw.length > 256) {
+        return toApiErrorResponseFromStatus("webhookSigningSecret must be 8–256 characters.", 400);
+      }
+      data.signingSecret = secretRaw;
+      data.signingSecretSuffix = signingSecretSuffixFromSecret(secretRaw);
+    }
+    if (input.webhookEventTypes !== undefined) {
+      const types = parseOutboundWebhookEventTypes(input.webhookEventTypes);
+      if (types.length === 0) {
+        return toApiErrorResponseFromStatus("webhookEventTypes must be a non-empty array.", 400);
+      }
+      data.eventTypes = { set: types };
+    }
+    if (input.webhookIsActive !== undefined) {
+      data.isActive = Boolean(input.webhookIsActive);
+    }
+    if (Object.keys(data).length === 0) {
+      return toApiErrorResponseFromStatus(
+        "Provide webhookUrl, webhookSigningSecret, webhookEventTypes, and/or webhookIsActive.",
+        400,
+      );
+    }
+    await prisma.wmsOutboundWebhookSubscription.update({ where: { id: sid }, data });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_OUTBOUND_WEBHOOK_SUBSCRIPTION",
+        entityId: sid,
+        action: "bf44_webhook_subscription_updated",
+        payload: { keys: Object.keys(data) },
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "delete_wms_outbound_webhook_subscription_bf44") {
+    const sid = input.webhookSubscriptionId?.trim();
+    if (!sid) {
+      return toApiErrorResponseFromStatus("webhookSubscriptionId required.", 400);
+    }
+    const existing = await prisma.wmsOutboundWebhookSubscription.findFirst({
+      where: { id: sid, tenantId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return toApiErrorResponseFromStatus("Webhook subscription not found.", 404);
+    }
+    await prisma.wmsOutboundWebhookSubscription.delete({ where: { id: sid } });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_OUTBOUND_WEBHOOK_SUBSCRIPTION",
+        entityId: sid,
+        action: "bf44_webhook_subscription_deleted",
+        payload: {},
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "set_shipment_item_qa_sampling_bf42") {
     const shipmentItemId = input.shipmentItemId?.trim();
     if (!shipmentItemId) {
@@ -3227,6 +3376,16 @@ export async function handleWmsPost(
           snapshotJson: accrualSnapshot as unknown as Prisma.InputJsonValue,
         },
       });
+    });
+
+    scheduleEmitWmsOutboundWebhooks(tenantId, "RECEIPT_CLOSED", rec.id, {
+      wmsReceiptId: rec.id,
+      shipmentId: rec.shipmentId,
+      shipmentNo: rec.shipment.shipmentNo,
+      asnReference: rec.shipment.asnReference,
+      grnReference: grnForStaging,
+      receiveStatusAdvanced,
+      closedAt: closedAt.toISOString(),
     });
 
     return NextResponse.json({

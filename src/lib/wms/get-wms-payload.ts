@@ -594,6 +594,19 @@ export async function getWmsDashboardPayload(
     },
   });
 
+  const outboundWebhookSubscriptions = await prisma.wmsOutboundWebhookSubscription.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      url: true,
+      eventTypes: true,
+      isActive: true,
+      signingSecretSuffix: true,
+      createdAt: true,
+    },
+  });
+
   return {
     packShipScanPolicy,
     atpByWarehouseProduct,
@@ -684,6 +697,14 @@ export async function getWmsDashboardPayload(
       noteTemplate: t.noteTemplate,
       suggestedVarianceDisposition: t.suggestedVarianceDisposition,
       updatedAt: t.updatedAt.toISOString(),
+    })),
+    outboundWebhookSubscriptions: outboundWebhookSubscriptions.map((s) => ({
+      id: s.id,
+      url: s.url,
+      eventTypes: [...s.eventTypes],
+      isActive: s.isActive,
+      signingSecretSuffix: s.signingSecretSuffix,
+      createdAt: s.createdAt.toISOString(),
     })),
     crmAccountOptions,
     crmQuoteOptions,

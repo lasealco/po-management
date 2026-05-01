@@ -15,6 +15,9 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   create_wms_receiving_disposition_template: "setup",
   update_wms_receiving_disposition_template: "setup",
   delete_wms_receiving_disposition_template: "setup",
+  create_wms_outbound_webhook_subscription_bf44: "setup",
+  update_wms_outbound_webhook_subscription_bf44: "setup",
+  delete_wms_outbound_webhook_subscription_bf44: "setup",
 
   create_replenishment_tasks: "operations",
 

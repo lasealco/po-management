@@ -246,6 +246,13 @@ export type WmsBody = {
   logisticsOutboundOrderLineId?: string | null;
   logisticsContainedQty?: number | string | null;
 
+  /** BF-44 — outbound webhook subscription CRUD (`create_*` / `update_*` / `delete_*`). */
+  webhookSubscriptionId?: string;
+  webhookUrl?: string;
+  webhookSigningSecret?: string;
+  webhookEventTypes?: string[];
+  webhookIsActive?: boolean;
+
   /** BF-36 — `release_soft_reservation`. */
   softReservationId?: string;
   /** BF-36 — TTL seconds when `softReservationExpiresAt` omitted (server default 3600). */

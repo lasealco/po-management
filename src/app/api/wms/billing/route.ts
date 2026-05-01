@@ -14,6 +14,7 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { gateWmsTierMutation } from "@/lib/wms/wms-mutation-grants";
 import { prisma } from "@/lib/prisma";
+import { scheduleEmitWmsOutboundWebhooks } from "@/lib/wms/outbound-webhook-dispatch";
 
 function wmsBillingInvoiceRunReadWhere(
   tenantId: string,
@@ -222,6 +223,35 @@ export async function POST(request: Request) {
         code: "NOT_FOUND",
         status: 404,
       });
+    }
+    if (disputed) {
+      const ev = await prisma.wmsBillingEvent.findFirst({
+        where: { AND: [billingEventWhere, { id: billingEventId }] },
+        select: {
+          id: true,
+          movementType: true,
+          amount: true,
+          currency: true,
+          occurredAt: true,
+          rateCode: true,
+          warehouseId: true,
+          crmAccountId: true,
+          billingDisputeNote: true,
+        },
+      });
+      if (ev) {
+        scheduleEmitWmsOutboundWebhooks(tenant.id, "BILLING_EVENT_DISPUTED", ev.id, {
+          billingEventId: ev.id,
+          movementType: ev.movementType,
+          amount: ev.amount.toString(),
+          currency: ev.currency,
+          occurredAt: ev.occurredAt.toISOString(),
+          rateCode: ev.rateCode,
+          warehouseId: ev.warehouseId,
+          crmAccountId: ev.crmAccountId,
+          billingDisputeNote: ev.billingDisputeNote,
+        });
+      }
     }
     return NextResponse.json({ ok: true });
   }
