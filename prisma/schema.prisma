@@ -4375,6 +4375,8 @@ enum WmsPickAllocationStrategy {
   FIFO_BY_BIN_CODE
   /// BF-03 — automated waves allocate **lot-controlled** balances by earliest **`WmsLotBatch.expiryDate`** (then bin code); fungible rows sort last.
   FEFO_BY_LOT_EXPIRY
+  /// BF-15 — fungible automated waves only; per outbound line, prefer bins that can cover the **remaining** qty in one touch, then larger balances (fewer bin visits heuristic).
+  GREEDY_MIN_BIN_TOUCHES
   /// Disable automated wave allocation; use explicit `create_pick_task` per bin/line.
   MANUAL_ONLY
 }
@@ -4392,6 +4394,8 @@ model Warehouse {
   isActive     Boolean                   @default(true)
   /// Policy for automated pick waves (`create_pick_wave`) bin ordering / reservation.
   pickAllocationStrategy WmsPickAllocationStrategy @default(MAX_AVAILABLE_FIRST)
+  /// BF-15 — optional max units per automated wave pick task (carton / tote / conveyor slice); null = uncapped.
+  pickWaveCartonUnits Decimal?               @db.Decimal(14, 3)
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime      @updatedAt
 

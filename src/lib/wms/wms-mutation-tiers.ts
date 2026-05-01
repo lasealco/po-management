@@ -6,6 +6,7 @@ export type WmsMutationTier = "setup" | "operations" | "inventory";
 
 const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_warehouse_pick_allocation_strategy: "setup",
+  set_warehouse_pick_wave_carton_units: "setup",
   create_zone: "setup",
   set_zone_parent: "setup",
   create_bin: "setup",

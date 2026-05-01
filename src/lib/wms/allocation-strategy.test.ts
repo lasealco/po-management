@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fungibleWaveSlot, orderPickSlotsForWave } from "./allocation-strategy";
+import { fungibleWaveSlot, orderPickSlotsForWave, orderPickSlotsMinBinTouches } from "./allocation-strategy";
 
 const slots = [
   fungibleWaveSlot({ binId: "b2", binCode: "B-02", available: 10 }),
@@ -44,5 +44,25 @@ describe("orderPickSlotsForWave", () => {
 
   it("MANUAL_ONLY yields no automated ordering", () => {
     expect(orderPickSlotsForWave("MANUAL_ONLY", slots)).toEqual([]);
+  });
+
+  it("GREEDY_MIN_BIN_TOUCHES stable sort uses bin code", () => {
+    const ordered = orderPickSlotsForWave("GREEDY_MIN_BIN_TOUCHES", slots);
+    expect(ordered.map((s) => s.binCode)).toEqual(["B-01", "B-02", "B-03"]);
+  });
+});
+
+describe("orderPickSlotsMinBinTouches", () => {
+  it("prefers bins that cover full remainder, then higher available", () => {
+    const bins = [
+      fungibleWaveSlot({ binId: "partial", binCode: "P", available: 8 }),
+      fungibleWaveSlot({ binId: "cover", binCode: "C", available: 15 }),
+      fungibleWaveSlot({ binId: "big", binCode: "B", available: 50 }),
+    ];
+    const R = 12;
+    const ordered = orderPickSlotsMinBinTouches(bins, R);
+    expect(ordered[0]?.binId).toBe("cover");
+    expect(ordered[1]?.binId).toBe("big");
+    expect(ordered[2]?.binId).toBe("partial");
   });
 });

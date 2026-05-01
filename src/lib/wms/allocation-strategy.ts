@@ -42,9 +42,41 @@ export function orderPickSlotsForWave(
           a.binId.localeCompare(b.binId),
       );
       break;
+    case "GREEDY_MIN_BIN_TOUCHES":
+      copy.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
+      break;
     case "MANUAL_ONLY":
       return [];
   }
+  return copy;
+}
+
+/**
+ * BF-15 — Per outbound line (given current slot availability), prefer bins that can satisfy the full **remaining**
+ * quantity in one pick task; among those, prefer the **smallest sufficient** balance (leave consolidated stock in
+ * larger bins). Among partial bins, prefer larger available (fewer follow-on touches).
+ */
+export function orderPickSlotsMinBinTouches(slots: WavePickSlot[], lineRemainingQty: number): WavePickSlot[] {
+  const copy = slots.map((s) => ({ ...s }));
+  const R = Math.max(0, lineRemainingQty);
+  if (R <= 0) return copy;
+  copy.sort((a, b) => {
+    const aFull = a.available >= R ? 1 : 0;
+    const bFull = b.available >= R ? 1 : 0;
+    if (aFull !== bFull) return bFull - aFull;
+    if (aFull === 1) {
+      return (
+        a.available - b.available ||
+        a.binCode.localeCompare(b.binCode) ||
+        a.binId.localeCompare(b.binId)
+      );
+    }
+    return (
+      b.available - a.available ||
+      a.binCode.localeCompare(b.binCode) ||
+      a.binId.localeCompare(b.binId)
+    );
+  });
   return copy;
 }
 

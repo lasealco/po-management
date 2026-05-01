@@ -10,7 +10,11 @@ import {
   assertOutboundSourceQuoteAttachable,
 } from "./crm-account-link";
 import { normalizeDockCode, parseDockYardMilestone, truncateDockTransportField, DOCK_TRANSPORT_LIMITS } from "./dock-appointment";
-import { orderPickSlotsForWave, type WavePickSlot } from "./allocation-strategy";
+import {
+  orderPickSlotsForWave,
+  orderPickSlotsMinBinTouches,
+  type WavePickSlot,
+} from "./allocation-strategy";
 import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
 import { resolveVarianceDisposition } from "./receive-line-variance";
 import {
@@ -47,6 +51,7 @@ export async function handleWmsPost(
       "MAX_AVAILABLE_FIRST",
       "FIFO_BY_BIN_CODE",
       "FEFO_BY_LOT_EXPIRY",
+      "GREEDY_MIN_BIN_TOUCHES",
       "MANUAL_ONLY",
     ];
     if (!allowed.includes(raw as WmsPickAllocationStrategy)) {
@@ -58,6 +63,36 @@ export async function handleWmsPost(
       data: { pickAllocationStrategy: strategy },
     });
     if (n.count === 0) {
+      return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_warehouse_pick_wave_carton_units") {
+    const warehouseId = input.warehouseId?.trim();
+    if (!warehouseId) {
+      return toApiErrorResponseFromStatus("warehouseId required.", 400);
+    }
+    if (input.pickWaveCartonUnits === undefined) {
+      return toApiErrorResponseFromStatus(
+        "pickWaveCartonUnits required — send a positive number or null to clear.",
+        400,
+      );
+    }
+    const rawCap = input.pickWaveCartonUnits;
+    let pickWaveCartonUnits: Prisma.Decimal | null = null;
+    if (rawCap !== null && rawCap !== "") {
+      const capNum = Number(rawCap);
+      if (!Number.isFinite(capNum) || capNum <= 0) {
+        return toApiErrorResponseFromStatus("pickWaveCartonUnits must be a positive number or null.", 400);
+      }
+      pickWaveCartonUnits = new Prisma.Decimal(String(capNum));
+    }
+    const updated = await prisma.warehouse.updateMany({
+      where: { id: warehouseId, tenantId },
+      data: { pickWaveCartonUnits },
+    });
+    if (updated.count === 0) {
       return toApiErrorResponseFromStatus("Warehouse not found.", 404);
     }
     return NextResponse.json({ ok: true });
@@ -703,7 +738,7 @@ export async function handleWmsPost(
     }
     const warehouse = await prisma.warehouse.findFirst({
       where: { id: warehouseId, tenantId },
-      select: { pickAllocationStrategy: true },
+      select: { pickAllocationStrategy: true, pickWaveCartonUnits: true },
     });
     if (!warehouse) {
       return toApiErrorResponseFromStatus("Warehouse not found.", 404);
@@ -715,6 +750,9 @@ export async function handleWmsPost(
       );
     }
     const allocationStrategy = warehouse.pickAllocationStrategy;
+    const cartonCapRaw = warehouse.pickWaveCartonUnits;
+    const cartonCap =
+      cartonCapRaw != null && Number(cartonCapRaw) > 0 ? Number(cartonCapRaw) : null;
 
     const openLines = await prisma.outboundOrderLine.findMany({
       where: {
@@ -805,11 +843,21 @@ export async function handleWmsPost(
     }
 
     for (const [productId, list] of byProduct) {
-      byProduct.set(productId, orderPickSlotsForWave(allocationStrategy, list));
+      if (allocationStrategy === "GREEDY_MIN_BIN_TOUCHES") {
+        list.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
+        byProduct.set(productId, list);
+      } else {
+        byProduct.set(productId, orderPickSlotsForWave(allocationStrategy, list));
+      }
     }
 
     const waveNo = await nextWaveNo(tenantId);
-    const waveNote = `Wave allocation (${allocationStrategy})`;
+    const waveNote = [
+      `Wave allocation (${allocationStrategy})`,
+      cartonCap != null ? `cartonCap=${cartonCap}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
     const result = await prisma.$transaction(async (tx) => {
       const wave = await tx.wmsWave.create({
         data: {
@@ -825,10 +873,15 @@ export async function handleWmsPost(
         const alreadyPicked = pickedMap.get(item.id) ?? 0;
         let remaining = Math.max(0, Number(item.quantity) - Number(item.pickedQty) - alreadyPicked);
         if (remaining <= 0) continue;
-        const binsForProduct = byProduct.get(item.productId) ?? [];
+        const binsRaw = byProduct.get(item.productId) ?? [];
+        const binsForProduct =
+          allocationStrategy === "GREEDY_MIN_BIN_TOUCHES"
+            ? orderPickSlotsMinBinTouches(binsRaw, remaining)
+            : binsRaw;
         for (const slot of binsForProduct) {
           if (remaining <= 0) break;
-          const take = Math.min(remaining, slot.available);
+          let take = Math.min(remaining, slot.available);
+          if (cartonCap != null) take = Math.min(take, cartonCap);
           if (take <= 0) continue;
           await tx.wmsTask.create({
             data: {

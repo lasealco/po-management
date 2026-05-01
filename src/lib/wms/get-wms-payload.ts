@@ -78,7 +78,7 @@ export async function getWmsDashboardPayload(
     prisma.warehouse.findMany({
       where: { tenantId, isActive: true },
       orderBy: [{ type: "asc" }, { name: "asc" }],
-      select: { id: true, code: true, name: true, type: true, pickAllocationStrategy: true },
+      select: { id: true, code: true, name: true, type: true, pickAllocationStrategy: true, pickWaveCartonUnits: true },
     }),
     prisma.warehouseZone.findMany({
       where: { tenantId, isActive: true },
@@ -383,7 +383,14 @@ export async function getWmsDashboardPayload(
   }
 
   return {
-    warehouses,
+    warehouses: warehouses.map((w) => ({
+      id: w.id,
+      code: w.code,
+      name: w.name,
+      type: w.type,
+      pickAllocationStrategy: w.pickAllocationStrategy,
+      pickWaveCartonUnits: w.pickWaveCartonUnits != null ? w.pickWaveCartonUnits.toString() : null,
+    })),
     zones: zones.map((z) => ({
       id: z.id,
       code: z.code,

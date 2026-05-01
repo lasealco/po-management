@@ -30,7 +30,9 @@ type WmsData = {
       | "MAX_AVAILABLE_FIRST"
       | "FIFO_BY_BIN_CODE"
       | "FEFO_BY_LOT_EXPIRY"
+      | "GREEDY_MIN_BIN_TOUCHES"
       | "MANUAL_ONLY";
+    pickWaveCartonUnits: string | null;
   }>;
   zones: Array<{
     id: string;
@@ -495,6 +497,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+  const [pickWaveCartonCapDraft, setPickWaveCartonCapDraft] = useState("");
   const [movementTypeFilter, setMovementTypeFilter] = useState<
     "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT"
   >("");
@@ -640,6 +643,16 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     if (!crm) return opts;
     return opts.filter((q) => q.accountId === crm);
   }, [data?.crmQuoteOptions, outboundCrmAccountId]);
+
+  useEffect(() => {
+    if (!data?.warehouses?.length || !selectedWarehouseId) {
+      setPickWaveCartonCapDraft("");
+      return;
+    }
+    const wh = data.warehouses.find((w) => w.id === selectedWarehouseId);
+    const cap = wh?.pickWaveCartonUnits;
+    setPickWaveCartonCapDraft(cap != null && cap !== "" ? cap : "");
+  }, [data?.warehouses, selectedWarehouseId]);
 
   useEffect(() => {
     const taskType = (searchParams.get("taskType") || "").toUpperCase();
@@ -1438,6 +1451,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                     | "MAX_AVAILABLE_FIRST"
                     | "FIFO_BY_BIN_CODE"
                     | "FEFO_BY_LOT_EXPIRY"
+                    | "GREEDY_MIN_BIN_TOUCHES"
                     | "MANUAL_ONLY";
                   void runAction({
                     action: "set_warehouse_pick_allocation_strategy",
@@ -1452,9 +1466,67 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <option value="FEFO_BY_LOT_EXPIRY">
                   FEFO by lot expiry — automated waves use dated lots first (needs WmsLotBatch + non-fungible balances)
                 </option>
+                <option value="GREEDY_MIN_BIN_TOUCHES">
+                  BF-15 — Greedy min bin touches (fungible waves): fewer bin visits heuristic per outbound line
+                </option>
                 <option value="MANUAL_ONLY">Manual only — automated waves disabled</option>
               </select>
             </label>
+            <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+                BF-15 · Wave task unit cap
+              </p>
+              <p className="mt-1 text-xs text-zinc-600">
+                Optional max quantity per automated wave pick task (carton / tote / conveyor slice). Applies to all wave
+                strategies except manual picks.
+              </p>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <label className="block">
+                  <span className="text-[10px] font-medium uppercase text-zinc-500">Cap units</span>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={pickWaveCartonCapDraft}
+                    onChange={(e) => setPickWaveCartonCapDraft(e.target.value)}
+                    placeholder="e.g. 24"
+                    disabled={!canEdit || busy}
+                    className="mt-0.5 block w-36 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={!canEdit || busy}
+                  onClick={() =>
+                    void runAction({
+                      action: "set_warehouse_pick_wave_carton_units",
+                      warehouseId: selectedWarehouseId,
+                      pickWaveCartonUnits: pickWaveCartonCapDraft.trim()
+                        ? Number(pickWaveCartonCapDraft.trim())
+                        : null,
+                    })
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  Save cap
+                </button>
+                <button
+                  type="button"
+                  disabled={!canEdit || busy}
+                  onClick={() => {
+                    setPickWaveCartonCapDraft("");
+                    void runAction({
+                      action: "set_warehouse_pick_wave_carton_units",
+                      warehouseId: selectedWarehouseId,
+                      pickWaveCartonUnits: null,
+                    });
+                  }}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Clear cap
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </section>

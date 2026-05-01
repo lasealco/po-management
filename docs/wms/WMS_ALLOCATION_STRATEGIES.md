@@ -1,4 +1,4 @@
-# WMS pick allocation strategies (WE-03) + BF-03 FEFO slice
+# WMS pick allocation strategies (WE-03) + BF-03 FEFO + BF-15 wave v2 (minimal)
 
 **Status:** Implemented policy slice · **Last updated:** 2026-04-29
 
@@ -7,13 +7,16 @@
 Per-**warehouse** enum **`WmsPickAllocationStrategy`** on `Warehouse.pickAllocationStrategy`:
 
 | Strategy | Automated `create_pick_wave` | Manual `create_pick_task` |
-|----------|-------------------------------|---------------------------|
+|----------|------------------------------|---------------------------|
 | **`MAX_AVAILABLE_FIRST`** | Yes — bins ordered by **descending available** (free stock), then bin code tie-break · **fungible (`lotCode ''`) balances only** | Always allowed — operator picks bin/lot |
 | **`FIFO_BY_BIN_CODE`** | Yes — bins ordered by **`WarehouseBin.code`** (ascending), then stable bin id · **fungible only** | Always allowed |
 | **`FEFO_BY_LOT_EXPIRY`** (**BF-03**) | Yes — considers **all** lot buckets in the warehouse; orders slots by earliest **`WmsLotBatch.expiryDate`** (missing registry → sort before fungible; **fungible last**), then bin code + lot code | Always allowed |
+| **`GREEDY_MIN_BIN_TOUCHES`** (**BF-15**) | Yes — **fungible only** (same balance fetch as MAX/FIFO). Slot **globally** sorted by bin code for determinism; **per outbound line**, bins are re-ordered so those that can cover the **remaining** line qty in **one** pick task are tried first, then descending available — heuristic for fewer bin visits | Always allowed |
 | **`MANUAL_ONLY`** | **Blocked** (HTTP 400) — no silent multi-bin wave allocation | **Required path** for reservations |
 
-Setting strategy is **`POST /api/wms`** action **`set_warehouse_pick_allocation_strategy`** (`warehouseId`, `pickAllocationStrategy`). **`org.wms` edit** applies like other POST actions.
+**BF-15 — Optional carton / task cap:** nullable **`Warehouse.pickWaveCartonUnits`** (`Decimal`, units per SKU line pick task). When set (> 0), **`create_pick_wave`** clamps each automated pick task quantity to **≤ cap** (applies to **all** non-`MANUAL_ONLY` strategies). Configure via **`POST /api/wms`** **`set_warehouse_pick_wave_carton_units`** (`warehouseId`, `pickWaveCartonUnits`: positive number **or** `null` to clear). WMS Setup → **Pick allocation policy** shows strategy + cap controls.
+
+Setting strategy is **`set_warehouse_pick_allocation_strategy`** (`warehouseId`, `pickAllocationStrategy`). **`org.wms` → edit** or **`org.wms.setup` → edit** applies (tier map).
 
 ## BF-03 behavior details
 
@@ -22,9 +25,16 @@ Setting strategy is **`POST /api/wms`** action **`set_warehouse_pick_allocation_
 - **Fungible** buckets (`lotCode ''`) sort **last** so dated inventory consumes first.
 - Pick tasks and reservations reference the **`slot.lotCode`** from allocation (same as balance row).
 
+## BF-15 behavior details
+
+- **`GREEDY_MIN_BIN_TOUCHES`** does **not** allocate dated lots — use **`FEFO_BY_LOT_EXPIRY`** when expiry-driven consumption matters.
+- Among bins that **fully cover** the line remainder, the heuristic prefers the **smallest sufficient** on-hand chunk first (keeps consolidated stock in larger bins); among bins that only partially cover, it prefers **larger** available balances next.
+- **`pickWaveCartonUnits`** splits large picks into multiple wave tasks (same bin may appear in successive tasks if remainder > cap).
+- Pure helpers: **`orderPickSlotsMinBinTouches`** + **`orderPickSlotsForWave`** in **`src/lib/wms/allocation-strategy.ts`**.
+
 ## Tests & module
 
-Pure ordering logic lives in **`src/lib/wms/allocation-strategy.ts`** (`orderPickSlotsForWave`, `WavePickSlot`) with Vitest in **`allocation-strategy.test.ts`**.
+Vitest: **`allocation-strategy.test.ts`** covers **`orderPickSlotsForWave`** (including **`GREEDY_MIN_BIN_TOUCHES`** baseline sort) and **`orderPickSlotsMinBinTouches`**.
 
 ## Human approval / “no silent moves”
 
@@ -34,4 +44,4 @@ Pure ordering logic lives in **`src/lib/wms/allocation-strategy.ts`** (`orderPic
 
 ## Limits (honest 🟡)
 
-No carton-level optimization, no solver across waves or multi-objective allocation — **BF-03** adds **FEFO-by-expiry** for automated waves only; enterprise allocation engines stay future work.
+No MILP solver, no labor planning, no carton **cube** / dimensions — **BF-15** adds deterministic **min-touch greedy** ordering plus an optional **unit cap** per wave pick task; multi-wave optimizers and carton packing physics stay future work.

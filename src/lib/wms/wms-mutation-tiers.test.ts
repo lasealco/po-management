@@ -31,4 +31,8 @@ describe("wmsMutationTierForPostAction", () => {
   it("maps BF-14 quote explosion to operations tier", () => {
     expect(wmsMutationTierForPostAction("explode_crm_quote_to_outbound")).toBe("operations");
   });
+
+  it("maps BF-15 carton cap mutation to setup tier", () => {
+    expect(wmsMutationTierForPostAction("set_warehouse_pick_wave_carton_units")).toBe("setup");
+  });
 });

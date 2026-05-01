@@ -77,7 +77,14 @@ export type WmsBody = {
   /** ISO datetime for yard milestone (defaults to now). */
   yardOccurredAt?: string;
   /** Target allocation strategy for `set_warehouse_pick_allocation_strategy`. */
-  pickAllocationStrategy?: "MAX_AVAILABLE_FIRST" | "FIFO_BY_BIN_CODE" | "FEFO_BY_LOT_EXPIRY" | "MANUAL_ONLY";
+  pickAllocationStrategy?:
+    | "MAX_AVAILABLE_FIRST"
+    | "FIFO_BY_BIN_CODE"
+    | "FEFO_BY_LOT_EXPIRY"
+    | "GREEDY_MIN_BIN_TOUCHES"
+    | "MANUAL_ONLY";
+  /** BF-15 — max units per automated wave pick line (`set_warehouse_pick_wave_carton_units`); positive number or null clears. */
+  pickWaveCartonUnits?: number | string | null;
   /** Optional batch/lot for putaway completion and manual picks (`InventoryBalance.lotCode`). */
   lotCode?: string | null;
   /** `create_value_add_task` — `WmsWorkOrder.id`; BF-09 `set_work_order_commercial_estimate` — target WO. */
