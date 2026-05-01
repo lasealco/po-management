@@ -12,6 +12,10 @@ export type WavePickSlot = {
   expirySortMs: number;
   /** `WarehouseBin.isPickFace` — used by **GREEDY_RESERVE_PICK_FACE** (BF-23). */
   isPickFace: boolean;
+  /**
+   * BF-33 — `WarehouseBin.capacityCubeCubicMm` (mm³); null/undefined = unknown / unconstrained for cube tiering.
+   */
+  binCapacityCubeMm3?: number | null;
 };
 
 /** Order bins (and lot buckets) for automated wave splitting (`create_pick_wave`). */
@@ -46,6 +50,8 @@ export function orderPickSlotsForWave(
       break;
     case "GREEDY_MIN_BIN_TOUCHES":
     case "GREEDY_RESERVE_PICK_FACE":
+    case "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE":
+    case "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE":
       copy.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
       break;
     case "MANUAL_ONLY":
@@ -120,7 +126,10 @@ export function orderPickSlotsMinBinTouchesReservePickFace(
 
 /** Slots for tests — fungible bucket only. */
 export function fungibleWaveSlot(
-  partial: Omit<WavePickSlot, "lotCode" | "expirySortMs" | "isPickFace"> & { isPickFace?: boolean },
+  partial: Omit<WavePickSlot, "lotCode" | "expirySortMs" | "isPickFace"> & {
+    isPickFace?: boolean;
+    binCapacityCubeMm3?: number | null;
+  },
 ): WavePickSlot {
   return {
     ...partial,

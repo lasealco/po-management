@@ -10,6 +10,40 @@ import { loadInventorySerialTrace, type SerialTraceQueryInput } from "@/lib/wms/
 import { buildOutboundPackScanPlan } from "@/lib/wms/pack-scan-verify";
 import { prisma } from "@/lib/prisma";
 
+const WMS_PRODUCT_REF_SELECT = {
+  id: true,
+  productCode: true,
+  sku: true,
+  name: true,
+  cartonLengthMm: true,
+  cartonWidthMm: true,
+  cartonHeightMm: true,
+  cartonUnitsPerMasterCarton: true,
+} satisfies Prisma.ProductSelect;
+
+function mapWmsProductJson(p: {
+  id: string;
+  productCode: string | null;
+  sku: string | null;
+  name: string;
+  cartonLengthMm: number | null;
+  cartonWidthMm: number | null;
+  cartonHeightMm: number | null;
+  cartonUnitsPerMasterCarton: Prisma.Decimal | null;
+}) {
+  return {
+    id: p.id,
+    productCode: p.productCode,
+    sku: p.sku,
+    name: p.name,
+    cartonLengthMm: p.cartonLengthMm,
+    cartonWidthMm: p.cartonWidthMm,
+    cartonHeightMm: p.cartonHeightMm,
+    cartonUnitsPerMasterCarton:
+      p.cartonUnitsPerMasterCarton != null ? p.cartonUnitsPerMasterCarton.toString() : null,
+  };
+}
+
 function andWhereClauses<T>(base: T, extra: object): T {
   if (!extra || Object.keys(extra).length === 0) return base;
   return { AND: [base, extra] } as T;
@@ -112,7 +146,7 @@ export async function getWmsDashboardPayload(
       orderBy: [{ warehouse: { name: "asc" } }, { product: { name: "asc" } }],
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
-        product: { select: { id: true, productCode: true, sku: true, name: true } },
+        product: { select: WMS_PRODUCT_REF_SELECT },
         sourceZone: { select: { id: true, code: true, name: true } },
         targetZone: { select: { id: true, code: true, name: true } },
       },
@@ -139,7 +173,7 @@ export async function getWmsDashboardPayload(
             commercialListUnitPrice: true,
             commercialPriceTierLabel: true,
             commercialExtendedAmount: true,
-            product: { select: { id: true, productCode: true, sku: true, name: true } },
+            product: { select: WMS_PRODUCT_REF_SELECT },
           },
         },
       },
@@ -176,7 +210,7 @@ export async function getWmsDashboardPayload(
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
         bin: { select: { id: true, code: true, name: true } },
-        product: { select: { id: true, productCode: true, sku: true, name: true } },
+        product: { select: WMS_PRODUCT_REF_SELECT },
       },
     }),
     prisma.wmsTask.findMany({
@@ -185,7 +219,7 @@ export async function getWmsDashboardPayload(
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
         bin: { select: { id: true, code: true, name: true } },
-        product: { select: { id: true, productCode: true, sku: true, name: true } },
+        product: { select: WMS_PRODUCT_REF_SELECT },
         shipment: { select: { id: true, shipmentNo: true, status: true } },
         order: { select: { id: true, orderNumber: true } },
         wave: { select: { id: true, waveNo: true, status: true } },
@@ -302,7 +336,7 @@ export async function getWmsDashboardPayload(
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
         bin: { select: { id: true, code: true, name: true } },
-        product: { select: { id: true, productCode: true, sku: true, name: true } },
+        product: { select: WMS_PRODUCT_REF_SELECT },
         createdBy: { select: { id: true, name: true, email: true } },
       },
     }),
@@ -327,7 +361,7 @@ export async function getWmsDashboardPayload(
     orderBy: [{ updatedAt: "desc" }],
     take: 500,
     include: {
-      product: { select: { id: true, productCode: true, sku: true, name: true } },
+      product: { select: WMS_PRODUCT_REF_SELECT },
     },
   });
 
@@ -391,7 +425,7 @@ export async function getWmsDashboardPayload(
           consumedQty: true,
           lineNote: true,
           componentProduct: {
-            select: { id: true, productCode: true, sku: true, name: true },
+            select: WMS_PRODUCT_REF_SELECT,
           },
         },
       },
@@ -485,13 +519,14 @@ export async function getWmsDashboardPayload(
       bay: b.bay,
       level: b.level,
       positionIndex: b.positionIndex,
+      capacityCubeCubicMm: b.capacityCubeCubicMm ?? null,
       warehouse: b.warehouse,
       zone: b.zone,
     })),
     replenishmentRules: rules.map((r) => ({
       id: r.id,
       warehouse: r.warehouse,
-      product: r.product,
+      product: mapWmsProductJson(r.product),
       sourceZone: r.sourceZone,
       targetZone: r.targetZone,
       minPickQty: r.minPickQty.toString(),
@@ -510,6 +545,7 @@ export async function getWmsDashboardPayload(
       shipToName: o.shipToName,
       shipToCity: o.shipToCity,
       shipToCountryCode: o.shipToCountryCode,
+      estimatedCubeCbm: o.estimatedCubeCbm?.toString() ?? null,
       status: o.status,
       warehouse: o.warehouse,
       crmAccount: o.crmAccount,
@@ -524,7 +560,7 @@ export async function getWmsDashboardPayload(
       lines: o.lines.map((l) => ({
         id: l.id,
         lineNo: l.lineNo,
-        product: l.product,
+        product: mapWmsProductJson(l.product),
         quantity: l.quantity.toString(),
         pickedQty: l.pickedQty.toString(),
         packedQty: l.packedQty.toString(),
@@ -539,14 +575,14 @@ export async function getWmsDashboardPayload(
           ? buildOutboundPackScanPlan(
               o.lines.map((l) => ({
                 pickedQty: Number(l.pickedQty),
-                product: l.product,
+                product: mapWmsProductJson(l.product),
               })),
             )
           : o.status === "PACKED"
             ? buildOutboundPackScanPlan(
                 o.lines.map((l) => ({
                   pickedQty: Number(l.packedQty),
-                  product: l.product,
+                  product: mapWmsProductJson(l.product),
                 })),
               )
             : [],
@@ -559,7 +595,7 @@ export async function getWmsDashboardPayload(
         id: b.id,
         warehouse: b.warehouse,
         bin: b.bin,
-        product: b.product,
+        product: mapWmsProductJson(b.product),
         lotCode: b.lotCode,
         onHandQty: b.onHandQty.toString(),
         allocatedQty: b.allocatedQty.toString(),
@@ -587,7 +623,7 @@ export async function getWmsDashboardPayload(
         warehouse: t.warehouse,
         bin: t.bin,
         sourceBin,
-        product: t.product,
+        product: t.product ? mapWmsProductJson(t.product) : null,
         shipment: t.shipment,
         order: t.order,
         wave: t.wave,
@@ -717,7 +753,7 @@ export async function getWmsDashboardPayload(
             outboundLineId: line.id,
             lineNo: line.lineNo,
             description: line.product.name,
-            product: line.product,
+            product: mapWmsProductJson(line.product),
             remainingQty: remaining.toFixed(3),
           };
         }),
@@ -733,7 +769,7 @@ export async function getWmsDashboardPayload(
       createdAt: m.createdAt.toISOString(),
       warehouse: m.warehouse,
       bin: m.bin,
-      product: m.product,
+      product: mapWmsProductJson(m.product),
       createdBy: m.createdBy,
     })),
     recentMovementsMeta: {
@@ -803,14 +839,14 @@ export async function getWmsDashboardPayload(
         plannedQty: bl.plannedQty.toString(),
         consumedQty: bl.consumedQty.toString(),
         lineNote: bl.lineNote,
-        componentProduct: bl.componentProduct,
+        componentProduct: mapWmsProductJson(bl.componentProduct),
       })),
     })),
     lotBatches: lotBatchesRaw.map((lb) => ({
       id: lb.id,
       productId: lb.productId,
       lotCode: lb.lotCode,
-      product: lb.product,
+      product: mapWmsProductJson(lb.product),
       expiryDate: lb.expiryDate?.toISOString().slice(0, 10) ?? null,
       countryOfOrigin: lb.countryOfOrigin ?? null,
       notes: lb.notes ?? null,

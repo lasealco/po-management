@@ -15,7 +15,7 @@
 ## Explicit backlog
 
 - MILP / integer programs for slotting or batching  
-- Carton **cube** / dimensions on **`Product`** or UM  
+- ~~Carton **cube** / dimensions on **`Product`** or UM~~ → **BF-33** minimal slice  
 - Labor capacity, travel-time matrices, real-time heatmaps  
 
 ## References

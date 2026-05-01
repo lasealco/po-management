@@ -21,7 +21,16 @@ export type SerialTracePayload =
         createdAt: string;
         updatedAt: string;
       };
-      product: { id: string; productCode: string | null; sku: string | null; name: string };
+      product: {
+        id: string;
+        productCode: string | null;
+        sku: string | null;
+        name: string;
+        cartonLengthMm: number | null;
+        cartonWidthMm: number | null;
+        cartonHeightMm: number | null;
+        cartonUnitsPerMasterCarton: string | null;
+      };
       currentBalance: null | {
         id: string;
         lotCode: string;
@@ -69,7 +78,16 @@ export async function loadInventorySerialTrace(
 
   const product = await prisma.product.findFirst({
     where: productWhere,
-    select: { id: true, productCode: true, sku: true, name: true },
+    select: {
+      id: true,
+      productCode: true,
+      sku: true,
+      name: true,
+      cartonLengthMm: true,
+      cartonWidthMm: true,
+      cartonHeightMm: true,
+      cartonUnitsPerMasterCarton: true,
+    },
   });
   if (!product) {
     return { status: "product_denied" };
@@ -118,7 +136,19 @@ export async function loadInventorySerialTrace(
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     },
-    product,
+    product: {
+      id: product.id,
+      productCode: product.productCode,
+      sku: product.sku,
+      name: product.name,
+      cartonLengthMm: product.cartonLengthMm,
+      cartonWidthMm: product.cartonWidthMm,
+      cartonHeightMm: product.cartonHeightMm,
+      cartonUnitsPerMasterCarton:
+        product.cartonUnitsPerMasterCarton != null
+          ? product.cartonUnitsPerMasterCarton.toString()
+          : null,
+    },
     currentBalance: cb
       ? {
           id: cb.id,

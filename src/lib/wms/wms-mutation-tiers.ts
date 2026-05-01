@@ -10,6 +10,7 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   update_warehouse_aisle: "setup",
   create_bin: "setup",
   update_bin_profile: "setup",
+  set_product_carton_cube_hints: "setup",
   set_replenishment_rule: "setup",
 
   create_replenishment_tasks: "operations",
@@ -19,6 +20,7 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_outbound_crm_account: "operations",
   explode_crm_quote_to_outbound: "operations",
   release_outbound_order: "operations",
+  set_outbound_order_cube_hint: "operations",
 
   create_putaway_task: "operations",
   complete_putaway_task: "operations",

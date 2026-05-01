@@ -24,6 +24,10 @@ import {
   orderPickSlotsMinBinTouchesReservePickFace,
   type WavePickSlot,
 } from "./allocation-strategy";
+import {
+  orderPickSlotsMinBinTouchesCubeAware,
+  orderPickSlotsMinBinTouchesReservePickFaceCubeAware,
+} from "./carton-cube-allocation";
 import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
 import {
   evaluateShipmentReceiveAgainstAsnTolerance,
@@ -77,6 +81,7 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus("warehouseId and pickAllocationStrategy required.", 400);
     }
     const bf23ReservePickFaceDisabled = process.env.WMS_DISABLE_BF23_STRATEGY === "1";
+    const bf33CubeAwareDisabled = process.env.WMS_DISABLE_BF33_CUBE_AWARE === "1";
     const allowed: WmsPickAllocationStrategy[] = [
       "MAX_AVAILABLE_FIRST",
       "FIFO_BY_BIN_CODE",
@@ -86,6 +91,14 @@ export async function handleWmsPost(
     ];
     if (!bf23ReservePickFaceDisabled) {
       allowed.splice(4, 0, "GREEDY_RESERVE_PICK_FACE");
+    }
+    if (!bf33CubeAwareDisabled) {
+      allowed.splice(
+        allowed.indexOf("MANUAL_ONLY"),
+        0,
+        "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE",
+        "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE",
+      );
     }
     if (!allowed.includes(raw as WmsPickAllocationStrategy)) {
       return toApiErrorResponseFromStatus("Invalid pickAllocationStrategy.", 400);
@@ -402,6 +415,21 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus(resolvedAisle.error, 400);
     }
 
+    let capacityCubeCubicMm: number | undefined = undefined;
+    if (input.capacityCubeCubicMm !== undefined && input.capacityCubeCubicMm !== null) {
+      const n =
+        typeof input.capacityCubeCubicMm === "number"
+          ? input.capacityCubeCubicMm
+          : Number(input.capacityCubeCubicMm);
+      if (!Number.isFinite(n) || n < 0 || Math.trunc(n) !== n) {
+        return toApiErrorResponseFromStatus(
+          "capacityCubeCubicMm must be a non-negative integer when provided.",
+          400,
+        );
+      }
+      capacityCubeCubicMm = Math.trunc(n);
+    }
+
     await prisma.warehouseBin.create({
       data: {
         tenantId,
@@ -421,6 +449,7 @@ export async function handleWmsPost(
         bay,
         level,
         positionIndex,
+        ...(capacityCubeCubicMm !== undefined ? { capacityCubeCubicMm } : {}),
       },
     });
     return NextResponse.json({ ok: true });
@@ -468,6 +497,23 @@ export async function handleWmsPost(
           ? Math.max(1, Math.trunc(input.positionIndex))
           : null;
     }
+    if (input.capacityCubeCubicMm !== undefined) {
+      if (input.capacityCubeCubicMm === null) {
+        data.capacityCubeCubicMm = null;
+      } else {
+        const n =
+          typeof input.capacityCubeCubicMm === "number"
+            ? input.capacityCubeCubicMm
+            : Number(input.capacityCubeCubicMm);
+        if (!Number.isFinite(n) || n < 0 || Math.trunc(n) !== n) {
+          return toApiErrorResponseFromStatus(
+            "capacityCubeCubicMm must be a non-negative integer or null.",
+            400,
+          );
+        }
+        data.capacityCubeCubicMm = Math.trunc(n);
+      }
+    }
 
     const aisleFkTouched = input.warehouseAisleId !== undefined;
     const aisleLabelTouched = input.aisle !== undefined;
@@ -507,6 +553,106 @@ export async function handleWmsPost(
     await prisma.warehouseBin.updateMany({
       where: { id: binId, tenantId },
       data,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_product_carton_cube_hints") {
+    const productId = input.productId?.trim();
+    if (!productId) {
+      return toApiErrorResponseFromStatus("productId required.", 400);
+    }
+    const row = await prisma.product.findFirst({
+      where: { id: productId, tenantId },
+      select: { id: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Product not found.", 404);
+    }
+    const data: Prisma.ProductUpdateManyMutationInput = {};
+
+    const patchMm = (
+      field: "cartonLengthMm" | "cartonWidthMm" | "cartonHeightMm",
+      raw: unknown,
+    ): NextResponse | undefined => {
+      if (raw === undefined) return undefined;
+      if (raw === null) {
+        data[field] = null;
+        return undefined;
+      }
+      const n = typeof raw === "number" ? raw : Number(raw);
+      if (!Number.isFinite(n) || n <= 0 || Math.trunc(n) !== n) {
+        return toApiErrorResponseFromStatus(`${field} must be a positive integer or null.`, 400);
+      }
+      data[field] = Math.trunc(n);
+      return undefined;
+    };
+
+    const e1 = patchMm("cartonLengthMm", input.cartonLengthMm);
+    if (e1) return e1;
+    const e2 = patchMm("cartonWidthMm", input.cartonWidthMm);
+    if (e2) return e2;
+    const e3 = patchMm("cartonHeightMm", input.cartonHeightMm);
+    if (e3) return e3;
+
+    if (input.cartonUnitsPerMasterCarton !== undefined) {
+      if (input.cartonUnitsPerMasterCarton === null) {
+        data.cartonUnitsPerMasterCarton = null;
+      } else {
+        const n = Number(input.cartonUnitsPerMasterCarton);
+        if (!Number.isFinite(n) || n <= 0) {
+          return toApiErrorResponseFromStatus(
+            "cartonUnitsPerMasterCarton must be a positive number or null.",
+            400,
+          );
+        }
+        data.cartonUnitsPerMasterCarton = n.toString();
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return toApiErrorResponseFromStatus(
+        "Send at least one of cartonLengthMm, cartonWidthMm, cartonHeightMm, cartonUnitsPerMasterCarton to update.",
+        400,
+      );
+    }
+
+    await prisma.product.updateMany({
+      where: { id: productId, tenantId },
+      data,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_outbound_order_cube_hint") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const exists = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true },
+    });
+    if (!exists) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (input.estimatedCubeCbm === undefined) {
+      return toApiErrorResponseFromStatus(
+        "estimatedCubeCbm required — send a non-negative number or null to clear.",
+        400,
+      );
+    }
+    let est: Prisma.Decimal | null = null;
+    if (input.estimatedCubeCbm !== null) {
+      const n = Number(input.estimatedCubeCbm);
+      if (!Number.isFinite(n) || n < 0) {
+        return toApiErrorResponseFromStatus("estimatedCubeCbm must be a non-negative number or null.", 400);
+      }
+      est = new Prisma.Decimal(String(n));
+    }
+    await prisma.outboundOrder.updateMany({
+      where: { id: outboundOrderId, tenantId },
+      data: { estimatedCubeCbm: est },
     });
     return NextResponse.json({ ok: true });
   }
@@ -1018,6 +1164,17 @@ export async function handleWmsPost(
       );
     }
 
+    if (
+      (allocationStrategy === "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE" ||
+        allocationStrategy === "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE") &&
+      process.env.WMS_DISABLE_BF33_CUBE_AWARE === "1"
+    ) {
+      return toApiErrorResponseFromStatus(
+        "Cube-aware greedy strategies are disabled for this deployment (WMS_DISABLE_BF33_CUBE_AWARE=1). Pick another strategy or unset the env flag.",
+        400,
+      );
+    }
+
     const openLines = await prisma.outboundOrderLine.findMany({
       where: {
         tenantId,
@@ -1025,7 +1182,17 @@ export async function handleWmsPost(
       },
       orderBy: { outboundOrder: { createdAt: "desc" } },
       take: 300,
-      include: { outboundOrder: { select: { id: true } } },
+      include: {
+        outboundOrder: { select: { id: true } },
+        product: {
+          select: {
+            cartonLengthMm: true,
+            cartonWidthMm: true,
+            cartonHeightMm: true,
+            cartonUnitsPerMasterCarton: true,
+          },
+        },
+      },
     });
     const pickedMovements = await prisma.inventoryMovement.findMany({
       where: {
@@ -1049,7 +1216,7 @@ export async function handleWmsPost(
     if (allocationStrategy === "FEFO_BY_LOT_EXPIRY") {
       const balancesAll = await prisma.inventoryBalance.findMany({
         where: { tenantId, warehouseId },
-        include: { bin: { select: { id: true, code: true, isPickFace: true } } },
+        include: { bin: { select: { id: true, code: true, isPickFace: true, capacityCubeCubicMm: true } } },
       });
       const productIds = [...new Set(balancesAll.map((b) => b.productId))];
       const batchRows =
@@ -1083,13 +1250,14 @@ export async function handleWmsPost(
           lotCode: lc,
           expirySortMs,
           isPickFace: row.bin.isPickFace,
+          binCapacityCubeMm3: row.bin.capacityCubeCubicMm ?? null,
         });
         byProduct.set(row.productId, list);
       }
     } else {
       const balances = await prisma.inventoryBalance.findMany({
         where: { tenantId, warehouseId, lotCode: FUNGIBLE_LOT_CODE },
-        include: { bin: { select: { id: true, code: true, isPickFace: true } } },
+        include: { bin: { select: { id: true, code: true, isPickFace: true, capacityCubeCubicMm: true } } },
       });
       for (const row of balances) {
         if (row.onHold) continue;
@@ -1103,6 +1271,7 @@ export async function handleWmsPost(
           lotCode: FUNGIBLE_LOT_CODE,
           expirySortMs: 0,
           isPickFace: row.bin.isPickFace,
+          binCapacityCubeMm3: row.bin.capacityCubeCubicMm ?? null,
         });
         byProduct.set(row.productId, list);
       }
@@ -1111,7 +1280,9 @@ export async function handleWmsPost(
     for (const [productId, list] of byProduct) {
       if (
         allocationStrategy === "GREEDY_MIN_BIN_TOUCHES" ||
-        allocationStrategy === "GREEDY_RESERVE_PICK_FACE"
+        allocationStrategy === "GREEDY_RESERVE_PICK_FACE" ||
+        allocationStrategy === "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE" ||
+        allocationStrategy === "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
       ) {
         list.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
         byProduct.set(productId, list);
@@ -1143,12 +1314,17 @@ export async function handleWmsPost(
         let remaining = Math.max(0, Number(item.quantity) - Number(item.pickedQty) - alreadyPicked);
         if (remaining <= 0) continue;
         const binsRaw = byProduct.get(item.productId) ?? [];
+        const productHints = item.product;
         const binsForProduct =
-          allocationStrategy === "GREEDY_RESERVE_PICK_FACE"
-            ? orderPickSlotsMinBinTouchesReservePickFace(binsRaw, remaining)
-            : allocationStrategy === "GREEDY_MIN_BIN_TOUCHES"
-              ? orderPickSlotsMinBinTouches(binsRaw, remaining)
-              : binsRaw;
+          allocationStrategy === "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
+            ? orderPickSlotsMinBinTouchesReservePickFaceCubeAware(binsRaw, remaining, productHints)
+            : allocationStrategy === "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE"
+              ? orderPickSlotsMinBinTouchesCubeAware(binsRaw, remaining, productHints)
+              : allocationStrategy === "GREEDY_RESERVE_PICK_FACE"
+                ? orderPickSlotsMinBinTouchesReservePickFace(binsRaw, remaining)
+                : allocationStrategy === "GREEDY_MIN_BIN_TOUCHES"
+                  ? orderPickSlotsMinBinTouches(binsRaw, remaining)
+                  : binsRaw;
         for (const slot of binsForProduct) {
           if (remaining <= 0) break;
           let take = Math.min(remaining, slot.available);

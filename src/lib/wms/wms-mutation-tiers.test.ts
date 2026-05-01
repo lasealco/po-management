@@ -53,4 +53,9 @@ describe("wmsMutationTierForPostAction", () => {
   it("maps BF-31 ASN tolerance evaluate POST to operations tier", () => {
     expect(wmsMutationTierForPostAction("evaluate_wms_receipt_asn_tolerance")).toBe("operations");
   });
+
+  it("maps BF-33 carton cube hints to setup and outbound cube hint to operations", () => {
+    expect(wmsMutationTierForPostAction("set_product_carton_cube_hints")).toBe("setup");
+    expect(wmsMutationTierForPostAction("set_outbound_order_cube_hint")).toBe("operations");
+  });
 });

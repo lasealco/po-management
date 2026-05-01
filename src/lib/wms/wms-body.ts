@@ -44,6 +44,8 @@ export type WmsBody = {
   storageType?: "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING";
   isPickFace?: boolean;
   maxPallets?: number | null;
+  /** BF-33 — optional bin cube capacity hint (`WarehouseBin.capacityCubeCubicMm`), cubic mm. */
+  capacityCubeCubicMm?: number | null;
   /** Physical rack / bay grouping for maps (optional). */
   rackCode?: string | null;
   aisle?: string | null;
@@ -103,6 +105,8 @@ export type WmsBody = {
     | "FEFO_BY_LOT_EXPIRY"
     | "GREEDY_MIN_BIN_TOUCHES"
     | "GREEDY_RESERVE_PICK_FACE"
+    | "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE"
+    | "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
     | "MANUAL_ONLY";
   /** BF-15 — max units per automated wave pick line (`set_warehouse_pick_wave_carton_units`); positive number or null clears. */
   pickWaveCartonUnits?: number | string | null;
@@ -179,6 +183,14 @@ export type WmsBody = {
     plannedQty: number;
     lineNote?: string | null;
   }>;
+
+  /** BF-33 — master carton dimensions / units for cube-aware greedy waves (`set_product_carton_cube_hints`). */
+  cartonLengthMm?: number | null;
+  cartonWidthMm?: number | null;
+  cartonHeightMm?: number | null;
+  cartonUnitsPerMasterCarton?: number | string | null;
+  /** BF-33 — planner hint on outbound (`set_outbound_order_cube_hint`), cubic metres. */
+  estimatedCubeCbm?: number | string | null;
 
   /** BF-29 — scan tokens (SKU / product code / product id per unit) for pack or ship verification. */
   packScanTokens?: string[];

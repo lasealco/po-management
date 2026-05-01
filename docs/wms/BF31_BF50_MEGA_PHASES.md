@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
 
-**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)). Capsules **BF-33** … **BF-50** remain **draft** until executed.
+**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)). Capsules **BF-34** … **BF-50** remain **draft** until executed.
 
 **Rules:**
 
@@ -69,9 +69,9 @@
 
 ## BF-33 — Carton DIM / cube-aware greedy allocation
 
-**Objective:** Extend **BF-15** / **BF-23** heuristics with **SKU carton dims** or **order cube** estimates so greedy allocation prefers feasible bin sequences before MILP (**BF-34**).
+**Objective:** Extend **BF-15** / **BF-23** heuristics with **SKU carton dims** and optional **bin / outbound cube** hints so greedy allocation prefers feasible bin sequences before MILP (**BF-34**).
 
-**Exit sketch (minimal slice):** Optional **`Product`**/`OutboundOrder` cube hints in **`GET /api/wms`** payload + strategy hook flag; Vitest for ordering predicate.
+**Exit sketch (minimal slice):** Shipped — optional **`Product`** carton fields + **`WarehouseBin.capacityCubeCubicMm`** + **`OutboundOrder.estimatedCubeCbm`** in **`GET /api/wms`**; **`GREEDY_*_CUBE_AWARE`** strategies; Vitest in **`carton-cube-allocation.test.ts`**. See [`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md).
 
 **Out of scope:** CAD SKU meshes, conveyor physics.
 
@@ -253,4 +253,4 @@
 
 ---
 
-_Last updated: 2026-05-08 — **BF-32** receiving accrual staging minimal landed ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-33**–**BF-50** draft objectives._
+_Last updated: 2026-04-29 — **BF-33** cube-aware greedy minimal landed ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging minimal landed ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-34**–**BF-50** draft objectives._

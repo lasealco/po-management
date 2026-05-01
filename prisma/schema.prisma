@@ -3333,6 +3333,13 @@ model Product {
   storageDescription      String? @db.Text
   isForReexport           Boolean @default(false)
 
+  /// BF-33 — optional master-carton outer dims (mm); used with `cartonUnitsPerMasterCarton` for cube-aware greedy waves.
+  cartonLengthMm Int?
+  cartonWidthMm  Int?
+  cartonHeightMm Int?
+  /// BF-33 — SKU units packed in one master carton when dims are set (defaults to 1 in wave heuristic when null).
+  cartonUnitsPerMasterCarton Decimal? @db.Decimal(14, 3)
+
   supplierOfficeId String?
   supplierOffice   SupplierOffice? @relation(fields: [supplierOfficeId], references: [id], onDelete: SetNull)
 
@@ -4416,6 +4423,10 @@ enum WmsPickAllocationStrategy {
   GREEDY_MIN_BIN_TOUCHES
   /// BF-23 — fungible waves; BF-15 min-touch ordering with tie-break: prefer **non–pick-face** bins first (reserve forward pick faces until bulk bins are exhausted).
   GREEDY_RESERVE_PICK_FACE
+  /// BF-33 — fungible waves; BF-15 greedy ordering with cube-feasibility tier when product carton dims + bin capacity hints exist.
+  GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE
+  /// BF-33 — BF-23 ordering plus cube-feasibility tier (pick-face reserve after cube tier).
+  GREEDY_RESERVE_PICK_FACE_CUBE_AWARE
   /// Disable automated wave allocation; use explicit `create_pick_task` per bin/line.
   MANUAL_ONLY
 }
@@ -4553,6 +4564,8 @@ model WarehouseBin {
   level         Int?
   /// 1-based slot along the rack front (width axis) for grid columns.
   positionIndex Int?
+  /// BF-33 — soft cube capacity hint for automated wave ordering (cubic millimetres); optional.
+  capacityCubeCubicMm Int?
   isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -5088,6 +5101,8 @@ model OutboundOrder {
    * BF-10 — optional CRM quote lineage (`accountId` on quote must match `crmAccountId`).
    */
   sourceCrmQuoteId  String?
+  /// BF-33 — optional planner hint for total outbound cube (cubic metres); informational on dashboard payload.
+  estimatedCubeCbm Decimal?           @db.Decimal(12, 6)
   createdById       String
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt

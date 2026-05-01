@@ -20,6 +20,18 @@ import {
 } from "@/lib/wms/stock-ledger-url";
 import { WMS_RECEIVE_STATUS_LABEL } from "@/lib/wms/wms-receive-status";
 
+/** Matches serialized product refs from `GET /api/wms` (including BF-33 carton hints). */
+type WmsProductRef = {
+  id: string;
+  productCode: string | null;
+  sku: string | null;
+  name: string;
+  cartonLengthMm: number | null;
+  cartonWidthMm: number | null;
+  cartonHeightMm: number | null;
+  cartonUnitsPerMasterCarton: string | null;
+};
+
 type WmsData = {
   warehouses: Array<{
     id: string;
@@ -32,6 +44,8 @@ type WmsData = {
       | "FEFO_BY_LOT_EXPIRY"
       | "GREEDY_MIN_BIN_TOUCHES"
       | "GREEDY_RESERVE_PICK_FACE"
+      | "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE"
+      | "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
       | "MANUAL_ONLY";
     pickWaveCartonUnits: string | null;
   }>;
@@ -72,13 +86,14 @@ type WmsData = {
     bay: string | null;
     level: number | null;
     positionIndex: number | null;
+    capacityCubeCubicMm: number | null;
     warehouse: { id: string; code: string | null; name: string };
     zone: { id: string; code: string; name: string; zoneType: string } | null;
   }>;
   replenishmentRules: Array<{
     id: string;
     warehouse: { id: string; code: string | null; name: string };
-    product: { id: string; productCode: string | null; sku: string | null; name: string };
+    product: WmsProductRef;
     sourceZone: { id: string; code: string; name: string } | null;
     targetZone: { id: string; code: string; name: string } | null;
     minPickQty: string;
@@ -107,6 +122,7 @@ type WmsData = {
     shipToName: string | null;
     shipToCity: string | null;
     shipToCountryCode: string | null;
+    estimatedCubeCbm: string | null;
     status: "DRAFT" | "RELEASED" | "PICKING" | "PACKED" | "SHIPPED" | "CANCELLED";
     warehouse: { id: string; code: string | null; name: string };
     crmAccount: { id: string; name: string; legalName: string | null } | null;
@@ -119,7 +135,7 @@ type WmsData = {
     lines: Array<{
       id: string;
       lineNo: number;
-      product: { id: string; productCode: string | null; sku: string | null; name: string };
+      product: WmsProductRef;
       quantity: string;
       pickedQty: string;
       packedQty: string;
@@ -135,7 +151,7 @@ type WmsData = {
     id: string;
     warehouse: { id: string; code: string | null; name: string };
     bin: { id: string; code: string; name: string };
-    product: { id: string; productCode: string | null; sku: string | null; name: string };
+    product: WmsProductRef;
     /** Batch bucket; empty string = fungible / legacy stock. */
     lotCode: string;
     /** BF-02 — attributes when a `WmsLotBatch` exists for product + lotCode. */
@@ -158,7 +174,7 @@ type WmsData = {
     bin: { id: string; code: string; name: string } | null;
     /** For REPLENISH: reserve / bulk `referenceId` bin (source). */
     sourceBin: { id: string; code: string; name: string } | null;
-    product: { id: string; productCode: string | null; sku: string | null; name: string } | null;
+    product: WmsProductRef | null;
     shipment: { id: string; shipmentNo: string | null; status: string } | null;
     order: { id: string; orderNumber: string } | null;
     wave: { id: string; waveNo: string; status: string } | null;
@@ -267,7 +283,7 @@ type WmsData = {
     outboundLineId: string;
     lineNo: number;
     description: string;
-    product: { id: string; productCode: string | null; sku: string | null; name: string };
+    product: WmsProductRef;
     remainingQty: string;
   }>;
   recentMovements: Array<{
@@ -280,7 +296,7 @@ type WmsData = {
     createdAt: string;
     warehouse: { id: string; code: string | null; name: string };
     bin: { id: string; code: string; name: string } | null;
-    product: { id: string; productCode: string | null; sku: string | null; name: string };
+    product: WmsProductRef;
     createdBy: { id: string; name: string; email: string };
   }>;
   recentMovementsMeta: { limit: number; matchedCount: number; truncated: boolean };
@@ -335,12 +351,7 @@ type WmsData = {
       plannedQty: string;
       consumedQty: string;
       lineNote: string | null;
-      componentProduct: {
-        id: string;
-        productCode: string | null;
-        sku: string | null;
-        name: string;
-      };
+      componentProduct: WmsProductRef;
     }>;
   }>;
   /** BF-02 — tenant lot/batch master registry (expiry / origin / notes per product + lotCode). */
@@ -348,7 +359,7 @@ type WmsData = {
     id: string;
     productId: string;
     lotCode: string;
-    product: { id: string; productCode: string | null; sku: string | null; name: string };
+    product: WmsProductRef;
     expiryDate: string | null;
     countryOfOrigin: string | null;
     notes: string | null;
@@ -369,7 +380,7 @@ type WmsData = {
           createdAt: string;
           updatedAt: string;
         };
-        product: { id: string; productCode: string | null; sku: string | null; name: string };
+        product: WmsProductRef;
         currentBalance: null | {
           id: string;
           lotCode: string;
@@ -604,6 +615,14 @@ export function WmsClient({
   const [newAisleWidthMm, setNewAisleWidthMm] = useState("");
   const [newBinLevel, setNewBinLevel] = useState("");
   const [newBinPosition, setNewBinPosition] = useState("");
+  const [newBinCapacityCubeMm, setNewBinCapacityCubeMm] = useState("");
+  const [bf33CartonProductId, setBf33CartonProductId] = useState("");
+  const [bf33CartonL, setBf33CartonL] = useState("");
+  const [bf33CartonW, setBf33CartonW] = useState("");
+  const [bf33CartonH, setBf33CartonH] = useState("");
+  const [bf33CartonUnits, setBf33CartonUnits] = useState("");
+  const [bf33OutboundCubeOrderId, setBf33OutboundCubeOrderId] = useState("");
+  const [bf33EstimatedCubeCbm, setBf33EstimatedCubeCbm] = useState("");
   const [rackVizCode, setRackVizCode] = useState("");
 
   const [putawayShipmentItemId, setPutawayShipmentItemId] = useState("");
@@ -1081,6 +1100,14 @@ export function WmsClient({
     [data?.replenishmentRules, selectedWarehouseId],
   );
 
+  const outboundOrdersForWarehouse = useMemo(
+    () =>
+      (data?.outboundOrders ?? []).filter(
+        (o) => !selectedWarehouseId || o.warehouse.id === selectedWarehouseId,
+      ),
+    [data?.outboundOrders, selectedWarehouseId],
+  );
+
   const rackCodesForSetup = useMemo(() => {
     const s = new Set<string>();
     for (const b of binsForWarehouse) {
@@ -1107,10 +1134,7 @@ export function WmsClient({
   );
 
   const productPickOptionsForWarehouse = useMemo(() => {
-    const m = new Map<
-      string,
-      { id: string; productCode: string | null; sku: string | null; name: string }
-    >();
+    const m = new Map<string, WmsProductRef>();
     for (const b of balancesForWarehouseOps) {
       m.set(b.product.id, b.product);
     }
@@ -1119,8 +1143,23 @@ export function WmsClient({
         m.set(bl.componentProduct.id, bl.componentProduct);
       }
     }
+    for (const r of replenishmentRulesForWarehouse) {
+      m.set(r.product.id, r.product);
+    }
+    for (const o of data?.outboundOrders ?? []) {
+      if (selectedWarehouseId && o.warehouse.id !== selectedWarehouseId) continue;
+      for (const l of o.lines) {
+        m.set(l.product.id, l.product);
+      }
+    }
     return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [balancesForWarehouseOps, workOrdersForWarehouse]);
+  }, [
+    balancesForWarehouseOps,
+    workOrdersForWarehouse,
+    replenishmentRulesForWarehouse,
+    data?.outboundOrders,
+    selectedWarehouseId,
+  ]);
 
   const balanceLinesByBinId = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -1650,6 +1689,8 @@ export function WmsClient({
                     | "FEFO_BY_LOT_EXPIRY"
                     | "GREEDY_MIN_BIN_TOUCHES"
                     | "GREEDY_RESERVE_PICK_FACE"
+                    | "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE"
+                    | "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
                     | "MANUAL_ONLY";
                   void runAction({
                     action: "set_warehouse_pick_allocation_strategy",
@@ -1669,6 +1710,12 @@ export function WmsClient({
                 </option>
                 <option value="GREEDY_RESERVE_PICK_FACE">
                   BF-23 — Min bin touches + reserve pick face (prefer bulk/reserve bins before isPickFace bins when ties)
+                </option>
+                <option value="GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE">
+                  BF-33 — Min bin touches + cube-aware tier (carton dims + bin mm³ capacity hints when set)
+                </option>
+                <option value="GREEDY_RESERVE_PICK_FACE_CUBE_AWARE">
+                  BF-33 — BF-23 reserve pick face + cube-aware tier
                 </option>
                 <option value="MANUAL_ONLY">Manual only — automated waves disabled</option>
               </select>
@@ -1725,6 +1772,180 @@ export function WmsClient({
                   className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
                 >
                   Clear cap
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">BF-33 · Carton & cube hints</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Master-carton dimensions (mm) and units-per-carton drive estimated pick cube for{" "}
+          <span className="font-medium">GREEDY_*_CUBE_AWARE</span> strategies. Optional bin soft capacity (mm³) on create
+          nudges ordering when product hints resolve to cube. Outbound estimated cube (cbm) is surfaced on the payload for
+          planning dashboards.
+        </p>
+        {!selectedWarehouseId ? (
+          <p className="mt-3 text-sm text-zinc-500">
+            Select a warehouse above to filter outbound picks for this warehouse.
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">Product master carton</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <label className="block sm:col-span-2">
+                  <span className="text-[10px] font-medium uppercase text-zinc-500">SKU</span>
+                  <select
+                    disabled={!canEdit || busy}
+                    value={bf33CartonProductId}
+                    onChange={(e) => setBf33CartonProductId(e.target.value)}
+                    className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="">Select product…</option>
+                    {productPickOptionsForWarehouse.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.sku || p.productCode || p.id.slice(0, 8)} · {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-medium uppercase text-zinc-500">L mm</span>
+                  <input
+                    value={bf33CartonL}
+                    onChange={(e) => setBf33CartonL(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="e.g. 400"
+                    disabled={!canEdit || busy}
+                    className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-medium uppercase text-zinc-500">W mm</span>
+                  <input
+                    value={bf33CartonW}
+                    onChange={(e) => setBf33CartonW(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="e.g. 300"
+                    disabled={!canEdit || busy}
+                    className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-medium uppercase text-zinc-500">H mm</span>
+                  <input
+                    value={bf33CartonH}
+                    onChange={(e) => setBf33CartonH(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="e.g. 250"
+                    disabled={!canEdit || busy}
+                    className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-medium uppercase text-zinc-500">Units / carton</span>
+                  <input
+                    value={bf33CartonUnits}
+                    onChange={(e) => setBf33CartonUnits(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="e.g. 24"
+                    disabled={!canEdit || busy}
+                    className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
+              <div className="mt-3">
+                <ActionButton
+                  disabled={!canEdit || busy || !bf33CartonProductId}
+                  onClick={() => {
+                    const L = bf33CartonL.trim() === "" ? undefined : Number(bf33CartonL.trim());
+                    const W = bf33CartonW.trim() === "" ? undefined : Number(bf33CartonW.trim());
+                    const H = bf33CartonH.trim() === "" ? undefined : Number(bf33CartonH.trim());
+                    const u = bf33CartonUnits.trim() === "" ? undefined : Number(bf33CartonUnits.trim());
+                    void runAction({
+                      action: "set_product_carton_cube_hints",
+                      productId: bf33CartonProductId,
+                      cartonLengthMm: L !== undefined && Number.isFinite(L) ? Math.trunc(L) : undefined,
+                      cartonWidthMm: W !== undefined && Number.isFinite(W) ? Math.trunc(W) : undefined,
+                      cartonHeightMm: H !== undefined && Number.isFinite(H) ? Math.trunc(H) : undefined,
+                      cartonUnitsPerMasterCarton:
+                        u !== undefined && Number.isFinite(u) && u > 0 ? u : undefined,
+                    });
+                  }}
+                >
+                  Save carton hints
+                </ActionButton>
+              </div>
+            </div>
+            <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+                Outbound cube hint (cbm)
+              </p>
+              <label className="mt-2 block">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Outbound</span>
+                <select
+                  disabled={!canEdit || busy}
+                  value={bf33OutboundCubeOrderId}
+                  onChange={(e) => setBf33OutboundCubeOrderId(e.target.value)}
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Select outbound…</option>
+                  {outboundOrdersForWarehouse.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.outboundNo} · {o.status}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="mt-2 block">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Estimated cube (cbm)</span>
+                <input
+                  value={bf33EstimatedCubeCbm}
+                  onChange={(e) => setBf33EstimatedCubeCbm(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="e.g. 1.25"
+                  disabled={!canEdit || busy}
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                />
+              </label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <ActionButton
+                  disabled={
+                    !canEdit ||
+                    busy ||
+                    !bf33OutboundCubeOrderId ||
+                    !bf33EstimatedCubeCbm.trim() ||
+                    !Number.isFinite(Number(bf33EstimatedCubeCbm.trim())) ||
+                    Number(bf33EstimatedCubeCbm.trim()) < 0
+                  }
+                  onClick={() => {
+                    const raw = bf33EstimatedCubeCbm.trim();
+                    void runAction({
+                      action: "set_outbound_order_cube_hint",
+                      outboundOrderId: bf33OutboundCubeOrderId,
+                      estimatedCubeCbm: Number(raw),
+                    });
+                  }}
+                >
+                  Save outbound cube
+                </ActionButton>
+                <button
+                  type="button"
+                  disabled={!canEdit || busy || !bf33OutboundCubeOrderId}
+                  onClick={() => {
+                    setBf33EstimatedCubeCbm("");
+                    void runAction({
+                      action: "set_outbound_order_cube_hint",
+                      outboundOrderId: bf33OutboundCubeOrderId,
+                      estimatedCubeCbm: null,
+                    });
+                  }}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Clear cube
                 </button>
               </div>
             </div>
@@ -2287,13 +2508,22 @@ export function WmsClient({
             />
             Pick face
           </label>
+          <input
+            value={newBinCapacityCubeMm}
+            onChange={(e) => setNewBinCapacityCubeMm(e.target.value)}
+            placeholder="Cube mm³ (opt)"
+            inputMode="numeric"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
           <ActionButton
             disabled={!canEdit || busy || !selectedWarehouseId}
             onClick={() => {
               const levelRaw = newBinLevel.trim();
               const posRaw = newBinPosition.trim();
+              const capRaw = newBinCapacityCubeMm.trim();
               const levelNum = levelRaw === "" ? undefined : Number(levelRaw);
               const posNum = posRaw === "" ? undefined : Number(posRaw);
+              const capNum = capRaw === "" ? undefined : Number(capRaw);
               void runAction({
                 action: "create_bin",
                 warehouseId: selectedWarehouseId,
@@ -2308,6 +2538,12 @@ export function WmsClient({
                 bay: newBinBay.trim() || undefined,
                 level: Number.isFinite(levelNum) ? levelNum : undefined,
                 positionIndex: Number.isFinite(posNum) ? posNum : undefined,
+                ...(Number.isFinite(capNum) &&
+                capNum !== undefined &&
+                capNum >= 0 &&
+                Math.trunc(capNum) === capNum
+                  ? { capacityCubeCubicMm: Math.trunc(capNum) }
+                  : {}),
               });
             }}
           >
