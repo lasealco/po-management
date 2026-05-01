@@ -73,6 +73,7 @@ model Tenant {
   outboundOrderLines                          OutboundOrderLine[]
   wmsBillingRates                             WmsBillingRate[]
   wmsBillingEvents                            WmsBillingEvent[]
+  wmsReceivingAccrualStagings                 WmsReceivingAccrualStaging[]
   wmsBillingInvoiceRuns                       WmsBillingInvoiceRun[]
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
   wmsSavedLedgerViews                         WmsSavedLedgerView[]
@@ -3777,6 +3778,7 @@ model Shipment {
   tariffShipmentApplications TariffShipmentApplication[]
   dockAppointments           WmsDockAppointment[]
   wmsReceipts                WmsReceipt[]
+  receivingAccrualStagings   WmsReceivingAccrualStaging[]
 
   @@index([orderId, createdAt])
   @@index([status])
@@ -3834,9 +3836,33 @@ model WmsReceipt {
   closedBy  User?            @relation("WmsReceiptClosedBy", fields: [closedByUserId], references: [id], onDelete: SetNull)
   createdBy User?            @relation("WmsReceiptCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   lines     WmsReceiptLine[]
+  /// BF-32 — immutable economics snapshot row written once when the receipt closes (optional warehouse hook).
+  receivingAccrualStaging WmsReceivingAccrualStaging?
 
   @@index([tenantId, shipmentId])
   @@index([tenantId, status])
+}
+
+/// BF-32 — GRNI-style staging for accounting export without ERP posting (one row per closed dock receipt).
+model WmsReceivingAccrualStaging {
+  id           String   @id @default(cuid())
+  tenantId     String
+  wmsReceiptId String   @unique
+  shipmentId   String
+  /// Copied from `Shipment.customerCrmAccountId` at close when applicable (finance linkage).
+  crmAccountId String?
+  warehouseId  String?
+  snapshotJson Json
+  createdAt    DateTime @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  wmsReceipt   WmsReceipt   @relation(fields: [wmsReceiptId], references: [id], onDelete: Cascade)
+  shipment     Shipment     @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  crmAccount   CrmAccount?  @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
+  warehouse    Warehouse?   @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, shipmentId])
 }
 
 model WmsReceiptLine {
@@ -4425,7 +4451,8 @@ model Warehouse {
   outboundOrders     OutboundOrder[]
   dockAppointments   WmsDockAppointment[]
   wmsWorkOrders      WmsWorkOrder[]
-  wmsBillingEvents   WmsBillingEvent[]
+  wmsBillingEvents               WmsBillingEvent[]
+  wmsReceivingAccrualStagings    WmsReceivingAccrualStaging[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -5348,7 +5375,8 @@ model CrmAccount {
   quotes                   CrmQuote[]
   outboundOrders           OutboundOrder[]
   wmsBillingEvents         WmsBillingEvent[]
-  shipmentsAsCustomer      Shipment[]               @relation("ShipmentCustomerAccount")
+  shipmentsAsCustomer           Shipment[]                   @relation("ShipmentCustomerAccount")
+  wmsReceivingAccrualStagings   WmsReceivingAccrualStaging[]
   purchaseOrdersAsCustomer PurchaseOrder[]          @relation("PurchaseOrderCustomerCrm")
   salesOrders              SalesOrder[]
   assistantCustomerBriefs  AssistantCustomerBrief[]

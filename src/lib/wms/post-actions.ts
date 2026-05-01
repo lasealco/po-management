@@ -29,6 +29,7 @@ import {
   evaluateShipmentReceiveAgainstAsnTolerance,
   generateDockGrnReference,
 } from "./asn-receipt-tolerance";
+import { buildReceivingAccrualSnapshotV1 } from "./receiving-accrual-staging";
 import { canAdvanceReceiveStatusToReceiptComplete } from "./wms-receipt-close-policy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
 import {
@@ -1915,17 +1916,42 @@ export async function handleWmsPost(
       select: {
         id: true,
         status: true,
+        grnReference: true,
         shipmentId: true,
         shipment: {
           select: {
             id: true,
+            customerCrmAccountId: true,
             wmsReceiveStatus: true,
             asnQtyTolerancePct: true,
+            shipmentNo: true,
+            asnReference: true,
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+                currency: true,
+              },
+            },
             items: {
               select: {
                 id: true,
                 quantityShipped: true,
                 quantityReceived: true,
+                wmsVarianceDisposition: true,
+                orderItem: {
+                  select: {
+                    productId: true,
+                    product: {
+                      select: {
+                        id: true,
+                        sku: true,
+                        productCode: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -1963,6 +1989,9 @@ export async function handleWmsPost(
       : explicitGrn !== undefined
         ? explicitGrn
         : undefined;
+
+    const grnForStaging =
+      grnResolved !== undefined ? grnResolved : rec.grnReference ?? null;
 
     const shouldAdvanceReceiveStatus =
       receiptCompleteOnClose &&
@@ -2037,12 +2066,29 @@ export async function handleWmsPost(
           receiveStatusAdvanced = true;
         }
       }
+
+      const accrualSnapshot = buildReceivingAccrualSnapshotV1({
+        closedAt,
+        grnReference: grnForStaging,
+        shipment: rec.shipment,
+      });
+      await tx.wmsReceivingAccrualStaging.create({
+        data: {
+          tenantId,
+          wmsReceiptId: rec.id,
+          shipmentId: rec.shipmentId,
+          crmAccountId: rec.shipment.customerCrmAccountId,
+          warehouseId: null,
+          snapshotJson: accrualSnapshot as unknown as Prisma.InputJsonValue,
+        },
+      });
     });
 
     return NextResponse.json({
       ok: true,
       receiveStatusAdvanced,
-      grnReference: grnResolved ?? null,
+      grnReference: grnForStaging,
+      receivingAccrualStagingCreated: true,
       withinAsnTolerance: toleranceEval.policyApplied ? toleranceEval.withinTolerance : null,
       receiveStatusSkippedDueToTolerance,
     });

@@ -4,6 +4,20 @@ import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { startTransition, useCallback, useEffect, useState } from "react";
 
+type AccrualStagingApiRow = {
+  id: string;
+  wmsReceiptId: string;
+  shipmentId: string;
+  crmAccountId: string | null;
+  createdAt: string;
+  snapshot: {
+    grnReference?: string | null;
+    shipmentRefs?: { purchaseOrderNumber?: string | null; shipmentNo?: string | null };
+    lines?: unknown[];
+  } | null;
+  snapshotInvalid: boolean;
+};
+
 type BillingPayload = {
   profileSourceNote?: string;
   unbilledEventCount?: number;
@@ -53,20 +67,37 @@ type BillingPayload = {
 
 export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
   const [data, setData] = useState<BillingPayload | null>(null);
+  const [accrualRows, setAccrualRows] = useState<AccrualStagingApiRow[]>([]);
+  const [accrualTruncated, setAccrualTruncated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [periodFrom, setPeriodFrom] = useState("");
   const [periodTo, setPeriodTo] = useState("");
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/wms/billing", { cache: "no-store" });
-    const parsed: unknown = await res.json();
-    if (!res.ok) {
-      setError(apiClientErrorMessage(parsed, "Could not load billing."));
+    const [billingRes, accrualRes] = await Promise.all([
+      fetch("/api/wms/billing", { cache: "no-store" }),
+      fetch("/api/wms/receiving-accrual-staging", { cache: "no-store" }),
+    ]);
+    const billingParsed: unknown = await billingRes.json();
+    if (!billingRes.ok) {
+      setError(apiClientErrorMessage(billingParsed, "Could not load billing."));
       return;
     }
-    setData(parsed as BillingPayload);
+    setData(billingParsed as BillingPayload);
     setError(null);
+
+    if (accrualRes.ok) {
+      const ac = (await accrualRes.json()) as {
+        stagings?: AccrualStagingApiRow[];
+        truncated?: boolean;
+      };
+      setAccrualRows(Array.isArray(ac.stagings) ? ac.stagings : []);
+      setAccrualTruncated(Boolean(ac.truncated));
+    } else {
+      setAccrualRows([]);
+      setAccrualTruncated(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -183,6 +214,72 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
           >
             Sync events from movements
           </button>
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Receiving economics</p>
+        <h2 className="mt-2 text-sm font-semibold text-zinc-900">Receiving accrual staging (BF-32)</h2>
+        <p className="mt-1 max-w-3xl text-xs text-zinc-600">
+          Immutable snapshots are written when a dock receipt closes — GRNI-style line economics plus CRM linkage (
+          <span className="font-medium">crmAccountId</span>) for accounting handoff. No automatic GL posting; export CSV for finance tools.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a
+            href="/api/wms/receiving-accrual-staging?format=csv"
+            className="inline-flex rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white"
+          >
+            Download staging CSV
+          </a>
+          <span className="self-center text-xs text-zinc-500">
+            Uses your read scope (same shipment visibility as this workspace). Optional <code className="rounded bg-zinc-100 px-1">since</code> /{" "}
+            <code className="rounded bg-zinc-100 px-1">until</code> ISO query params on the API.
+          </span>
+        </div>
+        {accrualTruncated ? (
+          <p className="mt-2 text-xs text-amber-800">
+            Showing the latest 500 staging rows — narrow with API date filters if needed.
+          </p>
+        ) : null}
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-b border-zinc-200 text-zinc-500">
+                <th className="py-2 pr-3 font-medium">Closed (staging)</th>
+                <th className="py-2 pr-3 font-medium">PO #</th>
+                <th className="py-2 pr-3 font-medium">GRN</th>
+                <th className="py-2 pr-3 font-medium">Lines</th>
+                <th className="py-2 pr-3 font-medium">CRM account</th>
+                <th className="py-2 pr-3 font-medium">Receipt</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 text-zinc-800">
+              {accrualRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-3 text-zinc-500">
+                    No staging rows yet — close an open dock receipt on inbound Operations to materialize a snapshot.
+                  </td>
+                </tr>
+              ) : (
+                accrualRows.slice(0, 25).map((r) => {
+                  const snap = r.snapshot;
+                  const po = snap?.shipmentRefs?.purchaseOrderNumber ?? "—";
+                  const grn = snap?.grnReference ?? "—";
+                  const lineCount = Array.isArray(snap?.lines) ? snap.lines.length : r.snapshotInvalid ? "?" : 0;
+                  return (
+                    <tr key={r.id}>
+                      <td className="py-2 pr-3 whitespace-nowrap">{new Date(r.createdAt).toLocaleString()}</td>
+                      <td className="py-2 pr-3">{po}</td>
+                      <td className="py-2 pr-3 font-mono text-[11px]">{grn}</td>
+                      <td className="py-2 pr-3">{lineCount}</td>
+                      <td className="py-2 pr-3 font-mono text-[11px]">{r.crmAccountId ?? "—"}</td>
+                      <td className="py-2 pr-3 font-mono text-[11px]">{r.wmsReceiptId.slice(0, 10)}…</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
 

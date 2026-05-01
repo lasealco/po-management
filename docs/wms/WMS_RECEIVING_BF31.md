@@ -38,6 +38,6 @@ Operations **Inbound / receiving**: **ASN tol %** column (saved with **Save**), 
 
 ## Explicit backlog (not BF-31)
 
-Carrier ASN **855** ingestion, auto-close from external ASN payloads, GRN numbering service with issuer registry, accrual stubs (**BF-32**).
+Carrier ASN **855** ingestion, auto-close from external ASN payloads, GRN numbering service with issuer registry. **BF-32** covers **receiving accrual staging** snapshots + CSV export ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); ERP GL posting automation remains backlog.
 
-_Last updated: 2026-05-06 — BF-31 minimal slice shipped._
+_Last updated: 2026-05-08 — BF-31 minimal slice shipped; BF-32 receiving accrual staging landed separately._

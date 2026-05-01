@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
 
-**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)). Capsules **BF-32** … **BF-50** remain **draft** until executed.
+**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)). Capsules **BF-33** … **BF-50** remain **draft** until executed.
 
 **Rules:**
 
@@ -19,7 +19,7 @@
 | ID | Mega phase (short) | Primary deferred signal ([`GAP_MAP.md`](./GAP_MAP.md)) | Typical depends on |
 |----|-------------------|--------------------------------------------------------|---------------------|
 | **BF-31** | GRN references & ASN tolerance policies | **Minimal landed** — **`asnQtyTolerancePct`**, **`WmsReceipt.grnReference`**, **`evaluate_wms_receipt_asn_tolerance`**, guarded **`close_wms_receipt`** ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); carrier ASN hub backlog | BF-21 receipt accounting |
-| **BF-32** | Receiving accrual & finance staging hooks | Accrual rows / staged receipts ↔ accounting export | BF-21 / Phase B billing |
+| **BF-32** | Receiving accrual & finance staging hooks | **Minimal landed** — **`WmsReceivingAccrualStaging`** + **`GET /api/wms/receiving-accrual-staging`** ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); GL posting / tax backlog | BF-21 / Phase B billing |
 | **BF-33** | Carton DIM / cube-aware greedy allocation | Cube / weight inputs on allocation hints beyond **`pickWaveCartonUnits`** | BF-15 / BF-23 strategies |
 | **BF-34** | MILP / CP-SAT allocation prototype | Solver-backed slot assignment vs pure greedy | BF-23 reserve pick-face proven |
 | **BF-35** | Replenishment automation & priority queues | **`ReplenishmentRule`** depth + exception queues | BF-03 / stock inquiry stable |
@@ -59,7 +59,9 @@
 
 **Objective:** Stage receiving economics for accounting (**accrual**, GRNI) without full ERP posting — aligned with Phase B billing materialization.
 
-**Exit sketch (minimal slice):** Staging table or JSON snapshot on close receipt; export **`GET`** or CSV; explicit link to **`crmAccountId`** where applicable.
+**Minimal slice shipped (repo):** **`WmsReceivingAccrualStaging`** created inside **`close_wms_receipt`** transaction (**`snapshotJson`** v1 line economics + PO refs + GRN); **`crmAccountId`** from **`Shipment.customerCrmAccountId`**; **`GET /api/wms/receiving-accrual-staging`** JSON + **`format=csv`** (+ **`since`**/**`until`**); Operations billing UI preview + CSV download — [`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md).
+
+**Exit sketch (remaining):** Post **`WmsReceivingAccrualStaging`** into **`WmsBillingEvent`** or finance webhook when product funds ERP adapters; warehouse hints on staging (`warehouseId` populated).
 
 **Out of scope:** Tax engine, multi-currency hedge, automatic GL posts.
 
@@ -251,4 +253,4 @@
 
 ---
 
-_Last updated: 2026-05-06 — **BF-31** GRN + ASN qty tolerance minimal landed ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32**–**BF-50** draft objectives only. Earlier: draft program catalogued 2026-05-06._
+_Last updated: 2026-05-08 — **BF-32** receiving accrual staging minimal landed ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-33**–**BF-50** draft objectives._

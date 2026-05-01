@@ -23,6 +23,11 @@ export const WMS_API_ENDPOINT_ACCESS = [
     pathPattern: "/api/wms/saved-ledger-views/[id]",
     methods: { DELETE: "edit" } as const,
   },
+  {
+    id: "api-wms-receiving-accrual-staging",
+    pathPattern: "/api/wms/receiving-accrual-staging",
+    methods: { GET: "view" } as const,
+  },
 ] as const;
 
 export type WmsOrgGrantLevel = "view" | "edit";
