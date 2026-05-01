@@ -3,6 +3,7 @@ import {
   getViewerGrantSet,
   viewerHasWmsInventoryLotMutationEdit,
   viewerHasWmsInventoryQtyMutationEdit,
+  viewerHasWmsInventorySerialMutationEdit,
   viewerHasWmsSectionMutationEdit,
 } from "@/lib/authz";
 
@@ -15,6 +16,7 @@ export default async function WmsStockPage() {
   const canEdit = Boolean(hasUser && grantSet && viewerHasWmsSectionMutationEdit(grantSet, "inventory"));
   const inventoryQtyEdit = Boolean(hasUser && grantSet && viewerHasWmsInventoryQtyMutationEdit(grantSet));
   const inventoryLotEdit = Boolean(hasUser && grantSet && viewerHasWmsInventoryLotMutationEdit(grantSet));
+  const inventorySerialEdit = Boolean(hasUser && grantSet && viewerHasWmsInventorySerialMutationEdit(grantSet));
 
   return (
     <WmsClient
@@ -22,6 +24,7 @@ export default async function WmsStockPage() {
       section="stock"
       inventoryQtyEdit={inventoryQtyEdit}
       inventoryLotEdit={inventoryLotEdit}
+      inventorySerialEdit={inventorySerialEdit}
     />
   );
 }

@@ -1,4 +1,4 @@
-/** BF-06 — coarse tier per `POST /api/wms` action; BF-16 refines the `inventory` tier for some actions — see `wms-inventory-field-acl.ts`. */
+/** BF-06 — coarse tier per `POST /api/wms` action; BF-16 + BF-48 refine `inventory` tier via `wms-field-acl-matrix.json` + `wms-inventory-field-acl.ts`. */
 export type WmsMutationTier = "setup" | "operations" | "inventory";
 
 const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {

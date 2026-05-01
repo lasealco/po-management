@@ -6,20 +6,20 @@ Blueprint references a granular **`wms_role_permission_matrix`**. This repo does
 
 **BF-06 (2026-04-29):** Three **scoped mutation tiers** — **`org.wms.setup`**, **`org.wms.operations`**, **`org.wms.inventory`** — each with **view / edit**, layered on legacy **`org.wms` → `edit`**. See [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md).
 
-**BF-16 (2026-04-29):** **`org.wms.inventory.lot`** (view / edit) narrows **lot/batch master** writes: **`set_wms_lot_batch`** is allowed with **`inventory.lot` → edit** alone. All **other** inventory-tier **`POST /api/wms`** actions still require **`org.wms.inventory` → edit** or legacy **`org.wms` → edit**. Manifest + evaluator: **`src/lib/wms/wms-inventory-field-acl.ts`**; **`/api/wms/saved-ledger-views`** POST/DELETE remain **`org.wms.inventory` → edit** only (qty-operator persona).
+**BF-16 (2026-04-29):** **`org.wms.inventory.lot`** (view / edit) narrows **lot/batch master** writes: **`set_wms_lot_batch`** is allowed with **`inventory.lot` → edit** alone. **BF-48:** **`org.wms.inventory.serial`** (view / edit) narrows **serialization registry** writes listed in **`wms-field-acl-matrix.json`**. All **other** inventory-tier **`POST /api/wms`** actions still require **`org.wms.inventory` → edit** or legacy **`org.wms` → edit**. Manifest + evaluator: **`src/lib/wms/wms-field-acl-matrix.json`**, **`src/lib/wms/wms-inventory-field-acl.ts`**; **`/api/wms/saved-ledger-views`** POST/DELETE remain **`org.wms.inventory` → edit** only (qty-operator persona).
 
 **Chosen alternative (Phase A–B):**
 
 | Layer | Mechanism |
 |-------|-----------|
-| **Coarse HTTP auth** | Global grants **`org.wms` → `view`** / **`edit`** on **`/api/wms`** GET; **`POST`** actions gated by tier map **or** legacy **`org.wms` → `edit`** ([`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md)), with **BF-16** inventory-tier split for **`set_wms_lot_batch`** vs qty-path actions. Nested routes: **`/api/wms/billing`** POST → **operations** tier; **`/api/wms/saved-ledger-views`** POST/DELETE → **`org.wms.inventory` → edit** (not **`inventory.lot`** alone). |
+| **Coarse HTTP auth** | Global grants **`org.wms` → `view`** / **`edit`** on **`/api/wms`** GET; **`POST`** actions gated by tier map **or** legacy **`org.wms` → `edit`** ([`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md)), with **BF-16** / **BF-48** inventory-tier splits driven by the manifest. Nested routes: **`/api/wms/billing`** POST → **operations** tier; **`/api/wms/saved-ledger-views`** POST/DELETE → **`org.wms.inventory` → edit** (not **`inventory.lot`** / **`inventory.serial`** alone). |
 | **Server UI gate** | **`WmsGate`** (`src/app/wms/wms-gate.tsx`) requires **`org.wms` → `view`** before rendering any `/wms/**` shell |
 | **Read scoping** | **`loadWmsViewReadScope`** narrows inbound shipments, outbound orders, CRM-linked payloads, product division filters — consistent with PO/CRM/Control Tower |
-| **Mutations** | Section-aware **`canEdit`** from **`viewerHasWmsSectionMutationEdit`** (Setup / Operations / Stock / Billing billing shell uses **operations** tier); **Stock** also passes **`inventoryQtyEdit`** / **`inventoryLotEdit`** when qty vs lot separation applies (**BF-16**) |
+| **Mutations** | Section-aware **`canEdit`** from **`viewerHasWmsSectionMutationEdit`** (Setup / Operations / Stock / Billing billing shell uses **operations** tier); **Stock** also passes **`inventoryQtyEdit`** / **`inventoryLotEdit`** / **`inventorySerialEdit`** when qty vs lot vs serial separation applies (**BF-16**, **BF-48**) |
 | **CRM outbound link** | **`assertOutboundCrmAccountLinkable`** enforces **`org.crm` → view** + CRM list scope |
 | **Evidence** | **`InventoryMovement.createdById`** on posted quantities; **`CtAuditLog`** on selected transitions (below) |
 
-Further **field-level** rows extend **`WMS_POST_ACTIONS_LOT_METADATA_SCOPED`** (or sibling manifests) + **`gateWmsPostMutation`** — optional tightening beyond BF-06 tier split.
+Further **field-level** slices extend **`wms-field-acl-matrix.json`** + **`evaluateWmsInventoryPostMutationAccess`** + **`gateWmsPostMutation`** — optional tightening beyond BF-06 tier split (**BF-16** lot metadata; **BF-48** serial registry — [`WMS_RBAC_BF48.md`](./WMS_RBAC_BF48.md)).
 
 ## HTTP enforcement inventory
 

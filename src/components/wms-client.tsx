@@ -695,16 +695,20 @@ export function WmsClient({
   section,
   inventoryQtyEdit,
   inventoryLotEdit,
+  inventorySerialEdit,
 }: {
   canEdit: boolean;
   section: WmsSection;
-  /** BF-16 Stock — qty-path mutations (holds, saved ledger views, serial registry). Defaults to `canEdit`. */
+  /** BF-16 Stock — qty-path mutations (holds, cycle counts, saved ledger views). Defaults to `canEdit`. */
   inventoryQtyEdit?: boolean;
   /** BF-16 Stock — lot/batch master (`set_wms_lot_batch`). Defaults to `canEdit`. */
   inventoryLotEdit?: boolean;
+  /** BF-48 Stock — serialization registry POST actions. Defaults to `canEdit`. */
+  inventorySerialEdit?: boolean;
 }) {
   const stockQtyEdit = inventoryQtyEdit ?? canEdit;
   const stockLotEdit = inventoryLotEdit ?? canEdit;
+  const stockSerialEdit = inventorySerialEdit ?? canEdit;
   const ssccDemoCompanyPrefixDigits = readSsccDemoCompanyPrefixDigits();
   const router = useRouter();
   const pathname = usePathname();
@@ -7286,12 +7290,23 @@ export function WmsClient({
 
       {section === "stock" ? (
         <>
-        {stockLotEdit && !stockQtyEdit ? (
+        {canEdit && !stockQtyEdit && (stockLotEdit || stockSerialEdit) ? (
           <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
             <p className="text-xs font-semibold text-amber-950">Limited Stock workspace edit</p>
             <p className="mt-1 text-xs text-amber-900">
-              You can update lot/batch master data only. Balance holds, saved ledger views, and serialization registry
-              actions require <span className="font-medium">org.wms.inventory → edit</span> (or legacy{" "}
+              {stockLotEdit ? (
+                <>
+                  Lot/batch master mutations (<span className="font-medium">org.wms.inventory.lot</span>) are enabled.{" "}
+                </>
+              ) : null}
+              {stockSerialEdit ? (
+                <>
+                  Serialization registry mutations (<span className="font-medium">org.wms.inventory.serial</span>) are
+                  enabled.{" "}
+                </>
+              ) : null}
+              Balance holds, cycle counts, and saved ledger views require{" "}
+              <span className="font-medium">org.wms.inventory → edit</span> (or legacy{" "}
               <span className="font-medium">org.wms → edit</span>).
             </p>
           </section>
@@ -7667,7 +7682,7 @@ export function WmsClient({
           </div>
         ) : null}
 
-        {stockQtyEdit ? (
+        {stockQtyEdit || stockSerialEdit ? (
           <div className="mt-5 grid gap-4 lg:grid-cols-3">
             <div className="rounded-xl border border-zinc-200 p-3">
               <p className="text-[11px] font-semibold text-zinc-800">Register serial</p>
@@ -7815,8 +7830,9 @@ export function WmsClient({
           </div>
         ) : (
           <p className="mt-4 text-xs text-zinc-500">
-            Register / attach / balance mutations require <span className="font-medium">org.wms.inventory → edit</span>{" "}
-            (or legacy full WMS edit).
+            Register / attach / balance mutations require{" "}
+            <span className="font-medium">org.wms.inventory → edit</span>,{" "}
+            <span className="font-medium">org.wms.inventory.serial → edit</span>, or legacy full WMS edit.
           </p>
         )}
       </section>

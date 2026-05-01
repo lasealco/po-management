@@ -118,7 +118,7 @@ export const GLOBAL_PERMISSION_CATALOG = [
     action: "edit",
     label: "Manage WMS inventory controls",
     description:
-      "Balance holds, cycle counts, serialization (`register_inventory_serial`, …), saved ledger views — not lot-master alone (BF-16: see org.wms.inventory.lot).",
+      "Balance holds, cycle counts, serialization registry, saved ledger views — not lot-master alone (BF-16: see org.wms.inventory.lot) nor serial-only registry (BF-48: see org.wms.inventory.serial).",
   },
   {
     resource: "org.wms.inventory.lot",
@@ -131,6 +131,20 @@ export const GLOBAL_PERMISSION_CATALOG = [
     action: "edit",
     label: "Edit lot/batch master registry",
     description: "Create/update `WmsLotBatch` via `set_wms_lot_batch` without broader inventory qty controls (BF-16).",
+  },
+  {
+    resource: "org.wms.inventory.serial",
+    action: "view",
+    label: "View serialization registry scope",
+    description:
+      "Read Stock serialization surfaces scoped like inventory view (BF-48 — paired with serial edit for mutation shells).",
+  },
+  {
+    resource: "org.wms.inventory.serial",
+    action: "edit",
+    label: "Manage serialization registry",
+    description:
+      "Register serials / attach to movements / set balance pointers (`register_inventory_serial`, …) without broader inventory qty controls (BF-48).",
   },
   {
     resource: "org.crm",

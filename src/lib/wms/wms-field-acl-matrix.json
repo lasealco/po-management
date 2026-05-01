@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "inventory": {
+    "lotMetadataOnly": ["set_wms_lot_batch"],
+    "serialRegistryOnly": [
+      "register_inventory_serial",
+      "set_inventory_serial_balance",
+      "attach_inventory_serial_to_movement"
+    ]
+  }
+}

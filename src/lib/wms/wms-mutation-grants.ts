@@ -42,15 +42,17 @@ export async function gateWmsPostMutation(actorId: string, action: string | unde
 
   if (await hasLegacyWmsEdit(actorId)) return null;
 
-  /** BF-16 — split lot-metadata (`org.wms.inventory.lot`) vs qty-path inventory mutations. */
+  /** BF-16 + BF-48 — manifest-driven inventory splits (`inventory.lot`, `inventory.serial`, full inventory). */
   if (tier === "inventory") {
     const inventoryEdit = await userHasGlobalGrant(actorId, "org.wms.inventory", "edit");
     const inventoryLotEdit = await userHasGlobalGrant(actorId, "org.wms.inventory.lot", "edit");
+    const inventorySerialEdit = await userHasGlobalGrant(actorId, "org.wms.inventory.serial", "edit");
     const decision = evaluateWmsInventoryPostMutationAccess({
       action: raw,
       legacyWmsEdit: false,
       inventoryEdit,
       inventoryLotEdit,
+      inventorySerialEdit,
     });
     if (decision.allowed) return null;
     return NextResponse.json({ error: decision.error }, { status: 403 });
