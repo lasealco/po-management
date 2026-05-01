@@ -32,7 +32,23 @@ export type WmsBody = {
   returnSourceOutboundOrderId?: string | null;
   /** BF-41 — line disposition for customer returns (`set_shipment_item_return_disposition`). */
   wmsReturnDisposition?: "RESTOCK" | "SCRAP" | "QUARANTINE";
-  /** `ShipmentMilestoneCode` value for `record_shipment_milestone`. */
+  /** BF-42 — template CRUD + sampling (`create_wms_receiving_disposition_template`, …). */
+  receivingDispositionTemplateId?: string;
+  receivingDispositionTemplateCode?: string;
+  receivingDispositionTemplateTitle?: string;
+  receivingDispositionNoteTemplate?: string;
+  /** When set with MATCH | SHORT | OVER | DAMAGED | OTHER suggests BF-01 variance hint on template; null clears on update. */
+  receivingDispositionTemplateSuggestedVarianceDisposition?: string | null;
+  /** BF-42 aliases accepted by handlers for ergonomics. */
+  templateCode?: string;
+  templateTitle?: string;
+  noteTemplate?: string;
+  /** BF-42 — `set_shipment_item_qa_sampling_bf42`. */
+  wmsQaSamplingSkipLot?: boolean;
+  /** BF-42 — 0–100 sample inspect pct vs shipped qty; null clears. */
+  wmsQaSamplingPct?: number | string | null;
+  /** BF-42 — optional FK to disposition template on inbound line; null clears with disconnect. */
+  wmsReceivingDispositionTemplateId?: string | null;
   milestoneCode?: string;
   outboundOrderId?: string;
   outboundLineId?: string;

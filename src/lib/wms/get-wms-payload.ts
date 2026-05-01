@@ -302,7 +302,19 @@ export async function getWmsDashboardPayload(
             wmsVarianceDisposition: true,
             wmsVarianceNote: true,
             wmsReturnDisposition: true,
-            orderItem: { select: { lineNo: true, description: true } },
+            wmsQaSamplingSkipLot: true,
+            wmsQaSamplingPct: true,
+            wmsReceivingDispositionTemplateId: true,
+            wmsReceivingDispositionTemplate: {
+              select: { id: true, code: true, title: true },
+            },
+            orderItem: {
+              select: {
+                lineNo: true,
+                description: true,
+                product: { select: { sku: true, productCode: true } },
+              },
+            },
           },
         },
         wmsReceipts: {
@@ -558,6 +570,19 @@ export async function getWmsDashboardPayload(
       `${a.warehouseLabel}${a.product.name}`.localeCompare(`${b.warehouseLabel}${b.product.name}`),
     );
 
+  const receivingDispositionTemplates = await prisma.wmsReceivingDispositionTemplate.findMany({
+    where: { tenantId },
+    orderBy: { code: "asc" },
+    select: {
+      id: true,
+      code: true,
+      title: true,
+      noteTemplate: true,
+      suggestedVarianceDisposition: true,
+      updatedAt: true,
+    },
+  });
+
   return {
     packShipScanPolicy,
     atpByWarehouseProduct,
@@ -640,6 +665,14 @@ export async function getWmsDashboardPayload(
       priority: r.priority,
       maxTasksPerRun: r.maxTasksPerRun,
       exceptionQueue: r.exceptionQueue,
+    })),
+    receivingDispositionTemplates: receivingDispositionTemplates.map((t) => ({
+      id: t.id,
+      code: t.code,
+      title: t.title,
+      noteTemplate: t.noteTemplate,
+      suggestedVarianceDisposition: t.suggestedVarianceDisposition,
+      updatedAt: t.updatedAt.toISOString(),
     })),
     crmAccountOptions,
     crmQuoteOptions,
@@ -805,11 +838,20 @@ export async function getWmsDashboardPayload(
             shipmentItemId: li.id,
             lineNo: li.orderItem.lineNo,
             description: li.orderItem.description,
+            productSku:
+              li.orderItem.product?.sku?.trim() ||
+              li.orderItem.product?.productCode?.trim() ||
+              null,
             quantityShipped: li.quantityShipped.toString(),
             quantityReceived: li.quantityReceived.toString(),
             wmsVarianceDisposition: li.wmsVarianceDisposition,
             wmsVarianceNote: li.wmsVarianceNote,
             wmsReturnDisposition: li.wmsReturnDisposition,
+            wmsQaSamplingSkipLot: li.wmsQaSamplingSkipLot,
+            wmsQaSamplingPct:
+              li.wmsQaSamplingPct != null ? li.wmsQaSamplingPct.toString() : null,
+            wmsReceivingDispositionTemplateId: li.wmsReceivingDispositionTemplateId,
+            receivingDispositionTemplate: li.wmsReceivingDispositionTemplate,
           })),
         openWmsReceipt: (() => {
           const open = s.wmsReceipts.find((r) => r.status === "OPEN");

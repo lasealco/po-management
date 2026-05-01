@@ -81,6 +81,7 @@ model Tenant {
   wmsDockAppointments                         WmsDockAppointment[]
   wmsTmsWebhookReceipts                       WmsTmsWebhookReceipt[]
   wmsReceipts                                 WmsReceipt[]
+  wmsReceivingDispositionTemplates           WmsReceivingDispositionTemplate[]
   wmsInventorySerials                         WmsInventorySerial[]
   wmsLotBatches                               WmsLotBatch[]
   wmsWorkOrders                               WmsWorkOrder[]
@@ -3823,6 +3824,24 @@ model Shipment {
   @@index([returnSourceOutboundOrderId])
 }
 
+/// BF-42 — tenant-defined receiving variance note templates (`{{lineNo}}`, `{{qtyShipped}}`, …).
+model WmsReceivingDispositionTemplate {
+  id                           String                             @id @default(cuid())
+  tenantId                     String
+  code                         String                             @db.VarChar(64)
+  title                        String                             @db.VarChar(256)
+  noteTemplate                 String                             @db.VarChar(2000)
+  suggestedVarianceDisposition WmsShipmentItemVarianceDisposition?
+  createdAt                    DateTime                           @default(now())
+  updatedAt                    DateTime                           @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipmentItems ShipmentItem[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
 model ShipmentItem {
   id                  String    @id @default(cuid())
   shipmentId          String
@@ -3839,7 +3858,13 @@ model ShipmentItem {
   wmsVarianceDisposition WmsShipmentItemVarianceDisposition @default(UNSET)
   wmsVarianceNote        String?                            @db.VarChar(1000)
   /// BF-41 — restock vs scrap vs quarantine path for customer-return lines (`Shipment.wmsInboundSubtype`).
-  wmsReturnDisposition   WmsReturnLineDisposition?
+  wmsReturnDisposition WmsReturnLineDisposition?
+  /// BF-42 — skip-lot style QA hint (informational).
+  wmsQaSamplingSkipLot Boolean @default(false)
+  /// BF-42 — optional inspect-as-% of shipped qty (0–100).
+  wmsQaSamplingPct     Decimal? @db.Decimal(5, 2)
+  wmsReceivingDispositionTemplateId String?
+  wmsReceivingDispositionTemplate WmsReceivingDispositionTemplate? @relation(fields: [wmsReceivingDispositionTemplateId], references: [id], onDelete: SetNull)
 
   shipment            Shipment               @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   orderItem           PurchaseOrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
@@ -3849,6 +3874,7 @@ model ShipmentItem {
   @@unique([shipmentId, orderItemId])
   @@index([shipmentId])
   @@index([orderItemId])
+  @@index([wmsReceivingDispositionTemplateId])
 }
 
 /// BF-12 — tenant-scoped dock receipt session for one inbound shipment; lines mirror BF-01 counts on `ShipmentItem`.

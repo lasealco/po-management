@@ -111,6 +111,22 @@ type WmsData = {
     maxTasksPerRun: number | null;
     exceptionQueue: boolean;
   }>;
+  /** BF-42 — tenant receiving disposition note templates + suggested variance hints. */
+  receivingDispositionTemplates?: Array<{
+    id: string;
+    code: string;
+    title: string;
+    noteTemplate: string;
+    suggestedVarianceDisposition:
+      | "UNSET"
+      | "MATCH"
+      | "SHORT"
+      | "OVER"
+      | "DAMAGED"
+      | "OTHER"
+      | null;
+    updatedAt: string;
+  }>;
   crmAccountOptions: Array<{ id: string; name: string; legalName: string | null }>;
   crmQuoteOptions: Array<{
     id: string;
@@ -269,6 +285,7 @@ type WmsData = {
       shipmentItemId: string;
       lineNo: number;
       description: string | null;
+      productSku: string | null;
       quantityShipped: string;
       quantityReceived: string;
       wmsVarianceDisposition:
@@ -280,6 +297,10 @@ type WmsData = {
         | "OTHER";
       wmsVarianceNote: string | null;
       wmsReturnDisposition: "RESTOCK" | "SCRAP" | "QUARANTINE" | null;
+      wmsQaSamplingSkipLot: boolean;
+      wmsQaSamplingPct: string | null;
+      wmsReceivingDispositionTemplateId: string | null;
+      receivingDispositionTemplate: { id: string; code: string; title: string } | null;
     }>;
     /** BF-12 — at most one OPEN `WmsReceipt` per shipment (enforced server-side). */
     openWmsReceipt: {
@@ -705,6 +726,11 @@ export function WmsClient({
   const [replPriority, setReplPriority] = useState("");
   const [replMaxTasksPerRun, setReplMaxTasksPerRun] = useState("");
   const [replExceptionQueue, setReplExceptionQueue] = useState(false);
+  const [bf42TplCode, setBf42TplCode] = useState("");
+  const [bf42TplTitle, setBf42TplTitle] = useState("");
+  const [bf42TplNote, setBf42TplNote] = useState("");
+  const [bf42TplSuggested, setBf42TplSuggested] = useState("");
+  const [bf42EditingTemplateId, setBf42EditingTemplateId] = useState<string | null>(null);
   const [outboundRef, setOutboundRef] = useState("");
   const [outboundProductId, setOutboundProductId] = useState("");
   const [outboundLineQty, setOutboundLineQty] = useState("");
@@ -2917,6 +2943,198 @@ export function WmsClient({
           </p>
         </div>
       </section>
+
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Receiving QA templates (BF-42)</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Tenant-scoped note templates with tokens{" "}
+          <span className="font-mono text-[11px]">
+            {"{{lineNo}} {{qtyShipped}} {{qtyReceived}} {{productSku}} {{asnReference}} {{orderNumber}}"}
+          </span>
+          . Operators attach a template per inbound line and use{" "}
+          <span className="font-medium">Apply template</span> on the Operations receiving grid to stamp{" "}
+          <span className="font-medium">variance note</span>. Optional suggested disposition is guidance only (not auto-applied).
+        </p>
+        <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-100">
+          <table className="min-w-full text-xs">
+            <thead className="bg-zinc-100 text-left uppercase text-zinc-600">
+              <tr>
+                <th className="px-2 py-1.5">Code</th>
+                <th className="px-2 py-1.5">Title</th>
+                <th className="px-2 py-1.5">Suggested disp.</th>
+                <th className="px-2 py-1.5">Updated</th>
+                {canEdit ? <th className="px-2 py-1.5"> </th> : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {(!data.receivingDispositionTemplates || data.receivingDispositionTemplates.length === 0) ? (
+                <tr>
+                  <td colSpan={canEdit ? 5 : 4} className="px-2 py-3 text-zinc-500">
+                    No templates yet — create one below.
+                  </td>
+                </tr>
+              ) : (
+                (data.receivingDispositionTemplates ?? []).map((t) => (
+                  <tr key={t.id}>
+                    <td className="px-2 py-1.5 font-mono text-zinc-800">{t.code}</td>
+                    <td className="px-2 py-1.5 text-zinc-700">{t.title}</td>
+                    <td className="px-2 py-1.5 text-zinc-600">{t.suggestedVarianceDisposition ?? "—"}</td>
+                    <td className="whitespace-nowrap px-2 py-1.5 text-zinc-500">
+                      {new Date(t.updatedAt).toLocaleString()}
+                    </td>
+                    {canEdit ? (
+                      <td className="space-x-1 whitespace-nowrap px-2 py-1.5">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            setBf42EditingTemplateId(t.id);
+                            setBf42TplCode(t.code);
+                            setBf42TplTitle(t.title);
+                            setBf42TplNote(t.noteTemplate);
+                            setBf42TplSuggested(t.suggestedVarianceDisposition ?? "");
+                          }}
+                          className="rounded border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void runAction({
+                              action: "delete_wms_receiving_disposition_template",
+                              receivingDispositionTemplateId: t.id,
+                            })
+                          }
+                          className="rounded border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-800 disabled:opacity-40"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {canEdit ? (
+          <div className="mt-4 grid gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 sm:grid-cols-2">
+            <label className="block text-[11px] font-medium text-zinc-600 sm:col-span-2">
+              Template code
+              <input
+                value={bf42TplCode}
+                disabled={busy || Boolean(bf42EditingTemplateId)}
+                onChange={(e) => setBf42TplCode(e.target.value)}
+                placeholder="e.g. qa_visual_pass"
+                className="mt-1 w-full max-w-md rounded-lg border border-zinc-300 px-3 py-2 text-sm font-mono disabled:bg-zinc-100"
+              />
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600 sm:col-span-2">
+              Title
+              <input
+                value={bf42TplTitle}
+                disabled={busy}
+                onChange={(e) => setBf42TplTitle(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600 sm:col-span-2">
+              Note template
+              <textarea
+                value={bf42TplNote}
+                disabled={busy}
+                onChange={(e) => setBf42TplNote(e.target.value)}
+                rows={3}
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600">
+              Suggested variance disposition (optional)
+              <select
+                value={bf42TplSuggested}
+                disabled={busy}
+                onChange={(e) => setBf42TplSuggested(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="">None</option>
+                <option value="MATCH">Match</option>
+                <option value="SHORT">Short</option>
+                <option value="OVER">Over</option>
+                <option value="DAMAGED">Damaged</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </label>
+            <div className="flex flex-wrap items-end gap-2 sm:col-span-2">
+              <button
+                type="button"
+                disabled={
+                  busy ||
+                  !bf42TplCode.trim() ||
+                  !bf42TplTitle.trim() ||
+                  !bf42TplNote.trim()
+                }
+                onClick={() => {
+                  if (bf42EditingTemplateId) {
+                    void runAction({
+                      action: "update_wms_receiving_disposition_template",
+                      receivingDispositionTemplateId: bf42EditingTemplateId,
+                      receivingDispositionTemplateTitle: bf42TplTitle.trim(),
+                      receivingDispositionNoteTemplate: bf42TplNote.trim(),
+                      receivingDispositionTemplateSuggestedVarianceDisposition:
+                        bf42TplSuggested.trim() === "" ? null : bf42TplSuggested.trim(),
+                    }).then((res) => {
+                      if (res) {
+                        setBf42EditingTemplateId(null);
+                        setBf42TplCode("");
+                        setBf42TplTitle("");
+                        setBf42TplNote("");
+                        setBf42TplSuggested("");
+                      }
+                    });
+                  } else {
+                    void runAction({
+                      action: "create_wms_receiving_disposition_template",
+                      receivingDispositionTemplateCode: bf42TplCode.trim(),
+                      receivingDispositionTemplateTitle: bf42TplTitle.trim(),
+                      receivingDispositionNoteTemplate: bf42TplNote.trim(),
+                      receivingDispositionTemplateSuggestedVarianceDisposition:
+                        bf42TplSuggested.trim() === "" ? null : bf42TplSuggested.trim(),
+                    }).then((res) => {
+                      if (res) {
+                        setBf42TplCode("");
+                        setBf42TplTitle("");
+                        setBf42TplNote("");
+                        setBf42TplSuggested("");
+                      }
+                    });
+                  }
+                }}
+                className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {bf42EditingTemplateId ? "Save template" : "Create template"}
+              </button>
+              {bf42EditingTemplateId ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setBf42EditingTemplateId(null);
+                    setBf42TplCode("");
+                    setBf42TplTitle("");
+                    setBf42TplNote("");
+                    setBf42TplSuggested("");
+                  }}
+                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Cancel edit
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </section>
         </>
       ) : null}
 
@@ -2939,7 +3157,11 @@ export function WmsClient({
           <span className="font-medium">cross-dock staging</span>.{" "}
           <span className="font-medium">BF-41</span> adds{" "}
           <span className="font-medium">customer-return</span> subtype, RMA ref, optional source outbound link, and{" "}
-          <span className="font-medium">line disposition</span> (restock / scrap / quarantine) aligned with putaway and holds.
+          <span className="font-medium">line disposition</span> (restock / scrap / quarantine) aligned with putaway and holds.{" "}
+          <span className="font-medium">BF-42</span> adds optional{" "}
+          <span className="font-medium">QA sampling hints</span>, disposition{" "}
+          <span className="font-medium">note templates</span> (Setup), and one-click{" "}
+          <span className="font-medium">Apply template</span> into the variance note.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label className="flex flex-wrap items-center gap-2 text-xs text-zinc-700">
@@ -3567,7 +3789,7 @@ export function WmsClient({
                             ) : null}
                           </div>
                           <div className="mt-2 overflow-x-auto">
-                            <table className="min-w-[720px] w-full border-collapse text-xs">
+                            <table className="min-w-[960px] w-full border-collapse text-xs">
                               <thead>
                                 <tr className="border-b border-zinc-200 bg-zinc-100 text-left text-[10px] uppercase text-zinc-600">
                                   <th className="px-2 py-1">Ln</th>
@@ -3577,6 +3799,7 @@ export function WmsClient({
                                   <th className="px-2 py-1">Recorded</th>
                                   <th className="px-2 py-1">Disposition</th>
                                   <th className="px-2 py-1">Return disp.</th>
+                                  <th className="px-2 py-1">QA (BF-42)</th>
                                   <th className="px-2 py-1">Note</th>
                                   {canEdit ? <th className="px-2 py-1"> </th> : null}
                                 </tr>
@@ -3660,6 +3883,118 @@ export function WmsClient({
                                         )
                                       ) : (
                                         <span className="text-zinc-400">—</span>
+                                      )}
+                                    </td>
+                                    <td className="min-w-[10rem] max-w-[12rem] px-2 py-1.5 align-top">
+                                      {canEdit ? (
+                                        <div className="flex flex-col gap-1">
+                                          <label className="flex cursor-pointer items-center gap-1 text-[10px] text-zinc-600">
+                                            <input
+                                              type="checkbox"
+                                              id={`inbound-qa-skip-${line.shipmentItemId}`}
+                                              key={`qa-skip-${line.shipmentItemId}-${line.wmsQaSamplingSkipLot ? "y" : "n"}`}
+                                              defaultChecked={line.wmsQaSamplingSkipLot}
+                                              disabled={busy}
+                                              className="rounded border-zinc-300"
+                                            />
+                                            Skip-lot
+                                          </label>
+                                          <input
+                                            key={`qa-pct-${line.shipmentItemId}-${line.wmsQaSamplingPct ?? ""}`}
+                                            id={`inbound-qa-pct-${line.shipmentItemId}`}
+                                            type="number"
+                                            min={0}
+                                            max={100}
+                                            step="0.01"
+                                            defaultValue={line.wmsQaSamplingPct ?? ""}
+                                            disabled={busy}
+                                            placeholder="Sample %"
+                                            className="w-full rounded border border-zinc-300 px-1 py-1 text-[11px] tabular-nums"
+                                          />
+                                          <select
+                                            key={`qa-tpl-${line.shipmentItemId}-${line.wmsReceivingDispositionTemplateId ?? ""}`}
+                                            id={`inbound-qa-tpl-${line.shipmentItemId}`}
+                                            defaultValue={line.wmsReceivingDispositionTemplateId ?? ""}
+                                            disabled={busy}
+                                            className="max-w-full rounded border border-zinc-300 px-1 py-1 text-[11px]"
+                                          >
+                                            <option value="">Template…</option>
+                                            {(data.receivingDispositionTemplates ?? []).map((tpl) => (
+                                              <option key={tpl.id} value={tpl.id}>
+                                                {tpl.code}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => {
+                                              const skipEl = document.getElementById(
+                                                `inbound-qa-skip-${line.shipmentItemId}`,
+                                              ) as HTMLInputElement | null;
+                                              const pctEl = document.getElementById(
+                                                `inbound-qa-pct-${line.shipmentItemId}`,
+                                              ) as HTMLInputElement | null;
+                                              const tplEl = document.getElementById(
+                                                `inbound-qa-tpl-${line.shipmentItemId}`,
+                                              ) as HTMLSelectElement | null;
+                                              const pctTrim = pctEl?.value?.trim() ?? "";
+                                              const pctPayload =
+                                                pctTrim === "" ? null : Number.parseFloat(pctTrim);
+                                              if (
+                                                pctPayload !== null &&
+                                                (!Number.isFinite(pctPayload) ||
+                                                  pctPayload < 0 ||
+                                                  pctPayload > 100)
+                                              ) {
+                                                return;
+                                              }
+                                              const tplVal = tplEl?.value?.trim() ?? "";
+                                              void runAction({
+                                                action: "set_shipment_item_qa_sampling_bf42",
+                                                shipmentItemId: line.shipmentItemId,
+                                                wmsQaSamplingSkipLot: Boolean(skipEl?.checked),
+                                                wmsQaSamplingPct: pctPayload,
+                                                wmsReceivingDispositionTemplateId:
+                                                  tplVal === "" ? null : tplVal,
+                                              });
+                                            }}
+                                            className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-[10px] font-medium text-zinc-800 disabled:opacity-40"
+                                          >
+                                            Save QA
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => {
+                                              const tplEl = document.getElementById(
+                                                `inbound-qa-tpl-${line.shipmentItemId}`,
+                                              ) as HTMLSelectElement | null;
+                                              const tplVal = tplEl?.value?.trim() ?? "";
+                                              void runAction({
+                                                action:
+                                                  "apply_wms_disposition_template_to_shipment_item",
+                                                shipmentItemId: line.shipmentItemId,
+                                                ...(tplVal ? { receivingDispositionTemplateId: tplVal } : {}),
+                                              });
+                                            }}
+                                            className="rounded-xl bg-[var(--arscmp-primary)] px-2 py-1 text-[10px] font-semibold text-white disabled:opacity-40"
+                                          >
+                                            Apply template
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-0.5 text-[10px] text-zinc-600">
+                                          <div>{line.wmsQaSamplingSkipLot ? "Skip-lot" : "—"}</div>
+                                          <div>
+                                            {line.wmsQaSamplingPct != null
+                                              ? `${line.wmsQaSamplingPct}% sample`
+                                              : "—"}
+                                          </div>
+                                          <div className="truncate" title={line.receivingDispositionTemplate?.title ?? ""}>
+                                            {line.receivingDispositionTemplate?.code ?? "—"}
+                                          </div>
+                                        </div>
                                       )}
                                     </td>
                                     <td className="px-2 py-1.5">

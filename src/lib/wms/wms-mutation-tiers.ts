@@ -12,6 +12,9 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   update_bin_profile: "setup",
   set_product_carton_cube_hints: "setup",
   set_replenishment_rule: "setup",
+  create_wms_receiving_disposition_template: "setup",
+  update_wms_receiving_disposition_template: "setup",
+  delete_wms_receiving_disposition_template: "setup",
 
   create_replenishment_tasks: "operations",
 
@@ -41,6 +44,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_wms_receiving_status: "operations",
   set_shipment_item_receive_line: "operations",
   set_shipment_item_return_disposition: "operations",
+  set_shipment_item_qa_sampling_bf42: "operations",
+  apply_wms_disposition_template_to_shipment_item: "operations",
   create_wms_receipt: "operations",
   close_wms_receipt: "operations",
   evaluate_wms_receipt_asn_tolerance: "operations",

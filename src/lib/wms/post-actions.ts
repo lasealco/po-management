@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
-import { Prisma, ShipmentMilestoneCode, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition } from "@prisma/client";
+import { Prisma, ShipmentMilestoneCode, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition, type WmsShipmentItemVarianceDisposition } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -75,6 +75,7 @@ import {
   customerReturnApplyQuarantineHold,
   customerReturnPutawayBlockedReason,
 } from "./customer-return-policy";
+import { substituteReceivingDispositionNoteTemplate } from "./receiving-disposition-template";
 import type { WmsBody } from "./wms-body";
 import { loadWmsViewReadScope } from "./wms-read-scope";
 import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
@@ -2311,6 +2312,331 @@ export async function handleWmsPost(
       });
     });
 
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_wms_receiving_disposition_template") {
+    const codeRaw =
+      input.receivingDispositionTemplateCode?.trim() ?? input.templateCode?.trim() ?? "";
+    const title =
+      input.receivingDispositionTemplateTitle?.trim() ?? input.templateTitle?.trim() ?? "";
+    const noteTemplate =
+      input.receivingDispositionNoteTemplate?.trim() ?? input.noteTemplate?.trim() ?? "";
+    if (!codeRaw || !title || !noteTemplate) {
+      return toApiErrorResponseFromStatus(
+        "receivingDispositionTemplateCode, receivingDispositionTemplateTitle, and receivingDispositionNoteTemplate required.",
+        400,
+      );
+    }
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(codeRaw)) {
+      return toApiErrorResponseFromStatus(
+        "receivingDispositionTemplateCode must be 1–64 characters [A-Za-z0-9_-].",
+        400,
+      );
+    }
+    if (title.length > 256 || noteTemplate.length > 2000) {
+      return toApiErrorResponseFromStatus("Title or note template exceeds max length.", 400);
+    }
+    let suggested: WmsShipmentItemVarianceDisposition | null = null;
+    if (input.receivingDispositionTemplateSuggestedVarianceDisposition !== undefined) {
+      const raw = input.receivingDispositionTemplateSuggestedVarianceDisposition;
+      if (raw !== null && raw !== "") {
+        const u = String(raw).trim().toUpperCase();
+        if (
+          u !== "MATCH" &&
+          u !== "SHORT" &&
+          u !== "OVER" &&
+          u !== "DAMAGED" &&
+          u !== "OTHER"
+        ) {
+          return toApiErrorResponseFromStatus(
+            "receivingDispositionTemplateSuggestedVarianceDisposition must be MATCH, SHORT, OVER, DAMAGED, or OTHER.",
+            400,
+          );
+        }
+        suggested = u as WmsShipmentItemVarianceDisposition;
+      }
+    }
+    try {
+      const row = await prisma.wmsReceivingDispositionTemplate.create({
+        data: {
+          tenantId,
+          code: codeRaw,
+          title,
+          noteTemplate,
+          suggestedVarianceDisposition: suggested,
+        },
+        select: { id: true },
+      });
+      await prisma.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WMS_RECEIVING_DISPOSITION_TEMPLATE",
+          entityId: row.id,
+          action: "receiving_disposition_template_created",
+          payload: { code: codeRaw },
+          actorUserId: actorId,
+        },
+      });
+      return NextResponse.json({ ok: true, receivingDispositionTemplateId: row.id });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        return toApiErrorResponseFromStatus(
+          "Template code already exists for this tenant.",
+          409,
+        );
+      }
+      throw e;
+    }
+  }
+
+  if (action === "update_wms_receiving_disposition_template") {
+    const tid = input.receivingDispositionTemplateId?.trim();
+    if (!tid) {
+      return toApiErrorResponseFromStatus("receivingDispositionTemplateId required.", 400);
+    }
+    const existing = await prisma.wmsReceivingDispositionTemplate.findFirst({
+      where: { id: tid, tenantId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return toApiErrorResponseFromStatus("Template not found.", 404);
+    }
+    const data: Prisma.WmsReceivingDispositionTemplateUpdateInput = {};
+    const title =
+      input.receivingDispositionTemplateTitle !== undefined
+        ? String(input.receivingDispositionTemplateTitle ?? "").trim()
+        : undefined;
+    if (title !== undefined) {
+      if (!title || title.length > 256) {
+        return toApiErrorResponseFromStatus("receivingDispositionTemplateTitle invalid.", 400);
+      }
+      data.title = title;
+    }
+    const noteTemplate =
+      input.receivingDispositionNoteTemplate !== undefined
+        ? String(input.receivingDispositionNoteTemplate ?? "").trim()
+        : undefined;
+    if (noteTemplate !== undefined) {
+      if (!noteTemplate || noteTemplate.length > 2000) {
+        return toApiErrorResponseFromStatus("receivingDispositionNoteTemplate invalid.", 400);
+      }
+      data.noteTemplate = noteTemplate;
+    }
+    if (input.receivingDispositionTemplateSuggestedVarianceDisposition !== undefined) {
+      const raw = input.receivingDispositionTemplateSuggestedVarianceDisposition;
+      if (raw === null || raw === "") {
+        data.suggestedVarianceDisposition = null;
+      } else {
+        const u = String(raw).trim().toUpperCase();
+        if (
+          u !== "MATCH" &&
+          u !== "SHORT" &&
+          u !== "OVER" &&
+          u !== "DAMAGED" &&
+          u !== "OTHER"
+        ) {
+          return toApiErrorResponseFromStatus(
+            "receivingDispositionTemplateSuggestedVarianceDisposition invalid.",
+            400,
+          );
+        }
+        data.suggestedVarianceDisposition = u as WmsShipmentItemVarianceDisposition;
+      }
+    }
+    if (Object.keys(data).length === 0) {
+      return toApiErrorResponseFromStatus("Provide fields to update.", 400);
+    }
+    await prisma.wmsReceivingDispositionTemplate.update({
+      where: { id: tid },
+      data,
+    });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_RECEIVING_DISPOSITION_TEMPLATE",
+        entityId: tid,
+        action: "receiving_disposition_template_updated",
+        payload: { keys: Object.keys(data) },
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "delete_wms_receiving_disposition_template") {
+    const tid = input.receivingDispositionTemplateId?.trim();
+    if (!tid) {
+      return toApiErrorResponseFromStatus("receivingDispositionTemplateId required.", 400);
+    }
+    const existing = await prisma.wmsReceivingDispositionTemplate.findFirst({
+      where: { id: tid, tenantId },
+      select: { id: true, code: true },
+    });
+    if (!existing) {
+      return toApiErrorResponseFromStatus("Template not found.", 404);
+    }
+    await prisma.wmsReceivingDispositionTemplate.delete({ where: { id: tid } });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_RECEIVING_DISPOSITION_TEMPLATE",
+        entityId: tid,
+        action: "receiving_disposition_template_deleted",
+        payload: { code: existing.code },
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_shipment_item_qa_sampling_bf42") {
+    const shipmentItemId = input.shipmentItemId?.trim();
+    if (!shipmentItemId) {
+      return toApiErrorResponseFromStatus("shipmentItemId required.", 400);
+    }
+    const row = await prisma.shipmentItem.findFirst({
+      where: { id: shipmentItemId, shipment: { order: { tenantId } } },
+      select: { id: true, shipmentId: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Shipment item not found.", 404);
+    }
+    const data: Prisma.ShipmentItemUpdateInput = {};
+    if (input.wmsQaSamplingSkipLot !== undefined) {
+      data.wmsQaSamplingSkipLot = Boolean(input.wmsQaSamplingSkipLot);
+    }
+    if (input.wmsQaSamplingPct !== undefined) {
+      const rawPct = input.wmsQaSamplingPct;
+      if (rawPct === null || rawPct === "") {
+        data.wmsQaSamplingPct = null;
+      } else {
+        const n = typeof rawPct === "number" ? rawPct : Number(rawPct);
+        if (!Number.isFinite(n) || n < 0 || n > 100) {
+          return toApiErrorResponseFromStatus("wmsQaSamplingPct must be between 0 and 100.", 400);
+        }
+        data.wmsQaSamplingPct = n;
+      }
+    }
+    if (input.wmsReceivingDispositionTemplateId !== undefined) {
+      const oid = String(input.wmsReceivingDispositionTemplateId ?? "").trim();
+      if (!oid) {
+        data.wmsReceivingDispositionTemplate = { disconnect: true };
+      } else {
+        const tpl = await prisma.wmsReceivingDispositionTemplate.findFirst({
+          where: { id: oid, tenantId },
+          select: { id: true },
+        });
+        if (!tpl) {
+          return toApiErrorResponseFromStatus("wmsReceivingDispositionTemplateId not found.", 404);
+        }
+        data.wmsReceivingDispositionTemplate = { connect: { id: oid } };
+      }
+    }
+    if (Object.keys(data).length === 0) {
+      return toApiErrorResponseFromStatus(
+        "Provide wmsQaSamplingSkipLot, wmsQaSamplingPct, and/or wmsReceivingDispositionTemplateId.",
+        400,
+      );
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.shipmentItem.update({ where: { id: row.id }, data });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: row.shipmentId,
+          entityType: "SHIPMENT_ITEM",
+          entityId: row.id,
+          action: "shipment_item_qa_sampling_bf42_set",
+          payload: {
+            wmsQaSamplingSkipLot: input.wmsQaSamplingSkipLot,
+            wmsQaSamplingPct: input.wmsQaSamplingPct,
+            wmsReceivingDispositionTemplateId: input.wmsReceivingDispositionTemplateId,
+          },
+          actorUserId: actorId,
+        },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "apply_wms_disposition_template_to_shipment_item") {
+    const shipmentItemId = input.shipmentItemId?.trim();
+    if (!shipmentItemId) {
+      return toApiErrorResponseFromStatus("shipmentItemId required.", 400);
+    }
+    const tplIdRaw = input.receivingDispositionTemplateId?.trim() ?? "";
+    const row = await prisma.shipmentItem.findFirst({
+      where: { id: shipmentItemId, shipment: { order: { tenantId } } },
+      select: {
+        id: true,
+        shipmentId: true,
+        quantityShipped: true,
+        quantityReceived: true,
+        wmsReceivingDispositionTemplateId: true,
+        orderItem: {
+          select: {
+            lineNo: true,
+            product: { select: { sku: true, productCode: true } },
+          },
+        },
+        shipment: {
+          select: {
+            asnReference: true,
+            order: { select: { orderNumber: true } },
+          },
+        },
+      },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Shipment item not found.", 404);
+    }
+    const resolvedTplId = tplIdRaw || row.wmsReceivingDispositionTemplateId || "";
+    if (!resolvedTplId) {
+      return toApiErrorResponseFromStatus(
+        "Provide receivingDispositionTemplateId or set a default template on the line first.",
+        400,
+      );
+    }
+    const tpl = await prisma.wmsReceivingDispositionTemplate.findFirst({
+      where: { id: resolvedTplId, tenantId },
+      select: { id: true, noteTemplate: true, code: true },
+    });
+    if (!tpl) {
+      return toApiErrorResponseFromStatus("Disposition template not found.", 404);
+    }
+    const sku =
+      row.orderItem.product?.sku?.trim() ||
+      row.orderItem.product?.productCode?.trim() ||
+      "";
+    const note = substituteReceivingDispositionNoteTemplate(tpl.noteTemplate, {
+      lineNo: row.orderItem.lineNo,
+      qtyShipped: row.quantityShipped.toString(),
+      qtyReceived: row.quantityReceived.toString(),
+      productSku: sku,
+      asnReference: row.shipment.asnReference?.trim() ?? "",
+      orderNumber: row.shipment.order.orderNumber,
+    });
+    await prisma.$transaction(async (tx) => {
+      await tx.shipmentItem.update({
+        where: { id: row.id },
+        data: { wmsVarianceNote: note },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: row.shipmentId,
+          entityType: "SHIPMENT_ITEM",
+          entityId: row.id,
+          action: "bf42_disposition_template_applied",
+          payload: {
+            receivingDispositionTemplateId: tpl.id,
+            templateCode: tpl.code,
+          },
+          actorUserId: actorId,
+        },
+      });
+    });
     return NextResponse.json({ ok: true });
   }
 
