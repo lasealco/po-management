@@ -5055,6 +5055,10 @@ model WmsDockAppointment {
   shipmentId      String?
   outboundOrderId String?
   status          WmsDockAppointmentStatus    @default(SCHEDULED)
+  /// BF-38 — optional physical door assignment at the dock (distinct from `dockCode` bay identifier).
+  doorCode        String?                     @db.VarChar(64)
+  /// BF-38 — trailer safety / paperwork checklist JSON (`{ items: [{ id, label, required?, done }] }`).
+  trailerChecklistJson Json?
   note            String?                     @db.VarChar(500)
   /// BF-05 — carrier / asset identifiers for gate & dock ops (not TMS routing).
   carrierName       String? @db.VarChar(120)

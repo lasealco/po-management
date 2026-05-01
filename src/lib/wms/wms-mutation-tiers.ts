@@ -55,6 +55,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_dock_appointment_transport: "operations",
   set_dock_appointment_tms_refs: "operations",
   record_dock_appointment_yard_milestone: "operations",
+  /** BF-38 — door assignment + trailer checklist JSON on dock appointments. */
+  update_dock_appointment_bf38: "operations",
 
   record_shipment_milestone: "operations",
 

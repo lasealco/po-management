@@ -13,11 +13,13 @@ import {
 } from "./crm-account-link";
 import {
   normalizeDockCode,
+  normalizeDoorCode,
   parseDockYardMilestone,
   truncateDockTransportField,
   DOCK_TRANSPORT_LIMITS,
   DOCK_TMS_LIMITS,
 } from "./dock-appointment";
+import { parseTrailerChecklistJson, trailerChecklistAllowsDepart } from "./dock-trailer-checklist";
 import {
   crossDockStagingFirstCmp,
   orderPickSlotsForWave,
@@ -2885,6 +2887,31 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus("dockCode required.", 400);
     }
 
+    let doorCodeValue: string | null | undefined = undefined;
+    if ("doorCode" in input) {
+      const dr = input.doorCode;
+      if (dr === null || dr === undefined || String(dr).trim() === "") {
+        doorCodeValue = null;
+      } else {
+        const normalized = normalizeDoorCode(String(dr));
+        doorCodeValue = normalized || null;
+      }
+    }
+
+    let trailerChecklistCreate: Prisma.InputJsonValue | typeof Prisma.DbNull | undefined = undefined;
+    if ("trailerChecklistJson" in input && input.trailerChecklistJson !== undefined) {
+      const rawChk = input.trailerChecklistJson;
+      if (rawChk === null) {
+        trailerChecklistCreate = Prisma.DbNull;
+      } else {
+        const parsedChk = parseTrailerChecklistJson(rawChk);
+        if (!parsedChk.ok) {
+          return toApiErrorResponseFromStatus(parsedChk.error, 400);
+        }
+        trailerChecklistCreate = parsedChk.value;
+      }
+    }
+
     const warehouse = await prisma.warehouse.findFirst({
       where: { id: warehouseId, tenantId },
       select: { id: true },
@@ -2952,6 +2979,10 @@ export async function handleWmsPost(
         shipmentId: shipmentId ?? null,
         outboundOrderId: outboundOrderId ?? null,
         note: apptNote ? apptNote.slice(0, 500) : null,
+        ...(doorCodeValue !== undefined ? { doorCode: doorCodeValue } : {}),
+        ...(trailerChecklistCreate !== undefined
+          ? { trailerChecklistJson: trailerChecklistCreate }
+          : {}),
         carrierName: truncateDockTransportField(input.carrierName, DOCK_TRANSPORT_LIMITS.carrierName),
         carrierReference: truncateDockTransportField(input.carrierReference, DOCK_TRANSPORT_LIMITS.carrierReference),
         trailerId: truncateDockTransportField(input.trailerId, DOCK_TRANSPORT_LIMITS.trailerId),
@@ -2979,6 +3010,75 @@ export async function handleWmsPost(
     await prisma.wmsDockAppointment.update({
       where: { id: existing.id },
       data: { status: "CANCELLED" },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "update_dock_appointment_bf38") {
+    const dockAppointmentId = input.dockAppointmentId?.trim();
+    if (!dockAppointmentId) {
+      return toApiErrorResponseFromStatus("dockAppointmentId required.", 400);
+    }
+    const existingAppt = await prisma.wmsDockAppointment.findFirst({
+      where: { id: dockAppointmentId, tenantId },
+      select: { id: true, status: true, shipmentId: true },
+    });
+    if (!existingAppt) {
+      return toApiErrorResponseFromStatus("Appointment not found.", 404);
+    }
+    if (existingAppt.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus("Cancelled appointments cannot be edited.", 400);
+    }
+
+    const data: Prisma.WmsDockAppointmentUpdateInput = {};
+    if ("doorCode" in input) {
+      const dr = input.doorCode;
+      if (dr === null || dr === undefined || String(dr).trim() === "") {
+        data.doorCode = null;
+      } else {
+        const normalized = normalizeDoorCode(String(dr));
+        data.doorCode = normalized || null;
+      }
+    }
+    if ("trailerChecklistJson" in input && input.trailerChecklistJson !== undefined) {
+      const rawChk = input.trailerChecklistJson;
+      if (rawChk === null) {
+        data.trailerChecklistJson = Prisma.JsonNull;
+      } else {
+        const parsedChk = parseTrailerChecklistJson(rawChk);
+        if (!parsedChk.ok) {
+          return toApiErrorResponseFromStatus(parsedChk.error, 400);
+        }
+        data.trailerChecklistJson = parsedChk.value;
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return toApiErrorResponseFromStatus(
+        "Provide doorCode and/or trailerChecklistJson (null clears each when included).",
+        400,
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsDockAppointment.update({
+        where: { id: existingAppt.id },
+        data,
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: existingAppt.shipmentId,
+          entityType: "WMS_DOCK_APPOINTMENT",
+          entityId: existingAppt.id,
+          action: "dock_bf38_updated",
+          payload: {
+            doorCode: "doorCode" in data ? data.doorCode : undefined,
+            checklistTouched: "trailerChecklistJson" in data,
+          },
+          actorUserId: actorId,
+        },
+      });
     });
     return NextResponse.json({ ok: true });
   }
@@ -3121,13 +3221,37 @@ export async function handleWmsPost(
 
     const existingRow = await prisma.wmsDockAppointment.findFirst({
       where: { id: dockAppointmentId, tenantId },
-      select: { id: true, status: true, shipmentId: true },
+      select: {
+        id: true,
+        status: true,
+        shipmentId: true,
+        doorCode: true,
+        trailerChecklistJson: true,
+      },
     });
     if (!existingRow) {
       return toApiErrorResponseFromStatus("Appointment not found.", 404);
     }
     if (existingRow.status !== "SCHEDULED") {
       return toApiErrorResponseFromStatus("Only SCHEDULED appointments can record yard milestones.", 400);
+    }
+
+    if (
+      milestone === "AT_DOCK" &&
+      process.env.WMS_BF38_REQUIRE_DOOR_BEFORE_AT_DOCK === "1" &&
+      !existingRow.doorCode?.trim()
+    ) {
+      return toApiErrorResponseFromStatus(
+        "Assign door (BF-38 doorCode) before recording AT_DOCK, or unset WMS_BF38_REQUIRE_DOOR_BEFORE_AT_DOCK.",
+        400,
+      );
+    }
+
+    if (milestone === "DEPARTED" && !trailerChecklistAllowsDepart(existingRow.trailerChecklistJson)) {
+      return toApiErrorResponseFromStatus(
+        "Complete required trailer checklist items before recording DEPARTED (BF-38).",
+        400,
+      );
     }
 
     const milestoneData: Prisma.WmsDockAppointmentUpdateInput =

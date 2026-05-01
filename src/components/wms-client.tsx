@@ -19,6 +19,10 @@ import {
   readStockLedgerUrlState,
 } from "@/lib/wms/stock-ledger-url";
 import { WMS_RECEIVE_STATUS_LABEL } from "@/lib/wms/wms-receive-status";
+import {
+  defaultTrailerChecklistPayload,
+  type TrailerChecklistPayload,
+} from "@/lib/wms/dock-trailer-checklist";
 
 /** Matches serialized product refs from `GET /api/wms` (including BF-33 carton hints). */
 type WmsProductRef = {
@@ -342,6 +346,9 @@ type WmsData = {
     warehouseId: string;
     warehouse: { id: string; code: string | null; name: string };
     dockCode: string;
+    doorCode: string | null;
+    trailerChecklistJson: TrailerChecklistPayload | null;
+    nextDockAppointmentWindowStart: string | null;
     windowStart: string;
     windowEnd: string;
     direction: "INBOUND" | "OUTBOUND";
@@ -745,6 +752,10 @@ export function WmsClient({
   const [dockTmsDraft, setDockTmsDraft] = useState<
     Record<string, { tmsLoadId: string; tmsCarrierBookingRef: string }>
   >({});
+  const [dockDoorCreateInput, setDockDoorCreateInput] = useState("");
+  const [dockBf38Draft, setDockBf38Draft] = useState<
+    Record<string, { doorCode: string; checklist: TrailerChecklistPayload | null }>
+  >({});
   const [vasWoTitle, setVasWoTitle] = useState("");
   const [vasWoDesc, setVasWoDesc] = useState("");
   const [vasWoCrmAccountId, setVasWoCrmAccountId] = useState("");
@@ -923,6 +934,19 @@ export function WmsClient({
       };
     }
     setDockTransportDraft(next);
+  }, [data]);
+
+  useEffect(() => {
+    if (!data) return;
+    const rows = data.dockAppointments ?? [];
+    const next: Record<string, { doorCode: string; checklist: TrailerChecklistPayload | null }> = {};
+    for (const a of rows) {
+      next[a.id] = {
+        doorCode: a.doorCode ?? "",
+        checklist: a.trailerChecklistJson,
+      };
+    }
+    setDockBf38Draft(next);
   }, [data]);
 
   useLayoutEffect(() => {
@@ -3572,7 +3596,11 @@ export function WmsClient({
           <span className="font-medium">BF-25</span> adds optional HMAC signing (<span className="font-medium">X-TMS-Signature</span>) and{" "}
           <span className="font-medium">externalEventId</span> idempotency — see{" "}
           <span className="font-medium">docs/wms/WMS_DOCK_APPOINTMENTS.md</span> and{" "}
-          <span className="font-medium">docs/wms/WMS_TMS_WEBHOOK_BF25.md</span>.
+          <span className="font-medium">docs/wms/WMS_TMS_WEBHOOK_BF25.md</span>. BF-38 adds optional{" "}
+          <span className="font-medium">physical door</span>,{" "}
+          <span className="font-medium">trailer checklist</span> with DEPARTED validation when required lines stay open, optional{" "}
+          <span className="font-mono text-[11px]">WMS_BF38_REQUIRE_DOOR_BEFORE_AT_DOCK</span> for AT_DOCK, and a{" "}
+          <span className="font-medium">next booking</span> hint per dock row.
         </p>
         <div className="mt-3 grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/90 p-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-xs font-medium text-zinc-600">
@@ -3657,6 +3685,16 @@ export function WmsClient({
               disabled={!canEdit}
             />
           </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Door (BF-38, optional)
+            <input
+              value={dockDoorCreateInput}
+              onChange={(e) => setDockDoorCreateInput(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              placeholder="e.g. DR-02"
+              disabled={!canEdit}
+            />
+          </label>
           <div className="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-1">
             <button
               type="button"
@@ -3687,6 +3725,8 @@ export function WmsClient({
                 if (cn) body.carrierName = cn;
                 if (cr) body.carrierReference = cr;
                 if (tr) body.trailerId = tr;
+                const door = dockDoorCreateInput.trim();
+                if (door) body.doorCode = door;
                 void runAction(body);
               }}
               className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
@@ -3701,6 +3741,7 @@ export function WmsClient({
               <tr>
                 <th className="px-2 py-1">Warehouse</th>
                 <th className="px-2 py-1">Dock</th>
+                <th className="px-2 py-1">Door</th>
                 <th className="px-2 py-1">Window</th>
                 <th className="px-2 py-1">Dir</th>
                 <th className="px-2 py-1">Ref</th>
@@ -3718,7 +3759,7 @@ export function WmsClient({
                 (a) => !selectedWarehouseId || a.warehouse.id === selectedWarehouseId,
               ).length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 12 : 11} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 13 : 12} className="px-2 py-3 text-zinc-500">
                     No dock appointments
                     {selectedWarehouseId ? " for this warehouse" : ""} yet.
                   </td>
@@ -3732,6 +3773,10 @@ export function WmsClient({
                       carrierReference: "",
                       trailerId: "",
                     };
+                    const bf38 = dockBf38Draft[a.id] ?? {
+                      doorCode: a.doorCode ?? "",
+                      checklist: a.trailerChecklistJson,
+                    };
                     const mdraft = dockTmsDraft[a.id] ?? {
                       tmsLoadId: a.tmsLoadId ?? "",
                       tmsCarrierBookingRef: a.tmsCarrierBookingRef ?? "",
@@ -3742,9 +3787,17 @@ export function WmsClient({
                           {a.warehouse.code || a.warehouse.name}
                         </td>
                         <td className="px-2 py-1 font-mono text-xs text-zinc-700">{a.dockCode}</td>
+                        <td className="px-2 py-1 font-mono text-xs text-zinc-600">{a.doorCode ?? "—"}</td>
                         <td className="px-2 py-1 text-xs text-zinc-700">
-                          {new Date(a.windowStart).toLocaleString()} →{" "}
-                          {new Date(a.windowEnd).toLocaleString()}
+                          <span className="block">
+                            {new Date(a.windowStart).toLocaleString()} →{" "}
+                            {new Date(a.windowEnd).toLocaleString()}
+                          </span>
+                          {a.nextDockAppointmentWindowStart ? (
+                            <span className="mt-0.5 block text-[10px] text-zinc-500">
+                              Next on dock: {new Date(a.nextDockAppointmentWindowStart).toLocaleString()}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-2 py-1 text-zinc-600">{a.direction}</td>
                         <td className="px-2 py-1 text-xs text-zinc-700">
@@ -3794,7 +3847,7 @@ export function WmsClient({
                     const yardControls =
                       canEdit && a.status === "SCHEDULED" ? (
                         <tr key={`${a.id}-yard`} className="bg-zinc-50/90">
-                          <td colSpan={12} className="px-3 py-2">
+                          <td colSpan={13} className="px-3 py-2">
                             <div className="flex flex-wrap items-end gap-3">
                               <label className="block min-w-[140px] text-[11px] font-medium text-zinc-600">
                                 Carrier name
@@ -3899,6 +3952,139 @@ export function WmsClient({
                               >
                                 Save TMS refs
                               </button>
+                              <div className="mt-3 w-full basis-full rounded-xl border border-zinc-200 bg-white/90 p-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                                  BF-38 — Door & trailer checklist
+                                </p>
+                                <div className="mt-2 flex flex-wrap items-end gap-3">
+                                  <label className="block min-w-[120px] text-[11px] font-medium text-zinc-600">
+                                    Physical door
+                                    <input
+                                      value={bf38.doorCode}
+                                      onChange={(e) =>
+                                        setDockBf38Draft((prev) => ({
+                                          ...prev,
+                                          [a.id]: { ...bf38, doorCode: e.target.value },
+                                        }))
+                                      }
+                                      className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-[11px]"
+                                      disabled={busy}
+                                      placeholder="e.g. DR-02"
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      void runAction({
+                                        action: "update_dock_appointment_bf38",
+                                        dockAppointmentId: a.id,
+                                        doorCode: bf38.doorCode.trim() || null,
+                                      })
+                                    }
+                                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                                  >
+                                    Save door
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() => {
+                                      const init = defaultTrailerChecklistPayload();
+                                      setDockBf38Draft((prev) => ({
+                                        ...prev,
+                                        [a.id]: { ...bf38, checklist: init },
+                                      }));
+                                      void runAction({
+                                        action: "update_dock_appointment_bf38",
+                                        dockAppointmentId: a.id,
+                                        trailerChecklistJson: init,
+                                      });
+                                    }}
+                                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                                  >
+                                    Init checklist
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={busy || !bf38.checklist}
+                                    onClick={() => {
+                                      setDockBf38Draft((prev) => ({
+                                        ...prev,
+                                        [a.id]: { ...bf38, checklist: null },
+                                      }));
+                                      void runAction({
+                                        action: "update_dock_appointment_bf38",
+                                        dockAppointmentId: a.id,
+                                        trailerChecklistJson: null,
+                                      });
+                                    }}
+                                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                                  >
+                                    Clear checklist
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={busy || !bf38.checklist}
+                                    onClick={() =>
+                                      void runAction({
+                                        action: "update_dock_appointment_bf38",
+                                        dockAppointmentId: a.id,
+                                        trailerChecklistJson: bf38.checklist,
+                                      })
+                                    }
+                                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                                  >
+                                    Save checklist
+                                  </button>
+                                </div>
+                                {bf38.checklist?.items?.length ? (
+                                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                                    {bf38.checklist.items.map((it) => (
+                                      <label
+                                        key={it.id}
+                                        className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-700"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          className="rounded border-zinc-300"
+                                          checked={it.done}
+                                          disabled={busy}
+                                          onChange={(e) => {
+                                            const done = e.target.checked;
+                                            setDockBf38Draft((prev) => {
+                                              const cur = prev[a.id] ?? bf38;
+                                              if (!cur.checklist) return prev;
+                                              return {
+                                                ...prev,
+                                                [a.id]: {
+                                                  ...cur,
+                                                  checklist: {
+                                                    items: cur.checklist.items.map((row) =>
+                                                      row.id === it.id ? { ...row, done } : row,
+                                                    ),
+                                                  },
+                                                },
+                                              };
+                                            });
+                                          }}
+                                        />
+                                        <span>
+                                          {it.label}
+                                          {it.required ? (
+                                            <span className="text-zinc-500"> *</span>
+                                          ) : null}
+                                        </span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="mt-2 text-[11px] text-zinc-500">
+                                    No checklist — use Init checklist (required items must be checked before{" "}
+                                    <span className="font-medium">Departed</span>).
+                                  </p>
+                                )}
+                              </div>
                               <button
                                 type="button"
                                 disabled={busy}

@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { userHasGlobalGrant } from "@/lib/authz";
 import { crmAccountInScope } from "@/lib/crm-scope";
 import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
+import { trailerChecklistFromDb } from "@/lib/wms/dock-trailer-checklist";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "@/lib/wms/lot-code";
 import { softReservedQtyByBalanceIds } from "@/lib/wms/soft-reservation";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
@@ -888,11 +889,31 @@ export async function getWmsDashboardPayload(
       matchedCount: recentMovementMatchedCount,
       truncated: recentMovementMatchedCount > recentMovementTake,
     },
-    dockAppointments: dockAppointmentsRaw.map((a) => ({
+    dockAppointments: (() => {
+      const dockNextWindowStartById = new Map<string, string | null>();
+      const byKey = new Map<string, (typeof dockAppointmentsRaw)[number][]>();
+      for (const r of dockAppointmentsRaw) {
+        if (r.status !== "SCHEDULED") continue;
+        const k = `${r.warehouseId}\t${r.dockCode}`;
+        const arr = byKey.get(k) ?? [];
+        arr.push(r);
+        byKey.set(k, arr);
+      }
+      for (const [, arr] of byKey) {
+        arr.sort((x, y) => x.windowStart.getTime() - y.windowStart.getTime());
+        for (let i = 0; i < arr.length; i += 1) {
+          const next = arr[i + 1];
+          dockNextWindowStartById.set(arr[i]!.id, next ? next.windowStart.toISOString() : null);
+        }
+      }
+      return dockAppointmentsRaw.map((a) => ({
       id: a.id,
       warehouseId: a.warehouseId,
       warehouse: a.warehouse,
       dockCode: a.dockCode,
+      doorCode: a.doorCode,
+      trailerChecklistJson: trailerChecklistFromDb(a.trailerChecklistJson),
+      nextDockAppointmentWindowStart: dockNextWindowStartById.get(a.id) ?? null,
       windowStart: a.windowStart.toISOString(),
       windowEnd: a.windowEnd.toISOString(),
       direction: a.direction,
@@ -919,7 +940,8 @@ export async function getWmsDashboardPayload(
           : null,
       outboundNo: a.outboundOrder?.outboundNo ?? null,
       createdBy: { id: a.createdBy.id, name: a.createdBy.name },
-    })),
+    }));
+    })(),
     workOrders: workOrdersRaw.map((w) => ({
       id: w.id,
       workOrderNo: w.workOrderNo,

@@ -50,7 +50,7 @@
 
 Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **Phase A → E**: inventory truth before execution engines; topology/yard before throwing integrations at cross-product epics.
 
-**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-37`** have **minimal slices shipped** in-repo where noted ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). **`BF-38`** … **`BF-50`** remain **draft** program objectives only ([`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
+**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-38`** have **minimal slices shipped** in-repo where noted ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). **`BF-39`** … **`BF-50`** remain **draft** program objectives only ([`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
 | Order | ID | Phase | Notes |
 |-------|-----|-------|------|
@@ -80,7 +80,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 
 ---
 
-## Capsule cards (`BF-02` … `BF-37` + draft `BF-38` … `BF-50`)
+## Capsule cards (`BF-02` … `BF-38` + draft `BF-39` … `BF-50`)
 
 Use one row as the **scope box** before filing GitHub issues or agent prompts.
 
@@ -118,6 +118,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-31** | GRN / ASN tolerance | [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md), [`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md) | WMS | **Partial** — dock receipt **GRN**, qty %-tolerance evaluate + close guards; ASN feed auto-close backlog |
 | **BF-32** | Receiving accrual staging | [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md), [`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md) | WMS + finance alignment | **Partial** — **`WmsReceivingAccrualStaging`** + **`GET /api/wms/receiving-accrual-staging`**; ERP posting backlog |
 | **BF-37** | Cross-dock / flow-through tags | [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md) | WMS | **Partial** — **`Shipment.wmsCrossDock` / `wmsFlowThrough`**, **`WarehouseBin.isCrossDockStaging`**, allocation staging-first tie-break, Operations filter + bin create UI |
+| **BF-38** | Dock door & trailer checklist | [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_DOCK_BF38.md`](./WMS_DOCK_BF38.md), [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | WMS | **Partial** — **`WmsDockAppointment.doorCode`** / **`trailerChecklistJson`**, milestone guards, **`nextDockAppointmentWindowStart`** hint + Operations UI |
 
 ---
 

@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
 
-**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-34** minimal slice shipped ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-35** minimal slice shipped ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-36** minimal slice shipped ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)); **BF-37** minimal slice shipped ([`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md)). Capsules **BF-38** … **BF-50** remain **draft** until executed.
+**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-34** minimal slice shipped ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-35** minimal slice shipped ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-36** minimal slice shipped ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)); **BF-37** minimal slice shipped ([`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md)); **BF-38** minimal slice shipped ([`WMS_DOCK_BF38.md`](./WMS_DOCK_BF38.md)). Capsules **BF-39** … **BF-50** remain **draft** until executed.
 
 **Rules:**
 
@@ -121,7 +121,7 @@
 
 **Objective:** Extend **`WmsDockAppointment`** with **door assignment**, **trailer checklist**, and simple **window compression** suggestions.
 
-**Exit sketch (minimal slice):** Optional **`doorCode`** / checklist JSON + validation on yard milestones (**BF-05**).
+**Shipped (minimal slice):** See [`WMS_DOCK_BF38.md`](./WMS_DOCK_BF38.md) — optional **`doorCode`** + **`trailerChecklistJson`**, **`update_dock_appointment_bf38`**, DEPARTED checklist gate for required rows, optional **`WMS_BF38_REQUIRE_DOOR_BEFORE_AT_DOCK`** on AT_DOCK, **`nextDockAppointmentWindowStart`** hint on **`GET /api/wms`**, Operations UI.
 
 **Out of scope:** Full TMS solver, labor scheduling solver.
 
@@ -253,4 +253,4 @@
 
 ---
 
-_Last updated: 2026-04-30 — **BF-37** cross-dock / flow-through tags + staging preference ([`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md)); **BF-36** ATP / soft reservations minimal landed ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)); **BF-35** replenishment priority / exception tier ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-34** solver prototype ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-33** cube-aware greedy ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-38**–**BF-50** draft objectives._
+_Last updated: 2026-04-30 — **BF-38** dock door + trailer checklist + milestone guards ([`WMS_DOCK_BF38.md`](./WMS_DOCK_BF38.md)); **BF-37** cross-dock / flow-through tags + staging preference ([`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md)); **BF-36** ATP / soft reservations minimal landed ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)); **BF-35** replenishment priority / exception tier ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-34** solver prototype ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-33** cube-aware greedy ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-39**–**BF-50** draft objectives._

@@ -95,6 +95,10 @@ export type WmsBody = {
   /** `create_dock_appointment` / `cancel_dock_appointment`. */
   dockAppointmentId?: string;
   dockCode?: string;
+  /** BF-38 — optional physical door assignment (`create_dock_appointment`, `update_dock_appointment_bf38`). */
+  doorCode?: string | null;
+  /** BF-38 — trailer checklist JSON (`create_dock_appointment`, `update_dock_appointment_bf38`); null clears. */
+  trailerChecklistJson?: unknown | null;
   /** ISO datetime strings for dock window. */
   dockWindowStart?: string;
   dockWindowEnd?: string;
