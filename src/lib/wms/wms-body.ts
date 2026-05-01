@@ -20,6 +20,10 @@ export type WmsBody = {
   asnQtyTolerancePct?: number | string | null;
   /** ISO datetime string or null to clear. */
   expectedReceiveAt?: string | null;
+  /** BF-37 — inbound shipment cross-dock tag (`set_shipment_inbound_fields`). */
+  wmsCrossDock?: boolean;
+  /** BF-37 — flow-through tag (`set_shipment_inbound_fields`). */
+  wmsFlowThrough?: boolean;
   /** `ShipmentMilestoneCode` value for `record_shipment_milestone`. */
   milestoneCode?: string;
   outboundOrderId?: string;
@@ -43,6 +47,8 @@ export type WmsBody = {
   shipToCountryCode?: string;
   storageType?: "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING";
   isPickFace?: boolean;
+  /** BF-37 — cross-dock staging bin (`create_bin` / `update_bin_profile`). */
+  isCrossDockStaging?: boolean;
   maxPallets?: number | null;
   /** BF-33 — optional bin cube capacity hint (`WarehouseBin.capacityCubeCubicMm`), cubic mm. */
   capacityCubeCubicMm?: number | null;

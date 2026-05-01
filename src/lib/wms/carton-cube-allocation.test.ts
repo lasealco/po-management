@@ -84,6 +84,26 @@ describe("orderPickSlotsMinBinTouchesCubeAware", () => {
     expect(ordered.map((s) => s.binId)).toEqual(["roomy", "tight"]);
   });
 
+  it("prefers cross-dock staging within the same cube-feasibility tier", () => {
+    const bins = [
+      fungibleWaveSlot({
+        binId: "norm",
+        binCode: "N",
+        available: 50,
+        binCapacityCubeMm3: 10_000,
+      }),
+      fungibleWaveSlot({
+        binId: "xd",
+        binCode: "X",
+        available: 50,
+        binCapacityCubeMm3: 10_000,
+        isCrossDockStaging: true,
+      }),
+    ];
+    const ordered = orderPickSlotsMinBinTouchesCubeAware(bins, R, hints);
+    expect(ordered[0]?.binId).toBe("xd");
+  });
+
   it("falls back to BF-15 when hints do not yield pick cube", () => {
     const bins = [
       fungibleWaveSlot({ binId: "a", binCode: "A", available: 5 }),

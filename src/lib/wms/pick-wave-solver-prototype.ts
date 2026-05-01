@@ -1,4 +1,4 @@
-import type { WavePickSlot } from "./allocation-strategy";
+import { crossDockStagingFirstCmp, type WavePickSlot } from "./allocation-strategy";
 import {
   orderPickSlotsMinBinTouches,
   orderPickSlotsMinBinTouchesReservePickFace,
@@ -33,7 +33,11 @@ export function findMinimalFeasibleSlotSubset(slots: WavePickSlot[], R: number):
   const target = Math.max(0, R);
   if (target <= 0) return [];
   const viable = slots.filter((s) => s.available > 0);
-  const sorted = [...viable].sort((a, b) => slotLexKey(a).localeCompare(slotLexKey(b)));
+  const sorted = [...viable].sort((a, b) => {
+    const xd = crossDockStagingFirstCmp(a, b);
+    if (xd !== 0) return xd;
+    return slotLexKey(a).localeCompare(slotLexKey(b));
+  });
   const n = sorted.length;
   let sumAll = 0;
   for (const s of sorted) sumAll += s.available;

@@ -1,6 +1,6 @@
-# WMS pick allocation strategies (WE-03) + BF-03 FEFO + BF-15 wave v2 + BF-23 reserve pick face + BF-33 cube-aware greedy + BF-34 solver prototype (minimal)
+# WMS pick allocation strategies (WE-03) + BF-03 FEFO + BF-15 wave v2 + BF-23 reserve pick face + BF-33 cube-aware greedy + BF-34 solver prototype + BF-37 cross-dock staging (minimal)
 
-**Status:** Implemented policy slice · **Last updated:** 2026-04-29
+**Status:** Implemented policy slice · **Last updated:** 2026-04-30
 
 ## What ships
 
@@ -48,6 +48,10 @@ Setting strategy is **`set_warehouse_pick_allocation_strategy`** (`warehouseId`,
 - **`SOLVER_PROTOTYPE_*`** strategies are **opt-in**: deployment must set **`WMS_ENABLE_BF34_SOLVER=1`** or **`set_warehouse_pick_allocation_strategy`** / **`create_pick_wave`** reject them.
 - Subset search operates on **`WavePickSlot`** rows (distinct **bin × lotCode** buckets), not bins alone — mirrors **FEFO** multi-bucket inventory.
 - See **`pick-wave-solver-prototype.ts`** + [`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md).
+
+## BF-37 behavior details (cross-dock staging)
+
+- Bins marked **`WarehouseBin.isCrossDockStaging`** sort **before** non-staging bins among ties throughout automated wave ordering (**`orderPickSlotsForWave`**, BF-15, BF-23, BF-33 tiers, BF-34 subset sort). See [`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md).
 
 ## BF-23 behavior details
 

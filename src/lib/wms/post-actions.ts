@@ -19,6 +19,7 @@ import {
   DOCK_TMS_LIMITS,
 } from "./dock-appointment";
 import {
+  crossDockStagingFirstCmp,
   orderPickSlotsForWave,
   orderPickSlotsMinBinTouches,
   orderPickSlotsMinBinTouchesReservePickFace,
@@ -451,6 +452,7 @@ export async function handleWmsPost(
         name,
         storageType: input.storageType ?? "PALLET",
         isPickFace: Boolean(input.isPickFace),
+        isCrossDockStaging: Boolean(input.isCrossDockStaging),
         maxPallets:
           typeof input.maxPallets === "number" && Number.isFinite(input.maxPallets)
             ? Math.max(0, Math.trunc(input.maxPallets))
@@ -488,6 +490,8 @@ export async function handleWmsPost(
       zoneId: input.targetZoneId?.trim() || null,
       storageType: input.storageType ?? undefined,
       isPickFace: typeof input.isPickFace === "boolean" ? input.isPickFace : undefined,
+      isCrossDockStaging:
+        typeof input.isCrossDockStaging === "boolean" ? input.isCrossDockStaging : undefined,
       maxPallets:
         typeof input.maxPallets === "number" && Number.isFinite(input.maxPallets)
           ? Math.max(0, Math.trunc(input.maxPallets))
@@ -1345,7 +1349,7 @@ export async function handleWmsPost(
     if (allocationStrategy === "FEFO_BY_LOT_EXPIRY") {
       const balancesAll = await prisma.inventoryBalance.findMany({
         where: { tenantId, warehouseId },
-        include: { bin: { select: { id: true, code: true, isPickFace: true, capacityCubeCubicMm: true } } },
+        include: { bin: { select: { id: true, code: true, isPickFace: true, isCrossDockStaging: true, capacityCubeCubicMm: true } } },
       });
       const softWaveMap = await softReservedQtyByBalanceIds(
         prisma,
@@ -1386,6 +1390,7 @@ export async function handleWmsPost(
           lotCode: lc,
           expirySortMs,
           isPickFace: row.bin.isPickFace,
+          isCrossDockStaging: row.bin.isCrossDockStaging,
           binCapacityCubeMm3: row.bin.capacityCubeCubicMm ?? null,
         });
         byProduct.set(row.productId, list);
@@ -1393,7 +1398,7 @@ export async function handleWmsPost(
     } else {
       const balances = await prisma.inventoryBalance.findMany({
         where: { tenantId, warehouseId, lotCode: FUNGIBLE_LOT_CODE },
-        include: { bin: { select: { id: true, code: true, isPickFace: true, capacityCubeCubicMm: true } } },
+        include: { bin: { select: { id: true, code: true, isPickFace: true, isCrossDockStaging: true, capacityCubeCubicMm: true } } },
       });
       const softWaveMap = await softReservedQtyByBalanceIds(
         prisma,
@@ -1414,6 +1419,7 @@ export async function handleWmsPost(
           lotCode: FUNGIBLE_LOT_CODE,
           expirySortMs: 0,
           isPickFace: row.bin.isPickFace,
+          isCrossDockStaging: row.bin.isCrossDockStaging,
           binCapacityCubeMm3: row.bin.capacityCubeCubicMm ?? null,
         });
         byProduct.set(row.productId, list);
@@ -1429,7 +1435,12 @@ export async function handleWmsPost(
         allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES" ||
         allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE"
       ) {
-        list.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
+        list.sort(
+          (a, b) =>
+            crossDockStagingFirstCmp(a, b) ||
+            a.binCode.localeCompare(b.binCode) ||
+            a.binId.localeCompare(b.binId),
+        );
         byProduct.set(productId, list);
       } else {
         byProduct.set(productId, orderPickSlotsForWave(allocationStrategy, list));
@@ -1942,9 +1953,15 @@ export async function handleWmsPost(
         data.expectedReceiveAt = d;
       }
     }
+    if (input.wmsCrossDock !== undefined) {
+      data.wmsCrossDock = Boolean(input.wmsCrossDock);
+    }
+    if (input.wmsFlowThrough !== undefined) {
+      data.wmsFlowThrough = Boolean(input.wmsFlowThrough);
+    }
     if (Object.keys(data).length === 0) {
       return toApiErrorResponseFromStatus(
-        "Provide asnReference, expectedReceiveAt, and/or asnQtyTolerancePct to update.",
+        "Provide asnReference, expectedReceiveAt, asnQtyTolerancePct, wmsCrossDock, and/or wmsFlowThrough to update.",
         400,
       );
     }

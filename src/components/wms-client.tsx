@@ -80,6 +80,7 @@ type WmsData = {
     name: string;
     storageType: "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING";
     isPickFace: boolean;
+    isCrossDockStaging: boolean;
     maxPallets: number | null;
     rackCode: string | null;
     aisle: string | null;
@@ -235,6 +236,8 @@ type WmsData = {
     asnReference: string | null;
     expectedReceiveAt: string | null;
     asnQtyTolerancePct: string | null;
+    wmsCrossDock: boolean;
+    wmsFlowThrough: boolean;
     shippedAt: string;
     receivedAt: string | null;
     orderNumber: string;
@@ -638,6 +641,7 @@ export function WmsClient({
     "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING"
   >("PALLET");
   const [newBinPickFace, setNewBinPickFace] = useState(false);
+  const [newBinCrossDockStaging, setNewBinCrossDockStaging] = useState(false);
   const [newBinRackCode, setNewBinRackCode] = useState("");
   const [newBinAisle, setNewBinAisle] = useState("");
   const [newBinWarehouseAisleId, setNewBinWarehouseAisleId] = useState("");
@@ -699,9 +703,14 @@ export function WmsClient({
         generateGrnOnClose: boolean;
         requireTolAdvanceClose: boolean;
         blockTolOutsideClose: boolean;
+        crossDock: boolean;
+        flowThrough: boolean;
       }
     >
   >({});
+  const [inboundTagFilter, setInboundTagFilter] = useState<
+    "all" | "crossDock" | "flowThrough" | "either"
+  >("all");
   const [outboundAsnEdits, setOutboundAsnEdits] = useState<
     Record<string, { asn: string; requestedShip: string }>
   >({});
@@ -1084,6 +1093,8 @@ export function WmsClient({
           generateGrnOnClose: boolean;
           requireTolAdvanceClose: boolean;
           blockTolOutsideClose: boolean;
+          crossDock: boolean;
+          flowThrough: boolean;
         }
       > = {};
       for (const s of data.inboundShipments) {
@@ -1100,6 +1111,8 @@ export function WmsClient({
           generateGrnOnClose: false,
           requireTolAdvanceClose: false,
           blockTolOutsideClose: false,
+          crossDock: s.wmsCrossDock,
+          flowThrough: s.wmsFlowThrough,
         };
       }
       setInboundEdits(next);
@@ -1136,6 +1149,14 @@ export function WmsClient({
     () => aislesForWarehouse.filter((a) => a.isActive),
     [aislesForWarehouse],
   );
+  const inboundShipmentsForOps = useMemo(() => {
+    const rows = data?.inboundShipments ?? [];
+    if (inboundTagFilter === "all") return rows;
+    if (inboundTagFilter === "crossDock") return rows.filter((s) => s.wmsCrossDock);
+    if (inboundTagFilter === "flowThrough") return rows.filter((s) => s.wmsFlowThrough);
+    return rows.filter((s) => s.wmsCrossDock || s.wmsFlowThrough);
+  }, [data?.inboundShipments, inboundTagFilter]);
+
   const replenishmentRulesForWarehouse = useMemo(
     () =>
       (data?.replenishmentRules ?? []).filter((r) => r.warehouse.id === selectedWarehouseId),
@@ -2212,6 +2233,7 @@ export function WmsClient({
                       <th className="px-2 py-1">Zone</th>
                       <th className="px-2 py-1">Storage</th>
                       <th className="px-2 py-1">Pick face</th>
+                      <th className="px-2 py-1">XD stage</th>
                       <th className="px-2 py-1">Max pal.</th>
                       <th className="px-2 py-1">Rack</th>
                       <th className="px-2 py-1">Aisle master</th>
@@ -2224,7 +2246,7 @@ export function WmsClient({
                   <tbody className="divide-y divide-zinc-200">
                     {binsForWarehouse.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="px-2 py-2 text-zinc-500">
+                        <td colSpan={13} className="px-2 py-2 text-zinc-500">
                           No bins for this warehouse.
                         </td>
                       </tr>
@@ -2240,6 +2262,7 @@ export function WmsClient({
                             </td>
                             <td className="px-2 py-1 text-zinc-600">{b.storageType}</td>
                             <td className="px-2 py-1 text-zinc-600">{b.isPickFace ? "Yes" : "—"}</td>
+                            <td className="px-2 py-1 text-zinc-600">{b.isCrossDockStaging ? "Yes" : "—"}</td>
                             <td className="px-2 py-1 text-zinc-600">
                               {b.maxPallets != null ? String(b.maxPallets) : "—"}
                             </td>
@@ -2596,6 +2619,14 @@ export function WmsClient({
             />
             Pick face
           </label>
+          <label className="flex items-center gap-2 rounded border border-zinc-300 px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              checked={newBinCrossDockStaging}
+              onChange={(e) => setNewBinCrossDockStaging(e.target.checked)}
+            />
+            XD staging
+          </label>
           <input
             value={newBinCapacityCubeMm}
             onChange={(e) => setNewBinCapacityCubeMm(e.target.value)}
@@ -2620,6 +2651,7 @@ export function WmsClient({
                 name: newBinName,
                 storageType: newBinStorageType,
                 isPickFace: newBinPickFace,
+                isCrossDockStaging: newBinCrossDockStaging,
                 warehouseAisleId: newBinWarehouseAisleId.trim() || undefined,
                 rackCode: newBinRackCode.trim() || undefined,
                 aisle: newBinAisle.trim() || undefined,
@@ -2850,8 +2882,28 @@ export function WmsClient({
           <span className="font-medium">closed receipt history</span>,{" "}
           <span className="font-medium">idempotent close</span>, and an optional{" "}
           <span className="font-medium">Receipt complete</span> advance when closing a session. Putaway still runs per
-          shipment line below.
+          shipment line below. BF-37 adds{" "}
+          <span className="font-medium">cross-dock</span> /{" "}
+          <span className="font-medium">flow-through</span> tags plus outbound preference for bins marked{" "}
+          <span className="font-medium">cross-dock staging</span>.
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <label className="flex flex-wrap items-center gap-2 text-xs text-zinc-700">
+            Inbound tag filter
+            <select
+              value={inboundTagFilter}
+              onChange={(e) =>
+                setInboundTagFilter(e.target.value as "all" | "crossDock" | "flowThrough" | "either")
+              }
+              className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            >
+              <option value="all">All inbound</option>
+              <option value="crossDock">Cross-dock only</option>
+              <option value="flowThrough">Flow-through only</option>
+              <option value="either">Cross-dock or flow-through</option>
+            </select>
+          </label>
+        </div>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
@@ -2865,20 +2917,24 @@ export function WmsClient({
                 <th className="px-2 py-1">Expected</th>
                 <th className="px-2 py-1">ASN tol %</th>
                 <th className="px-2 py-1">Lines</th>
+                <th className="px-2 py-1">XD</th>
+                <th className="px-2 py-1">FT</th>
                 {canEdit ? <th className="px-2 py-1">Dock</th> : null}
                 {canEdit ? <th className="px-2 py-1">Log</th> : null}
                 {canEdit ? <th className="px-2 py-1">Save</th> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200">
-              {data.inboundShipments.length === 0 ? (
+              {inboundShipmentsForOps.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 12 : 9} className="px-2 py-3 text-zinc-500">
-                    No shipments for this tenant yet.
+                  <td colSpan={canEdit ? 14 : 11} className="px-2 py-3 text-zinc-500">
+                    {data.inboundShipments.length === 0
+                      ? "No shipments for this tenant yet."
+                      : "No inbound rows match this tag filter."}
                   </td>
                 </tr>
               ) : (
-                data.inboundShipments.map((s) => {
+                inboundShipmentsForOps.map((s) => {
                   const openRec = s.openWmsReceipt;
                   const draft =
                     inboundEdits[s.id] ?? {
@@ -2892,8 +2948,10 @@ export function WmsClient({
                       generateGrnOnClose: false,
                       requireTolAdvanceClose: false,
                       blockTolOutsideClose: false,
+                      crossDock: false,
+                      flowThrough: false,
                     };
-                  const lineColSpan = canEdit ? 12 : 9;
+                  const lineColSpan = canEdit ? 14 : 11;
                   return (
                     <Fragment key={s.id}>
                       <tr>
@@ -3007,6 +3065,55 @@ export function WmsClient({
                       </td>
                       <td className="px-2 py-1 text-zinc-600">{s.itemCount}</td>
                       {canEdit ? (
+                        <>
+                          <td className="px-2 py-1">
+                            <label
+                              className="inline-flex cursor-pointer items-center gap-1 text-[11px] text-zinc-700"
+                              title="Cross-dock tag (BF-37)"
+                            >
+                              <input
+                                type="checkbox"
+                                className="rounded border-zinc-300"
+                                checked={draft.crossDock}
+                                disabled={busy}
+                                onChange={(e) =>
+                                  setInboundEdits((prev) => ({
+                                    ...prev,
+                                    [s.id]: { ...draft, crossDock: e.target.checked },
+                                  }))
+                                }
+                              />
+                              <span className="sr-only">Cross-dock</span>
+                            </label>
+                          </td>
+                          <td className="px-2 py-1">
+                            <label
+                              className="inline-flex cursor-pointer items-center gap-1 text-[11px] text-zinc-700"
+                              title="Flow-through tag (BF-37)"
+                            >
+                              <input
+                                type="checkbox"
+                                className="rounded border-zinc-300"
+                                checked={draft.flowThrough}
+                                disabled={busy}
+                                onChange={(e) =>
+                                  setInboundEdits((prev) => ({
+                                    ...prev,
+                                    [s.id]: { ...draft, flowThrough: e.target.checked },
+                                  }))
+                                }
+                              />
+                              <span className="sr-only">Flow-through</span>
+                            </label>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-2 py-1 text-zinc-600">{s.wmsCrossDock ? "Yes" : "—"}</td>
+                          <td className="px-2 py-1 text-zinc-600">{s.wmsFlowThrough ? "Yes" : "—"}</td>
+                        </>
+                      )}
+                      {canEdit ? (
                         <td className="px-2 py-1">
                           <button
                             type="button"
@@ -3070,6 +3177,8 @@ export function WmsClient({
                                   draft.asnTolerancePct.trim() === ""
                                     ? null
                                     : Number(draft.asnTolerancePct),
+                                wmsCrossDock: draft.crossDock,
+                                wmsFlowThrough: draft.flowThrough,
                               })
                             }
                             className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"

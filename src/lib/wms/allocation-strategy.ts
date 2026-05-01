@@ -12,11 +12,18 @@ export type WavePickSlot = {
   expirySortMs: number;
   /** `WarehouseBin.isPickFace` — used by **GREEDY_RESERVE_PICK_FACE** (BF-23). */
   isPickFace: boolean;
+  /** BF-37 — `WarehouseBin.isCrossDockStaging`; preferred first among ties across wave ordering paths. */
+  isCrossDockStaging: boolean;
   /**
    * BF-33 — `WarehouseBin.capacityCubeCubicMm` (mm³); null/undefined = unknown / unconstrained for cube tiering.
    */
   binCapacityCubeMm3?: number | null;
 };
+
+/** BF-37 — prefer cross-dock staging bins before others (negative ⇒ `a` sorts before `b`). */
+export function crossDockStagingFirstCmp(a: WavePickSlot, b: WavePickSlot): number {
+  return Number(b.isCrossDockStaging) - Number(a.isCrossDockStaging);
+}
 
 /** Order bins (and lot buckets) for automated wave splitting (`create_pick_wave`). */
 export function orderPickSlotsForWave(
@@ -29,6 +36,7 @@ export function orderPickSlotsForWave(
       copy.sort(
         (a, b) =>
           b.available - a.available ||
+          crossDockStagingFirstCmp(a, b) ||
           a.binCode.localeCompare(b.binCode) ||
           a.binId.localeCompare(b.binId),
       );
@@ -36,13 +44,16 @@ export function orderPickSlotsForWave(
     case "FIFO_BY_BIN_CODE":
       copy.sort(
         (a, b) =>
-          a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId),
+          crossDockStagingFirstCmp(a, b) ||
+          a.binCode.localeCompare(b.binCode) ||
+          a.binId.localeCompare(b.binId),
       );
       break;
     case "FEFO_BY_LOT_EXPIRY":
       copy.sort(
         (a, b) =>
           a.expirySortMs - b.expirySortMs ||
+          crossDockStagingFirstCmp(a, b) ||
           a.binCode.localeCompare(b.binCode) ||
           a.lotCode.localeCompare(b.lotCode) ||
           a.binId.localeCompare(b.binId),
@@ -54,7 +65,12 @@ export function orderPickSlotsForWave(
     case "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE":
     case "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES":
     case "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE":
-      copy.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
+      copy.sort(
+        (a, b) =>
+          crossDockStagingFirstCmp(a, b) ||
+          a.binCode.localeCompare(b.binCode) ||
+          a.binId.localeCompare(b.binId),
+      );
       break;
     case "MANUAL_ONLY":
       return [];
@@ -72,6 +88,8 @@ export function orderPickSlotsMinBinTouches(slots: WavePickSlot[], lineRemaining
   const R = Math.max(0, lineRemainingQty);
   if (R <= 0) return copy;
   copy.sort((a, b) => {
+    const xd = crossDockStagingFirstCmp(a, b);
+    if (xd !== 0) return xd;
     const aFull = a.available >= R ? 1 : 0;
     const bFull = b.available >= R ? 1 : 0;
     if (aFull !== bFull) return bFull - aFull;
@@ -107,6 +125,8 @@ export function orderPickSlotsMinBinTouchesReservePickFace(
   const R = Math.max(0, lineRemainingQty);
   if (R <= 0) return copy;
   copy.sort((a, b) => {
+    const xd = crossDockStagingFirstCmp(a, b);
+    if (xd !== 0) return xd;
     const aFull = a.available >= R ? 1 : 0;
     const bFull = b.available >= R ? 1 : 0;
     if (aFull !== bFull) return bFull - aFull;
@@ -128,14 +148,16 @@ export function orderPickSlotsMinBinTouchesReservePickFace(
 
 /** Slots for tests — fungible bucket only. */
 export function fungibleWaveSlot(
-  partial: Omit<WavePickSlot, "lotCode" | "expirySortMs" | "isPickFace"> & {
+  partial: Omit<WavePickSlot, "lotCode" | "expirySortMs" | "isPickFace" | "isCrossDockStaging"> & {
     isPickFace?: boolean;
+    isCrossDockStaging?: boolean;
     binCapacityCubeMm3?: number | null;
   },
 ): WavePickSlot {
   return {
     ...partial,
     isPickFace: partial.isPickFace ?? false,
+    isCrossDockStaging: partial.isCrossDockStaging ?? false,
     lotCode: FUNGIBLE_LOT_CODE,
     expirySortMs: 0,
   };

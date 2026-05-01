@@ -3750,6 +3750,10 @@ model Shipment {
   cargoDimensionsText     String?        @db.VarChar(512)
   /// BF-31 — optional max allowed absolute %-delta per line vs `quantityShipped` when evaluating ASN tolerance (`receiveLines`).
   asnQtyTolerancePct      Decimal?       @db.Decimal(5, 2)
+  /// BF-37 — inbound tagged for cross-dock visibility and outbound staging preference.
+  wmsCrossDock            Boolean        @default(false)
+  /// BF-37 — flow-through style moves (lighter putaway path when aligned with demand).
+  wmsFlowThrough          Boolean        @default(false)
   /// Main commodity description for customs / booking screens.
   cargoCommoditySummary   String?        @db.Text
   notes                   String?
@@ -4560,6 +4564,8 @@ model WarehouseBin {
   name          String
   storageType   BinStorageType @default(PALLET)
   isPickFace    Boolean        @default(false)
+  /// BF-37 — wave allocation prefers these bins first among ties (staging cross-dock inventory).
+  isCrossDockStaging Boolean @default(false)
   maxPallets    Int?
   /// Groups bins into one physical rack / bay run for layout maps (e.g. `R-A01`).
   rackCode      String?        @db.VarChar(64)

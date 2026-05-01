@@ -1,4 +1,5 @@
 import {
+  crossDockStagingFirstCmp,
   orderPickSlotsMinBinTouches,
   orderPickSlotsMinBinTouchesReservePickFace,
   type WavePickSlot,
@@ -93,6 +94,8 @@ export function orderPickSlotsMinBinTouchesCubeAware(
     const tierA = binCubeInsufficientTier(pickCube, a.binCapacityCubeMm3);
     const tierB = binCubeInsufficientTier(pickCube, b.binCapacityCubeMm3);
     if (tierA !== tierB) return tierA - tierB;
+    const xd = crossDockStagingFirstCmp(a, b);
+    if (xd !== 0) return xd;
 
     const aFull = a.available >= R ? 1 : 0;
     const bFull = b.available >= R ? 1 : 0;
@@ -130,6 +133,8 @@ export function orderPickSlotsMinBinTouchesReservePickFaceCubeAware(
     const tierA = binCubeInsufficientTier(pickCube, a.binCapacityCubeMm3);
     const tierB = binCubeInsufficientTier(pickCube, b.binCapacityCubeMm3);
     if (tierA !== tierB) return tierA - tierB;
+    const xd = crossDockStagingFirstCmp(a, b);
+    if (xd !== 0) return xd;
 
     const aFull = a.available >= R ? 1 : 0;
     const bFull = b.available >= R ? 1 : 0;
