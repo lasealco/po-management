@@ -1,4 +1,4 @@
-# WMS pick allocation strategies (WE-03) + BF-03 FEFO + BF-15 wave v2 + BF-23 reserve pick face + BF-33 cube-aware greedy (minimal)
+# WMS pick allocation strategies (WE-03) + BF-03 FEFO + BF-15 wave v2 + BF-23 reserve pick face + BF-33 cube-aware greedy + BF-34 solver prototype (minimal)
 
 **Status:** Implemented policy slice · **Last updated:** 2026-04-29
 
@@ -15,6 +15,8 @@ Per-**warehouse** enum **`WmsPickAllocationStrategy`** on `Warehouse.pickAllocat
 | **`GREEDY_RESERVE_PICK_FACE`** (**BF-23**) | Yes — **fungible only**, same slot fetch as BF-15; uses **`orderPickSlotsMinBinTouchesReservePickFace`** so ties prefer **non–pick-face** bins first (`WarehouseBin.isPickFace`), reserving forward pick faces until bulk bins are exhausted | Always allowed unless deployment sets **`WMS_DISABLE_BF23_STRATEGY=1`** |
 | **`GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE`** (**BF-33**) | Yes — **fungible only**; **`orderPickSlotsMinBinTouchesCubeAware`** adds a **cube-feasibility tier** ahead of BF-15 when carton dims + bin **`capacityCubeCubicMm`** support an estimate | Always allowed unless **`WMS_DISABLE_BF33_CUBE_AWARE=1`** |
 | **`GREEDY_RESERVE_PICK_FACE_CUBE_AWARE`** (**BF-33**) | Yes — **fungible only**; BF-23 ordering after the same cube tier as above | Always allowed unless **`WMS_DISABLE_BF33_CUBE_AWARE=1`** |
+| **`SOLVER_PROTOTYPE_MIN_BIN_TOUCHES`** (**BF-34**) | Yes — bounded **minimal slot subset** search then BF-15 on that subset; falls back to BF-15 on all slots when row count > **14** | Only when **`WMS_ENABLE_BF34_SOLVER=1`** |
+| **`SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE`** (**BF-34**) | Yes — same subset search then BF-23 on that subset; same fallback rule | Only when **`WMS_ENABLE_BF34_SOLVER=1`** |
 | **`MANUAL_ONLY`** | **Blocked** (HTTP 400) — no silent multi-bin wave allocation | **Required path** for reservations |
 
 **BF-15 — Optional carton / task cap:** nullable **`Warehouse.pickWaveCartonUnits`** (`Decimal`, units per SKU line pick task). When set (> 0), **`create_pick_wave`** clamps each automated pick task quantity to **≤ cap** (applies to **all** non-`MANUAL_ONLY` strategies). Configure via **`POST /api/wms`** **`set_warehouse_pick_wave_carton_units`** (`warehouseId`, `pickWaveCartonUnits`: positive number **or** `null` to clear). WMS Setup → **Pick allocation policy** shows strategy + cap controls.
@@ -41,13 +43,19 @@ Setting strategy is **`set_warehouse_pick_allocation_strategy`** (`warehouseId`,
 - Estimated outbound pick cube uses **ceil(remainder ÷ units-per-carton) × (L×W×H)** in cubic mm; **`WarehouseBin.capacityCubeCubicMm`** is compared only when **both** pick cube and bin capacity are known positives.
 - **`OutboundOrder.estimatedCubeCbm`** is **informational** on **`GET /api/wms`** (not consumed by the greedy comparator in this minimal slice).
 
+## BF-34 behavior details
+
+- **`SOLVER_PROTOTYPE_*`** strategies are **opt-in**: deployment must set **`WMS_ENABLE_BF34_SOLVER=1`** or **`set_warehouse_pick_allocation_strategy`** / **`create_pick_wave`** reject them.
+- Subset search operates on **`WavePickSlot`** rows (distinct **bin × lotCode** buckets), not bins alone — mirrors **FEFO** multi-bucket inventory.
+- See **`pick-wave-solver-prototype.ts`** + [`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md).
+
 ## BF-23 behavior details
 
 - **`GREEDY_RESERVE_PICK_FACE`** applies only when the warehouse strategy is set to this enum value — **same fungible-only scope as BF-15** (not a substitute for **`FEFO_BY_LOT_EXPIRY`**).
 
 ## Tests & module
 
-Vitest: **`allocation-strategy.test.ts`** covers **`orderPickSlotsForWave`** (including greedy baseline sorts) and **`orderPickSlotsMinBinTouches`** + **`orderPickSlotsMinBinTouchesReservePickFace`**; **`carton-cube-allocation.test.ts`** covers BF-33 predicates and ordering.
+Vitest: **`allocation-strategy.test.ts`** covers **`orderPickSlotsForWave`** (including greedy baseline sorts) and **`orderPickSlotsMinBinTouches`** + **`orderPickSlotsMinBinTouchesReservePickFace`**; **`carton-cube-allocation.test.ts`** covers BF-33 predicates and ordering; **`pick-wave-solver-prototype.test.ts`** covers BF-34 subset enumeration and ordering.
 
 ## Human approval / “no silent moves”
 
@@ -57,4 +65,4 @@ Vitest: **`allocation-strategy.test.ts`** covers **`orderPickSlotsForWave`** (in
 
 ## Limits (honest 🟡)
 
-No MILP solver, no labor heatmaps — **BF-33** adds **optional carton / bin cube hints** for a deterministic **feasibility tier** before BF-15 / BF-23 greedy ordering ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)). Packing physics and slotting optimizers stay future work ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)).
+No full MILP/CP-SAT engine — **BF-34** ships a **bounded enumeration prototype** for minimal touch cardinality ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)). **BF-33** adds **optional carton / bin cube hints** for a deterministic **feasibility tier** before BF-15 / BF-23 greedy ordering ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)). Packing physics and enterprise slotting optimizers stay future work ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)).

@@ -4427,6 +4427,10 @@ enum WmsPickAllocationStrategy {
   GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE
   /// BF-33 — BF-23 ordering plus cube-feasibility tier (pick-face reserve after cube tier).
   GREEDY_RESERVE_PICK_FACE_CUBE_AWARE
+  /// BF-34 — exact minimal **slot** subset (bounded enumeration) then BF-15 ordering on that subset; requires `WMS_ENABLE_BF34_SOLVER=1`.
+  SOLVER_PROTOTYPE_MIN_BIN_TOUCHES
+  /// BF-34 — same subset search then BF-23 pick-face reserve ordering on the subset; requires `WMS_ENABLE_BF34_SOLVER=1`.
+  SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE
   /// Disable automated wave allocation; use explicit `create_pick_task` per bin/line.
   MANUAL_ONLY
 }

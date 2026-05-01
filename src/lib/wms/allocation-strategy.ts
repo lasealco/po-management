@@ -52,6 +52,8 @@ export function orderPickSlotsForWave(
     case "GREEDY_RESERVE_PICK_FACE":
     case "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE":
     case "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE":
+    case "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES":
+    case "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE":
       copy.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
       break;
     case "MANUAL_ONLY":

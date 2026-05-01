@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
 
-**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)). Capsules **BF-34** … **BF-50** remain **draft** until executed.
+**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-34** minimal slice shipped ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)). Capsules **BF-35** … **BF-50** remain **draft** until executed.
 
 **Rules:**
 
@@ -81,9 +81,9 @@
 
 **Objective:** Optional **solver-backed** bin assignment for pick waves where product funds complexity — behind feature flag.
 
-**Exit sketch (minimal slice):** Pure solver module + **`create_pick_wave`** branch when **`Warehouse.pickAllocationStrategy`** (or env) selects **`SOLVER_PROTOTYPE_*`**; golden-file tests on toy warehouses.
+**Exit sketch (minimal slice):** Shipped — bounded **minimal slot-cardinality subset** enumeration + BF-15/BF-23 follow-on ordering (`SOLVER_PROTOTYPE_*`), gated by **`WMS_ENABLE_BF34_SOLVER`**. See [`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md).
 
-**Out of scope:** Real-time labor heatmaps, slotting optimizer unified with replenishment.
+**Out of scope:** Real-time labor heatmaps, slotting optimizer unified with replenishment, general-purpose MILP/CP-SAT engine.
 
 ---
 
@@ -253,4 +253,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — **BF-33** cube-aware greedy minimal landed ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging minimal landed ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-34**–**BF-50** draft objectives._
+_Last updated: 2026-04-29 — **BF-34** solver prototype minimal landed ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-33** cube-aware greedy minimal landed ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging minimal landed ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-35**–**BF-50** draft objectives._

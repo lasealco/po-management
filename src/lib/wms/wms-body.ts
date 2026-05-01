@@ -107,6 +107,8 @@ export type WmsBody = {
     | "GREEDY_RESERVE_PICK_FACE"
     | "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE"
     | "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
+    | "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES"
+    | "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE"
     | "MANUAL_ONLY";
   /** BF-15 — max units per automated wave pick line (`set_warehouse_pick_wave_carton_units`); positive number or null clears. */
   pickWaveCartonUnits?: number | string | null;

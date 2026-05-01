@@ -46,6 +46,8 @@ type WmsData = {
       | "GREEDY_RESERVE_PICK_FACE"
       | "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE"
       | "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
+      | "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES"
+      | "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE"
       | "MANUAL_ONLY";
     pickWaveCartonUnits: string | null;
   }>;
@@ -1663,7 +1665,8 @@ export function WmsClient({
           Controls how <span className="font-medium text-zinc-800">Create pick wave</span> orders bins and
           increments <span className="font-medium">allocatedQty</span>. Individual{" "}
           <span className="font-medium">Create pick task</span> actions always require an explicit bin choice.
-          See <span className="font-medium">docs/wms/WMS_ALLOCATION_STRATEGIES.md</span>.
+          See <span className="font-medium">docs/wms/WMS_ALLOCATION_STRATEGIES.md</span>. BF-34 solver options require{" "}
+          <span className="font-mono">WMS_ENABLE_BF34_SOLVER=1</span> on the server.
         </p>
         {!selectedWarehouseId ? (
           <p className="mt-3 text-sm text-zinc-500">Select a warehouse above to review or change strategy.</p>
@@ -1691,6 +1694,8 @@ export function WmsClient({
                     | "GREEDY_RESERVE_PICK_FACE"
                     | "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE"
                     | "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
+                    | "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES"
+                    | "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE"
                     | "MANUAL_ONLY";
                   void runAction({
                     action: "set_warehouse_pick_allocation_strategy",
@@ -1716,6 +1721,12 @@ export function WmsClient({
                 </option>
                 <option value="GREEDY_RESERVE_PICK_FACE_CUBE_AWARE">
                   BF-33 — BF-23 reserve pick face + cube-aware tier
+                </option>
+                <option value="SOLVER_PROTOTYPE_MIN_BIN_TOUCHES">
+                  BF-34 — Solver prototype: minimal slot subset + BF-15 (needs WMS_ENABLE_BF34_SOLVER=1)
+                </option>
+                <option value="SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE">
+                  BF-34 — Solver prototype: minimal subset + BF-23 reserve (needs WMS_ENABLE_BF34_SOLVER=1)
                 </option>
                 <option value="MANUAL_ONLY">Manual only — automated waves disabled</option>
               </select>

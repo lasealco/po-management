@@ -72,6 +72,16 @@ describe("orderPickSlotsForWave", () => {
     const ordered = orderPickSlotsForWave("GREEDY_RESERVE_PICK_FACE_CUBE_AWARE", slots);
     expect(ordered.map((s) => s.binCode)).toEqual(["B-01", "B-02", "B-03"]);
   });
+
+  it("SOLVER_PROTOTYPE_MIN_BIN_TOUCHES stable sort uses bin code", () => {
+    const ordered = orderPickSlotsForWave("SOLVER_PROTOTYPE_MIN_BIN_TOUCHES", slots);
+    expect(ordered.map((s) => s.binCode)).toEqual(["B-01", "B-02", "B-03"]);
+  });
+
+  it("SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE stable sort uses bin code", () => {
+    const ordered = orderPickSlotsForWave("SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE", slots);
+    expect(ordered.map((s) => s.binCode)).toEqual(["B-01", "B-02", "B-03"]);
+  });
 });
 
 describe("orderPickSlotsMinBinTouches", () => {

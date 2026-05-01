@@ -28,6 +28,7 @@ import {
   orderPickSlotsMinBinTouchesCubeAware,
   orderPickSlotsMinBinTouchesReservePickFaceCubeAware,
 } from "./carton-cube-allocation";
+import { orderPickSlotsSolverPrototype } from "./pick-wave-solver-prototype";
 import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
 import {
   evaluateShipmentReceiveAgainstAsnTolerance,
@@ -92,12 +93,21 @@ export async function handleWmsPost(
     if (!bf23ReservePickFaceDisabled) {
       allowed.splice(4, 0, "GREEDY_RESERVE_PICK_FACE");
     }
+    const bf34SolverEnabled = process.env.WMS_ENABLE_BF34_SOLVER === "1";
     if (!bf33CubeAwareDisabled) {
       allowed.splice(
         allowed.indexOf("MANUAL_ONLY"),
         0,
         "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE",
         "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE",
+      );
+    }
+    if (bf34SolverEnabled) {
+      allowed.splice(
+        allowed.indexOf("MANUAL_ONLY"),
+        0,
+        "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES",
+        "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE",
       );
     }
     if (!allowed.includes(raw as WmsPickAllocationStrategy)) {
@@ -1175,6 +1185,18 @@ export async function handleWmsPost(
       );
     }
 
+    const bf34SolverEnabled = process.env.WMS_ENABLE_BF34_SOLVER === "1";
+    if (
+      (allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES" ||
+        allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE") &&
+      !bf34SolverEnabled
+    ) {
+      return toApiErrorResponseFromStatus(
+        "Solver prototype strategies require WMS_ENABLE_BF34_SOLVER=1 on this deployment.",
+        400,
+      );
+    }
+
     const openLines = await prisma.outboundOrderLine.findMany({
       where: {
         tenantId,
@@ -1282,7 +1304,9 @@ export async function handleWmsPost(
         allocationStrategy === "GREEDY_MIN_BIN_TOUCHES" ||
         allocationStrategy === "GREEDY_RESERVE_PICK_FACE" ||
         allocationStrategy === "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE" ||
-        allocationStrategy === "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
+        allocationStrategy === "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE" ||
+        allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES" ||
+        allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE"
       ) {
         list.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
         byProduct.set(productId, list);
@@ -1315,16 +1339,22 @@ export async function handleWmsPost(
         if (remaining <= 0) continue;
         const binsRaw = byProduct.get(item.productId) ?? [];
         const productHints = item.product;
-        const binsForProduct =
-          allocationStrategy === "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE"
-            ? orderPickSlotsMinBinTouchesReservePickFaceCubeAware(binsRaw, remaining, productHints)
-            : allocationStrategy === "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE"
-              ? orderPickSlotsMinBinTouchesCubeAware(binsRaw, remaining, productHints)
-              : allocationStrategy === "GREEDY_RESERVE_PICK_FACE"
-                ? orderPickSlotsMinBinTouchesReservePickFace(binsRaw, remaining)
-                : allocationStrategy === "GREEDY_MIN_BIN_TOUCHES"
-                  ? orderPickSlotsMinBinTouches(binsRaw, remaining)
-                  : binsRaw;
+        let binsForProduct: WavePickSlot[];
+        if (allocationStrategy === "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE") {
+          binsForProduct = orderPickSlotsMinBinTouchesReservePickFaceCubeAware(binsRaw, remaining, productHints);
+        } else if (allocationStrategy === "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE") {
+          binsForProduct = orderPickSlotsMinBinTouchesCubeAware(binsRaw, remaining, productHints);
+        } else if (allocationStrategy === "GREEDY_RESERVE_PICK_FACE") {
+          binsForProduct = orderPickSlotsMinBinTouchesReservePickFace(binsRaw, remaining);
+        } else if (allocationStrategy === "GREEDY_MIN_BIN_TOUCHES") {
+          binsForProduct = orderPickSlotsMinBinTouches(binsRaw, remaining);
+        } else if (allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE") {
+          binsForProduct = orderPickSlotsSolverPrototype(binsRaw, remaining, "BF23_RESERVE_PICK_FACE");
+        } else if (allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES") {
+          binsForProduct = orderPickSlotsSolverPrototype(binsRaw, remaining, "BF15");
+        } else {
+          binsForProduct = binsRaw;
+        }
         for (const slot of binsForProduct) {
           if (remaining <= 0) break;
           let take = Math.min(remaining, slot.available);
