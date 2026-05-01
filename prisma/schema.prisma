@@ -5159,6 +5159,10 @@ model OutboundOrder {
   sourceCrmQuoteId  String?
   /// BF-33 — optional planner hint for total outbound cube (cubic metres); informational on dashboard payload.
   estimatedCubeCbm Decimal?           @db.Decimal(12, 6)
+  /// BF-39 — carrier tracking / label purchase snapshot (from `purchase_carrier_label`).
+  carrierTrackingNo       String?   @db.VarChar(128)
+  carrierLabelAdapterId   String?   @db.VarChar(64)
+  carrierLabelPurchasedAt DateTime?
   createdById       String
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt

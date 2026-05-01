@@ -52,7 +52,8 @@ import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
 import { buildSscc18DemoFromOutbound } from "./gs1-sscc";
-import { requestDemoCarrierLabel } from "./carrier-label-demo-adapter";
+import { purchaseDemoParcelCarrierLabel } from "./carrier-label-demo-adapter";
+import { carrierLabelPurchaseInputForOutbound, purchaseCarrierLabel } from "./carrier-label-purchase";
 import {
   buildOutboundPackScanPlan,
   flattenPackScanExpectations,
@@ -1744,17 +1745,74 @@ export async function handleWmsPost(
       prefixRaw && /^[0-9]{7,10}$/.test(prefixRaw)
         ? buildSscc18DemoFromOutbound(order.id, prefixRaw)
         : null;
-    const shipBits = [order.shipToName, order.shipToCity, order.shipToCountryCode].filter(Boolean);
-    const demo = requestDemoCarrierLabel({
-      outboundId: order.id,
-      outboundNo: order.outboundNo,
-      warehouseLabel: order.warehouse.code || order.warehouse.name,
-      barcodePayload: order.outboundNo,
-      shipToSummary: shipBits.length ? shipBits.join(" · ") : "—",
-      asnReference: order.asnReference,
-      sscc18: sscc,
-    });
+    const purchaseInput = carrierLabelPurchaseInputForOutbound(order, sscc);
+    const demo = purchaseDemoParcelCarrierLabel(purchaseInput);
     return NextResponse.json({ ok: true, ...demo });
+  }
+
+  if (action === "purchase_carrier_label") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      include: { warehouse: { select: { id: true, code: true, name: true } } },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (
+      order.status !== "RELEASED" &&
+      order.status !== "PICKING" &&
+      order.status !== "PACKED"
+    ) {
+      return toApiErrorResponseFromStatus(
+        "Carrier label purchase applies when the order is RELEASED, PICKING, or PACKED.",
+        400,
+      );
+    }
+    const prefixRaw = process.env.NEXT_PUBLIC_WMS_SSCC_COMPANY_PREFIX?.trim() ?? "";
+    const sscc =
+      prefixRaw && /^[0-9]{7,10}$/.test(prefixRaw)
+        ? buildSscc18DemoFromOutbound(order.id, prefixRaw)
+        : null;
+    const purchaseInput = carrierLabelPurchaseInputForOutbound(order, sscc);
+    let result;
+    try {
+      result = await purchaseCarrierLabel(purchaseInput);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Carrier label purchase failed.";
+      return toApiErrorResponseFromStatus(msg, 502);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.outboundOrder.update({
+        where: { id: order.id },
+        data: {
+          carrierTrackingNo: result.trackingNo,
+          carrierLabelAdapterId: result.adapterId,
+          carrierLabelPurchasedAt: new Date(),
+        },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "OUTBOUND_ORDER",
+          entityId: order.id,
+          action: "outbound_carrier_label_purchased",
+          payload: {
+            outboundNo: order.outboundNo,
+            warehouseId: order.warehouseId,
+            adapterId: result.adapterId,
+            trackingNo: result.trackingNo,
+          },
+          actorUserId: actorId,
+        },
+      });
+    });
+
+    return NextResponse.json({ ok: true, ...result });
   }
 
   if (action === "mark_outbound_packed") {

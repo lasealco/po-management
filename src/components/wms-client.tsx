@@ -157,6 +157,9 @@ type WmsData = {
     shipToCity: string | null;
     shipToCountryCode: string | null;
     estimatedCubeCbm: string | null;
+    carrierTrackingNo: string | null;
+    carrierLabelAdapterId: string | null;
+    carrierLabelPurchasedAt: string | null;
     status: "DRAFT" | "RELEASED" | "PICKING" | "PACKED" | "SHIPPED" | "CANCELLED";
     warehouse: { id: string; code: string | null; name: string };
     crmAccount: { id: string; name: string; legalName: string | null } | null;
@@ -4473,6 +4476,14 @@ export function WmsClient({
                     Quote: {o.sourceQuote.quoteNumber ?? o.sourceQuote.title.slice(0, 28)}
                   </Link>
                 ) : null}
+                {o.carrierTrackingNo ? (
+                  <span
+                    className="max-w-[14rem] truncate rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-900"
+                    title={o.carrierTrackingNo}
+                  >
+                    Tracking: {o.carrierTrackingNo}
+                  </span>
+                ) : null}
                 {showCrmPicker ? (
                   <select
                     value={o.crmAccount?.id ?? ""}
@@ -4560,6 +4571,25 @@ export function WmsClient({
                       disabled={busy}
                       onClick={async () => {
                         const r = await runAction(
+                          { action: "purchase_carrier_label", outboundOrderId: o.id },
+                        );
+                        if (!r) return;
+                        const zpl = typeof r.zpl === "string" ? r.zpl : null;
+                        const tn = typeof r.trackingNo === "string" ? r.trackingNo : "label";
+                        if (zpl) {
+                          const safeName = o.outboundNo.replace(/[^\w.-]+/g, "_") || "outbound";
+                          downloadZplTextFile(zpl, `${safeName}-carrier-${tn}.zpl`);
+                        }
+                      }}
+                      className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                    >
+                      Purchase carrier label
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={async () => {
+                        const r = await runAction(
                           { action: "request_demo_carrier_label", outboundOrderId: o.id },
                           { reload: false },
                         );
@@ -4572,8 +4602,9 @@ export function WmsClient({
                         }
                       }}
                       className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                      title="Synthetic DEMO_PARCEL only; does not persist tracking."
                     >
-                      Demo carrier ZPL
+                      Demo label (no save)
                     </button>
                   </>
                 ) : null}
