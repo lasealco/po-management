@@ -4886,6 +4886,12 @@ model WmsDockAppointment {
   gateCheckedInAt   DateTime?
   atDockAt          DateTime?
   departedAt        DateTime?
+  /// BF-17 — opaque TMS / load identifier for future carrier sync (not yard routing).
+  tmsLoadId              String?   @db.VarChar(120)
+  /// BF-17 — carrier booking / PRO / BOL style external reference.
+  tmsCarrierBookingRef   String?   @db.VarChar(160)
+  /// BF-17 — last inbound webhook stub receipt (`POST /api/wms/tms-webhook`).
+  tmsLastWebhookAt       DateTime?
   createdById     String
   createdAt       DateTime                    @default(now())
   updatedAt       DateTime                    @updatedAt

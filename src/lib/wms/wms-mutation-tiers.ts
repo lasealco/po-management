@@ -46,6 +46,7 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   create_dock_appointment: "operations",
   cancel_dock_appointment: "operations",
   set_dock_appointment_transport: "operations",
+  set_dock_appointment_tms_refs: "operations",
   record_dock_appointment_yard_milestone: "operations",
 
   record_shipment_milestone: "operations",

@@ -92,7 +92,9 @@
 
 **Objective:** Externalize carrier/booking identifiers and webhook placeholders so dock milestones (BF-05) can sync to a future TMS without rewriting APIs.
 
-**Exit sketch:** Schema hooks + `POST` stub route or queue table; **`WMS_DOCK_APPOINTMENTS.md`** integration section; secrets documented as `.example` only.
+**Minimal slice shipped (repo):** `WmsDockAppointment` columns **`tmsLoadId`**, **`tmsCarrierBookingRef`**, **`tmsLastWebhookAt`**; **`set_dock_appointment_tms_refs`** (`POST /api/wms`, operations tier); **`POST /api/wms/tms-webhook`** Bearer stub (`TMS_WEBHOOK_SECRET`) updating refs / optional **`yardMilestone`** for `SCHEDULED` rows + **`CtAuditLog`** `tms_webhook_stub`; Operations UI columns + save controls; placeholder env file **`docs/wms/tms-webhook.env.example`**.
+
+**Exit sketch (remaining):** Signed payloads, idempotent carrier message IDs, outbound retry queue, multi-tenant webhook routing beyond `tenantSlug` body field.
 
 **Out of scope:** Production carrier certifications, rate shopping.
 

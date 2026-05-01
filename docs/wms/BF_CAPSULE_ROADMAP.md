@@ -1,6 +1,6 @@
 # Blueprint finish (`BF-xx`) — roadmap after BF-01
 
-**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-16`** minimal slices where noted), **next mega phases** (**`BF-17` … `BF-20`**), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) and [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md).
+**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-17`** minimal slices where noted), **next mega phases** (**`BF-18` … `BF-20`**), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) and [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md).
 
 **Authority:** Capsule IDs and themes match [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). **`GAP_MAP.md`** stays the repo ↔ blueprint truth.
 
@@ -16,7 +16,7 @@
 | **BF-02** | Lot / batch master (metadata) | **`WmsLotBatch`** + `set_wms_lot_batch`; unit-level serials → **BF-13** — [`WMS_LOT_BATCH_BF02.md`](./WMS_LOT_BATCH_BF02.md) |
 | **BF-03** | Allocation depth (FEFO) | **`FEFO_BY_LOT_EXPIRY`** on waves + tests — [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md); **BF-15** greedy + unit cap minimal; MILP/carton cube backlog |
 | **BF-04** | Zone parent hierarchy (DAG) | **`WarehouseZone.parentZoneId`** + `set_zone_parent` + Setup UI — [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md); **Aisles** / mm geometry still backlog — [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) |
-| **BF-05** | Dock yard ops slice | **`WmsDockAppointment`** carrier/trailer + **`record_dock_appointment_yard_milestone`** — [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md); full **TMS** still backlog — [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) |
+| **BF-05** | Dock yard ops slice | **`WmsDockAppointment`** carrier/trailer + **`record_dock_appointment_yard_milestone`** — [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md); **BF-17** TMS webhook stub — [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md); production **TMS** backlog |
 | **BF-06** | WMS scoped RBAC tiers | **`org.wms.setup` / `operations` / `inventory`** + `gateWmsPostMutation` — [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md); **BF-16** adds **`org.wms.inventory.lot`** — [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md) |
 | **BF-07** | Executive / blueprint KPIs | WE-09 + proxies/narratives + optional **`wh`** scope — [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md), [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md); OTIF **rates** / productivity / slotting solver backlog |
 | **BF-08** | Packing GS1/ZPL integration stub | Demo SSCC + ship-station **ZPL** download — [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md), [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md); scanner / carrier APIs backlog |
@@ -27,7 +27,7 @@
 | **BF-13** | Serial / unit genealogy | **`WmsInventorySerial`** / **`WmsInventorySerialMovement`**, register/balance/attach POST actions + **trace** query — [`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md); automation from handlers / full GS1 still backlog |
 | **BF-14** | CPQ quote lines → outbound | **`CrmQuoteLine.inventorySku`**, **`explode_crm_quote_to_outbound`**, CRM + Operations UI — [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md); full CPQ solver backlog |
 | **BF-15** | Wave allocation v2 (minimal) | **`GREEDY_MIN_BIN_TOUCHES`** + **`pickWaveCartonUnits`** + Setup UI — [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md); MILP / cube / labor-aware backlog |
-| **BF-16** | Inventory lot vs qty ACL (minimal) | **`org.wms.inventory.lot`** + `wms-inventory-field-acl` + Stock UI split — [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md); full blueprint matrix backlog |
+| **BF-17** | TMS dock stub (minimal) | **`tmsLoadId` / `tmsCarrierBookingRef`**, **`POST /api/wms/tms-webhook`**, `set_dock_appointment_tms_refs` — [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md); production TMS backlog |
 
 ---
 
@@ -35,7 +35,7 @@
 
 Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **Phase A → E**: inventory truth before execution engines; topology/yard before throwing integrations at cross-product epics.
 
-**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-16`** have **minimal slices shipped** in-repo; **`BF-17` … `BF-20`** remain mega-phase definitions until executed: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
+**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-17`** have **minimal slices shipped** in-repo; **`BF-18` … `BF-20`** remain mega-phase definitions until executed: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
 | Order | ID | Phase | Notes |
 |-------|-----|-------|------|
@@ -44,7 +44,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 3 | **BF-14** | E — Cross-product | ✅ **Minimal landed** — `inventorySku` + `explode_crm_quote_to_outbound`; see mega-phase doc |
 | 4 | **BF-15** | B — Execution | ✅ **Minimal landed** — `GREEDY_MIN_BIN_TOUCHES` + `pickWaveCartonUnits`; see mega-phase doc |
 | 5 | **BF-16** | D — Governance | ✅ **Minimal landed** — `org.wms.inventory.lot` + POST inventory split; see mega-phase doc |
-| 6 | **BF-17** | C — Topology / yard | TMS stub on dock path |
+| 6 | **BF-17** | C — Topology / yard | ✅ **Minimal landed** — TMS webhook stub + dock refs; see mega-phase doc |
 | 7 | **BF-18** | R3 — VAS depth | Multi-line BOM consumption |
 | 8 | **BF-19** | Enterprise map | CT map depth (rack **or** CRM geo) |
 | 9 | **BF-20** | D — Analytics | KPI **rates** beyond BF-07 |
@@ -53,7 +53,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 
 ---
 
-## Capsule cards (`BF-02` … `BF-16`)
+## Capsule cards (`BF-02` … `BF-17`)
 
 Use one row as the **scope box** before filing GitHub issues or agent prompts.
 
@@ -62,7 +62,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-02** | SKU / UOM / lot | [`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md), [`WMS_LOT_BATCH_BF02.md`](./WMS_LOT_BATCH_BF02.md) | Catalog overlap (`Product`); else WMS | **Partial** — `WmsLotBatch` + UI + **BF-13** serial slice |
 | **BF-03** | Allocation | [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md) | WMS-only core | **Partial** — **`FEFO_BY_LOT_EXPIRY`** + fungible/FIFO/MAX + **BF-15** greedy/cap; MILP backlog |
 | **BF-04** | Zone / aisle | [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md), [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md) | WMS | **Partial** — **`parentZoneId`** + `set_zone_parent` + UI; **Aisles** / geometry backlog |
-| **BF-05** | Appointments / TMS | [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md), [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md) | Integrations | **Partial** — WE-02 + BF-05 yard slice; **full TMS** backlog |
+| **BF-05** | Appointments / TMS | [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md), [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md) | Integrations | **Partial** — WE-02 + BF-05 yard slice + **BF-17** TMS stub refs/webhook; **full TMS** backlog |
 | **BF-06** | Permissions | [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md), [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md) | **Platform + auth** | **Partial** — BF-06 tier grants + action map; **BF-16** `inventory.lot` slice for `set_wms_lot_batch`; full matrix backlog |
 | **BF-07** | Dashboards | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md), [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md) | Product + WMS | **Partial** — WE-09 + BF-07 proxies & scope; analytics solver backlog |
 | **BF-08** | Packing | [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md), [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md) | Vendors / hardware | **Partial** — WE-06 pack/ship + BF-08 ZPL + demo SSCC; scanner/carrier backlog |
@@ -74,6 +74,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-14** | Quote → outbound lines | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) | **CRM + WMS** | **Partial** — SKU column + explosion POST + preview UI; CPQ solver backlog |
 | **BF-15** | Wave allocation v2 | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md) | WMS | **Partial** — greedy min-touch + optional unit cap; solver backlog |
 | **BF-16** | Lot vs qty inventory ACL | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md) | Platform + WMS | **Partial** — `org.wms.inventory.lot` + manifest; broader matrix backlog |
+| **BF-17** | TMS dock stub | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | Integrations + WMS | **Partial** — webhook Bearer stub + columns + POST action; carrier certify backlog |
 
 ---
 
@@ -89,4 +90,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-04-29 — **BF-16** minimal inventory ACL split (**`org.wms.inventory.lot`**, `wms-inventory-field-acl`, Stock qty vs lot UI); **BF-15** minimal wave v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal CPQ→outbound explosion (`inventorySku`, `explode_crm_quote_to_outbound`); **BF-13** minimal serial slice (`WmsInventorySerial`, POST actions, trace query, Stock UI); **BF-12** minimal Option B receiving (`WmsReceipt`, POST actions, inbound UI); **`BF-02`–`BF-16`** in Done snapshot (capsules remain partial where noted); **`BF-17`–`BF-20`** mega-phase program ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md)); **BF-11** warehouse pins on **`/control-tower/map`**._
+_Last updated: 2026-05-01 — **BF-17** minimal TMS dock stub (`POST /api/wms/tms-webhook`, `set_dock_appointment_tms_refs`, `tms*` columns); **BF-16** minimal inventory ACL split (**`org.wms.inventory.lot`**, `wms-inventory-field-acl`, Stock qty vs lot UI); **BF-15** minimal wave v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal CPQ→outbound explosion (`inventorySku`, `explode_crm_quote_to_outbound`); **BF-13** minimal serial slice (`WmsInventorySerial`, POST actions, trace query, Stock UI); **BF-12** minimal Option B receiving (`WmsReceipt`, POST actions, inbound UI); **`BF-02`–`BF-17`** in Done snapshot (capsules remain partial where noted); **`BF-18`–`BF-20`** mega-phase program ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md)); **BF-11** warehouse pins on **`/control-tower/map`**._

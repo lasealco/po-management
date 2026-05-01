@@ -15,6 +15,12 @@ export const DOCK_TRANSPORT_LIMITS = {
   trailerId: 80,
 } as const;
 
+/** BF-17 — TMS stub refs on `WmsDockAppointment`. */
+export const DOCK_TMS_LIMITS = {
+  tmsLoadId: 120,
+  tmsCarrierBookingRef: 160,
+} as const;
+
 /** Trim / truncate optional carrier / trailer text; empty → null. */
 export function truncateDockTransportField(raw: unknown, max: number): string | null {
   if (raw === undefined || raw === null) return null;

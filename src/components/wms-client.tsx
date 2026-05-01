@@ -259,6 +259,9 @@ type WmsData = {
     carrierName: string | null;
     carrierReference: string | null;
     trailerId: string | null;
+    tmsLoadId: string | null;
+    tmsCarrierBookingRef: string | null;
+    tmsLastWebhookAt: string | null;
     gateCheckedInAt: string | null;
     atDockAt: string | null;
     departedAt: string | null;
@@ -576,6 +579,9 @@ export function WmsClient({
   const [dockScheduleTrailerId, setDockScheduleTrailerId] = useState("");
   const [dockTransportDraft, setDockTransportDraft] = useState<
     Record<string, { carrierName: string; carrierReference: string; trailerId: string }>
+  >({});
+  const [dockTmsDraft, setDockTmsDraft] = useState<
+    Record<string, { tmsLoadId: string; tmsCarrierBookingRef: string }>
   >({});
   const [vasWoTitle, setVasWoTitle] = useState("");
   const [vasWoDesc, setVasWoDesc] = useState("");
@@ -2575,7 +2581,9 @@ export function WmsClient({
           <span className="font-medium">SCHEDULED</span> appointment overlaps the same dock.
           Optional <span className="font-medium">carrier / trailer</span> metadata and{" "}
           <span className="font-medium">yard milestones</span> (gate → dock → departed) cover BF-05 ops depth —
-          not TMS routing or carrier APIs.
+          not TMS routing or carrier APIs. <span className="font-medium">BF-17</span> adds optional TMS identifiers and a
+          Bearer-authenticated <span className="font-medium">POST /api/wms/tms-webhook</span> stub — see{" "}
+          <span className="font-medium">docs/wms/WMS_DOCK_APPOINTMENTS.md</span>.
         </p>
         <div className="mt-3 grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/90 p-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-xs font-medium text-zinc-600">
@@ -2709,6 +2717,9 @@ export function WmsClient({
                 <th className="px-2 py-1">Ref</th>
                 <th className="px-2 py-1">Carrier</th>
                 <th className="px-2 py-1">Yard</th>
+                <th className="px-2 py-1">TMS load</th>
+                <th className="px-2 py-1">TMS booking</th>
+                <th className="px-2 py-1">Webhook</th>
                 <th className="px-2 py-1">Status</th>
                 {canEdit ? <th className="px-2 py-1"> </th> : null}
               </tr>
@@ -2718,7 +2729,7 @@ export function WmsClient({
                 (a) => !selectedWarehouseId || a.warehouse.id === selectedWarehouseId,
               ).length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 9 : 8} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 12 : 11} className="px-2 py-3 text-zinc-500">
                     No dock appointments
                     {selectedWarehouseId ? " for this warehouse" : ""} yet.
                   </td>
@@ -2731,6 +2742,10 @@ export function WmsClient({
                       carrierName: "",
                       carrierReference: "",
                       trailerId: "",
+                    };
+                    const mdraft = dockTmsDraft[a.id] ?? {
+                      tmsLoadId: a.tmsLoadId ?? "",
+                      tmsCarrierBookingRef: a.tmsCarrierBookingRef ?? "",
                     };
                     const main = (
                       <tr key={a.id}>
@@ -2755,6 +2770,15 @@ export function WmsClient({
                         </td>
                         <td className="max-w-[11rem] truncate px-2 py-1 text-xs text-zinc-600">
                           {dockYardDisplayLine(a)}
+                        </td>
+                        <td className="max-w-[9rem] truncate px-2 py-1 font-mono text-[11px] text-zinc-600">
+                          {a.tmsLoadId ?? "—"}
+                        </td>
+                        <td className="max-w-[9rem] truncate px-2 py-1 text-[11px] text-zinc-600">
+                          {a.tmsCarrierBookingRef ?? "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-1 text-[11px] text-zinc-500">
+                          {a.tmsLastWebhookAt ? new Date(a.tmsLastWebhookAt).toLocaleString() : "—"}
                         </td>
                         <td className="px-2 py-1 text-zinc-600">{a.status}</td>
                         {canEdit && a.status === "SCHEDULED" ? (
@@ -2781,7 +2805,7 @@ export function WmsClient({
                     const yardControls =
                       canEdit && a.status === "SCHEDULED" ? (
                         <tr key={`${a.id}-yard`} className="bg-zinc-50/90">
-                          <td colSpan={9} className="px-3 py-2">
+                          <td colSpan={12} className="px-3 py-2">
                             <div className="flex flex-wrap items-end gap-3">
                               <label className="block min-w-[140px] text-[11px] font-medium text-zinc-600">
                                 Carrier name
@@ -2840,6 +2864,51 @@ export function WmsClient({
                                 className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-40"
                               >
                                 Save carrier
+                              </button>
+                              <label className="block min-w-[120px] text-[11px] font-medium text-zinc-600">
+                                TMS load id
+                                <input
+                                  value={mdraft.tmsLoadId}
+                                  onChange={(e) =>
+                                    setDockTmsDraft((prev) => ({
+                                      ...prev,
+                                      [a.id]: { ...mdraft, tmsLoadId: e.target.value },
+                                    }))
+                                  }
+                                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-[11px]"
+                                  disabled={busy}
+                                  placeholder="Opaque TMS / load id"
+                                />
+                              </label>
+                              <label className="block min-w-[140px] text-[11px] font-medium text-zinc-600">
+                                TMS booking ref
+                                <input
+                                  value={mdraft.tmsCarrierBookingRef}
+                                  onChange={(e) =>
+                                    setDockTmsDraft((prev) => ({
+                                      ...prev,
+                                      [a.id]: { ...mdraft, tmsCarrierBookingRef: e.target.value },
+                                    }))
+                                  }
+                                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-[11px]"
+                                  disabled={busy}
+                                  placeholder="PRO / BOL / booking"
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void runAction({
+                                    action: "set_dock_appointment_tms_refs",
+                                    dockAppointmentId: a.id,
+                                    tmsLoadId: mdraft.tmsLoadId.trim() || null,
+                                    tmsCarrierBookingRef: mdraft.tmsCarrierBookingRef.trim() || null,
+                                  })
+                                }
+                                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                              >
+                                Save TMS refs
                               </button>
                               <button
                                 type="button"

@@ -72,6 +72,9 @@ export type WmsBody = {
   carrierName?: string | null;
   carrierReference?: string | null;
   trailerId?: string | null;
+  /** BF-17 — `set_dock_appointment_tms_refs` */
+  tmsLoadId?: string | null;
+  tmsCarrierBookingRef?: string | null;
   /** BF-05 — `record_dock_appointment_yard_milestone`. */
   yardMilestone?: "GATE_IN" | "AT_DOCK" | "DEPARTED";
   /** ISO datetime for yard milestone (defaults to now). */

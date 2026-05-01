@@ -9,7 +9,13 @@ import {
   assertOutboundCrmAccountLinkable,
   assertOutboundSourceQuoteAttachable,
 } from "./crm-account-link";
-import { normalizeDockCode, parseDockYardMilestone, truncateDockTransportField, DOCK_TRANSPORT_LIMITS } from "./dock-appointment";
+import {
+  normalizeDockCode,
+  parseDockYardMilestone,
+  truncateDockTransportField,
+  DOCK_TRANSPORT_LIMITS,
+  DOCK_TMS_LIMITS,
+} from "./dock-appointment";
 import {
   orderPickSlotsForWave,
   orderPickSlotsMinBinTouches,
@@ -2079,6 +2085,62 @@ export async function handleWmsPost(
           entityType: "WMS_DOCK_APPOINTMENT",
           entityId: existingAppt.id,
           action: "dock_transport_updated",
+          payload: updatePayload,
+          actorUserId: actorId,
+        },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_dock_appointment_tms_refs") {
+    const dockAppointmentId = input.dockAppointmentId?.trim();
+    if (!dockAppointmentId) {
+      return toApiErrorResponseFromStatus("dockAppointmentId required.", 400);
+    }
+    const existingAppt = await prisma.wmsDockAppointment.findFirst({
+      where: { id: dockAppointmentId, tenantId },
+      select: { id: true, status: true, shipmentId: true },
+    });
+    if (!existingAppt) {
+      return toApiErrorResponseFromStatus("Appointment not found.", 404);
+    }
+    if (existingAppt.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus("Cancelled appointments cannot be edited.", 400);
+    }
+
+    const updatePayload: {
+      tmsLoadId?: string | null;
+      tmsCarrierBookingRef?: string | null;
+    } = {};
+    if ("tmsLoadId" in input) {
+      updatePayload.tmsLoadId = truncateDockTransportField(input.tmsLoadId, DOCK_TMS_LIMITS.tmsLoadId);
+    }
+    if ("tmsCarrierBookingRef" in input) {
+      updatePayload.tmsCarrierBookingRef = truncateDockTransportField(
+        input.tmsCarrierBookingRef,
+        DOCK_TMS_LIMITS.tmsCarrierBookingRef,
+      );
+    }
+    if (updatePayload.tmsLoadId === undefined && updatePayload.tmsCarrierBookingRef === undefined) {
+      return toApiErrorResponseFromStatus(
+        "Provide at least one of tmsLoadId, tmsCarrierBookingRef (null clears).",
+        400,
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsDockAppointment.update({
+        where: { id: existingAppt.id },
+        data: updatePayload,
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: existingAppt.shipmentId,
+          entityType: "WMS_DOCK_APPOINTMENT",
+          entityId: existingAppt.id,
+          action: "dock_tms_refs_updated",
           payload: updatePayload,
           actorUserId: actorId,
         },
