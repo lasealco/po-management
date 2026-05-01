@@ -23,7 +23,7 @@
 | **BF-16** | Per-field WMS ACL | Fine-grained mutations vs **BF-06** coarse tiers | BF-06 tier map stable |
 | **BF-17** | TMS / carrier stub | Carrier milestones → EDI/API hooks (not full TMS) | BF-05 dock transport |
 | **BF-18** | VAS multi-line BOM | Consumption engine beyond single-row **`VALUE_ADD`** | BF-09 intake |
-| **BF-19** | CT map depth | Rack floor or **CRM** geo layers on map (pick one primary per ship) | BF-11 warehouse pins |
+| **BF-19** | CT map depth | **CRM HQ pins minimal landed** (`CrmAccount` lat/lng + map layer); **rack floor** on CT map still deferred | BF-11 warehouse pins |
 | **BF-20** | KPI rates layer | OTIF **rates**, labor/slotting proxies beyond BF-07 narratives | BF-07 home KPIs |
 
 **Suggested dependency-aware sequence (not mandatory):** BF-12 → BF-13 → BF-14 (receiving truth → serials → commercial automation); BF-15 parallel to BF-14 when owners differ; BF-16 early if security gates block expansion; BF-17 after BF-05; BF-18 after BF-09; BF-19 after BF-11; BF-20 last or parallel once reporting consumers exist.
@@ -116,7 +116,9 @@
 
 **Objective:** Pick **one** primary: **(a)** approximate rack/bin pins OR **(b)** CRM account lat/long pins — implement read-only map overlays building on BF-11 infrastructure.
 
-**Exit sketch:** **`GET /api/control-tower/map-pins`** extension + toggles; limits documented (privacy, accuracy); **`WMS_CT_MAP_PHASE34_WE11.md`** updated.
+**Minimal slice shipped (repo):** **(b)** — **`CrmAccount.mapLatitude` / `mapLongitude`** (nullable decimals; PATCH on **`/api/crm/accounts/[id]`** sets/clears pair with range checks); **`buildCrmAccountMapPins`** + **`crmAccountPins`** / **`crmAccountsMissingGeo`** on **`GET /api/control-tower/map-pins`** with CRM owner scope + portal **`customerCrmAccountId`** restriction; **`/control-tower/map`** toggle (**◆** layer); CRM account workspace overview saves coords + link to map; demo seed sets sample coords on Demo Logistics Customer.
+
+**Exit sketch (remaining):** Rack/bin overlays on CT map; automatic geocode; richer CRM entity geo (contacts, SO pins).
 
 **Out of scope:** Indoor positioning mm accuracy, live forklift telemetry.
 
@@ -138,4 +140,4 @@
 
 ---
 
-_Last updated: 2026-05-01 — **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
+_Last updated: 2026-05-02 — **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._

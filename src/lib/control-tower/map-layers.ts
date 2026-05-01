@@ -47,3 +47,57 @@ export function buildWarehouseMapPins(rows: WarehouseForMapPin[]): WarehouseMapP
   });
   return out;
 }
+
+/** BF-19 — CRM account pins when tenant ops explicitly sets WGS84 on `CrmAccount` (optional privacy default). */
+export type CrmAccountMapPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  title: string;
+  subtitle: string;
+  href: string;
+};
+
+export type CrmAccountForMapPin = {
+  id: string;
+  name: string;
+  legalName: string | null;
+  mapLatitude: unknown;
+  mapLongitude: unknown;
+};
+
+function coordComponent(v: unknown): number | null {
+  if (v == null) return null;
+  const n =
+    typeof v === "object" &&
+    v !== null &&
+    "toNumber" in v &&
+    typeof (v as { toNumber?: unknown }).toNumber === "function"
+      ? (v as { toNumber: () => number }).toNumber()
+      : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function isValidLatLng(lat: number, lng: number): boolean {
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
+export function buildCrmAccountMapPins(rows: CrmAccountForMapPin[]): CrmAccountMapPin[] {
+  const out: CrmAccountMapPin[] = [];
+  rows.forEach((a, i) => {
+    const lat = coordComponent(a.mapLatitude);
+    const lng = coordComponent(a.mapLongitude);
+    if (lat == null || lng == null || !isValidLatLng(lat, lng)) return;
+    const j = jitterLatLng(lat, lng, i + 7000, a.id);
+    const title = a.legalName?.trim() ? `${a.name} (${a.legalName.trim()})` : a.name;
+    out.push({
+      id: a.id,
+      lat: j.lat,
+      lng: j.lng,
+      title,
+      subtitle: "CRM account HQ · approximate pin",
+      href: `/crm/accounts/${a.id}`,
+    });
+  });
+  return out;
+}

@@ -8,6 +8,7 @@ import {
   ACCOUNT_WORKSPACE_TABS,
   parseAccountWorkspaceTab,
   validateAccountSummaryInput,
+  validateAccountMapGeoPair,
   validateContactCreateInput,
   validateQuoteDraftInput,
   type AccountWorkspaceTabId,
@@ -25,6 +26,8 @@ type AccountDetail = {
   segment: string | null;
   strategicFlag: boolean;
   ownerUserId: string;
+  mapLatitude: string | null;
+  mapLongitude: string | null;
 };
 
 type ContactRow = {
@@ -157,6 +160,8 @@ export function CrmAccountWorkspace({
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("");
   const [strategic, setStrategic] = useState(false);
+  const [mapLat, setMapLat] = useState("");
+  const [mapLng, setMapLng] = useState("");
 
   const [cFirst, setCFirst] = useState("");
   const [cLast, setCLast] = useState("");
@@ -183,6 +188,8 @@ export function CrmAccountWorkspace({
       setName(body.account.name);
       setIndustry(body.account.industry ?? "");
       setStrategic(body.account.strategicFlag);
+      setMapLat(body.account.mapLatitude?.trim() ?? "");
+      setMapLng(body.account.mapLongitude?.trim() ?? "");
       setContacts(body.contacts ?? []);
       setOpportunities(body.opportunities ?? []);
       setActivities(body.activities ?? []);
@@ -206,6 +213,11 @@ export function CrmAccountWorkspace({
       setActionError(validation.error);
       return;
     }
+    const geo = validateAccountMapGeoPair(mapLat, mapLng);
+    if (!geo.ok) {
+      setActionError(geo.error);
+      return;
+    }
     setBusy(true);
     setActionError(null);
     try {
@@ -216,6 +228,8 @@ export function CrmAccountWorkspace({
           name: name.trim(),
           industry: industry.trim() || null,
           strategicFlag: strategic,
+          mapLatitude: geo.lat,
+          mapLongitude: geo.lng,
         }),
       });
       const data: unknown = await res.json();
@@ -499,6 +513,44 @@ export function CrmAccountWorkspace({
                   />
                   <span className="text-zinc-700">Strategic account</span>
                 </label>
+                <div className="sm:col-span-2 rounded-lg border border-zinc-100 bg-zinc-50/80 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Control Tower map (BF-19)
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    Optional WGS84 coordinates — shown as read-only CRM pins on{" "}
+                    <Link href="/control-tower/map" className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline">
+                      /control-tower/map
+                    </Link>{" "}
+                    when you have org.crm view. Leave blank for privacy (no pin).
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <label className="text-sm">
+                      <span className="text-zinc-600">Latitude (°)</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={mapLat}
+                        onChange={(e) => setMapLat(e.target.value)}
+                        placeholder="e.g. 51.9244"
+                        className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 font-mono text-sm tabular-nums"
+                        disabled={busy}
+                      />
+                    </label>
+                    <label className="text-sm">
+                      <span className="text-zinc-600">Longitude (°)</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={mapLng}
+                        onChange={(e) => setMapLng(e.target.value)}
+                        placeholder="e.g. 4.4777"
+                        className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 font-mono text-sm tabular-nums"
+                        disabled={busy}
+                      />
+                    </label>
+                  </div>
+                </div>
                 <div className="sm:col-span-2">
                   <button type="submit" disabled={busy || !canSaveAccountDraft} className={primaryBtn}>
                     Save changes

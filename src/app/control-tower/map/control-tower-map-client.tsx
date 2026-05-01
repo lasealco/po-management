@@ -27,17 +27,29 @@ type WarehousePin = {
   href: string;
 };
 
+type CrmAccountPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  title: string;
+  subtitle: string;
+  href: string;
+};
+
 type MapPinsPayload = {
   pins: ShipmentPin[];
   unmappedCount: number;
   warehousePins: WarehousePin[];
   warehouseSiteUnmapped: number;
+  crmAccountPins: CrmAccountPin[];
+  crmAccountsMissingGeo: number;
   listLimit: number;
   itemCount: number;
   truncated: boolean;
 };
 
 const WAREHOUSE_MARKER_HEX = "#475569";
+const CRM_MARKER_HEX = "#7c3aed";
 
 function escapeHtml(s: string) {
   return s
@@ -50,9 +62,11 @@ function escapeHtml(s: string) {
 function ControlTowerMapLeaflet({
   shipmentPins,
   warehousePins,
+  crmPins,
 }: {
   shipmentPins: ShipmentPin[];
   warehousePins: WarehousePin[];
+  crmPins: CrmAccountPin[];
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
@@ -61,12 +75,13 @@ function ControlTowerMapLeaflet({
       JSON.stringify({
         s: shipmentPins.map((p) => [p.id, p.lat, p.lng]),
         w: warehousePins.map((p) => [p.id, p.lat, p.lng]),
+        c: crmPins.map((p) => [p.id, p.lat, p.lng]),
       }),
-    [shipmentPins, warehousePins],
+    [shipmentPins, warehousePins, crmPins],
   );
 
   useEffect(() => {
-    const total = shipmentPins.length + warehousePins.length;
+    const total = shipmentPins.length + warehousePins.length + crmPins.length;
     if (!hostRef.current || total === 0) return;
 
     let cancelled = false;
@@ -134,6 +149,25 @@ function ControlTowerMapLeaflet({
         marker.bindPopup(popupHtml);
       }
 
+      for (const pin of crmPins) {
+        const html = `<span class="po-ctmap-crm" style="display:block;width:12px;height:12px;background:${CRM_MARKER_HEX};transform:rotate(45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></span>`;
+        const icon = L.divIcon({
+          className: "po-ctmap-marker !bg-transparent !border-0",
+          html,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9],
+        });
+        const marker = L.marker([pin.lat, pin.lng], { icon }).addTo(m);
+        const popupHtml = `
+          <div class="text-zinc-900" style="min-width:200px;font:14px/1.4 system-ui,sans-serif">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#64748b;text-transform:uppercase;margin-bottom:4px">CRM account</div>
+            <div style="font-weight:600;margin-bottom:4px">${escapeHtml(pin.title)}</div>
+            <div style="font-size:12px;color:#52525b;margin-bottom:8px">${escapeHtml(pin.subtitle)}</div>
+            <a href="${escapeHtml(pin.href)}" style="display:inline-block;font-size:13px;font-weight:600;color:${ARSCMP_PRIMARY_HEX}">Open account</a>
+          </div>`;
+        marker.bindPopup(popupHtml);
+      }
+
       if (cancelled) {
         m.remove();
         if (mapRef.current === m) mapRef.current = null;
@@ -143,6 +177,7 @@ function ControlTowerMapLeaflet({
       const allPts: [number, number][] = [
         ...shipmentPins.map((p) => [p.lat, p.lng] as [number, number]),
         ...warehousePins.map((p) => [p.lat, p.lng] as [number, number]),
+        ...crmPins.map((p) => [p.lat, p.lng] as [number, number]),
       ];
       if (allPts.length === 1) {
         m.setView(allPts[0], 4);
@@ -157,9 +192,9 @@ function ControlTowerMapLeaflet({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [shipmentPins, warehousePins, pinsKey]);
+  }, [shipmentPins, warehousePins, crmPins, pinsKey]);
 
-  if (shipmentPins.length === 0 && warehousePins.length === 0) {
+  if (shipmentPins.length === 0 && warehousePins.length === 0 && crmPins.length === 0) {
     return null;
   }
 
@@ -174,6 +209,7 @@ export function ControlTowerMapClient() {
   const [loading, setLoading] = useState(true);
   const [showShipments, setShowShipments] = useState(true);
   const [showWarehouses, setShowWarehouses] = useState(true);
+  const [showCrmAccounts, setShowCrmAccounts] = useState(true);
 
   const workbenchHref = qs ? `/control-tower/workbench?${qs}` : "/control-tower/workbench";
 
@@ -196,6 +232,8 @@ export function ControlTowerMapClient() {
           unmappedCount: j.unmappedCount ?? 0,
           warehousePins: j.warehousePins ?? [],
           warehouseSiteUnmapped: j.warehouseSiteUnmapped ?? 0,
+          crmAccountPins: j.crmAccountPins ?? [],
+          crmAccountsMissingGeo: j.crmAccountsMissingGeo ?? 0,
           listLimit: j.listLimit ?? 80,
           itemCount: j.itemCount ?? 0,
           truncated: j.truncated ?? false,
@@ -217,9 +255,14 @@ export function ControlTowerMapClient() {
 
   const visibleShipments = data && showShipments ? data.pins : [];
   const visibleWarehouses = data && showWarehouses ? data.warehousePins : [];
+  const visibleCrm = data && showCrmAccounts ? data.crmAccountPins : [];
   const hasLayerOptions =
-    Boolean(data) && ((data?.pins.length ?? 0) > 0 || (data?.warehousePins.length ?? 0) > 0);
-  const anyVisible = visibleShipments.length > 0 || visibleWarehouses.length > 0;
+    Boolean(data) &&
+    ((data?.pins.length ?? 0) > 0 ||
+      (data?.warehousePins.length ?? 0) > 0 ||
+      (data?.crmAccountPins.length ?? 0) > 0);
+  const anyVisible =
+    visibleShipments.length > 0 || visibleWarehouses.length > 0 || visibleCrm.length > 0;
 
   return (
     <div className="space-y-4">
@@ -267,8 +310,30 @@ export function ControlTowerMapClient() {
                 ) : null}
               </>
             ) : null}
-            . Shipment pins follow workbench filters; warehouse pins require <strong className="text-zinc-800">org.wms → view</strong>{" "}
-            (BF-11 layer).
+            {data.crmAccountPins.length > 0 ? (
+              <>
+                {" · "}
+                <strong className="text-zinc-800">{data.crmAccountPins.length}</strong> CRM account
+                {data.crmAccountPins.length === 1 ? "" : "s"} with map coordinates
+                {data.crmAccountsMissingGeo > 0 ? (
+                  <>
+                    {" "}
+                    ({data.crmAccountsMissingGeo} account{data.crmAccountsMissingGeo === 1 ? "" : "s"} in CRM scope
+                    without coordinates)
+                  </>
+                ) : null}
+              </>
+            ) : data.crmAccountsMissingGeo > 0 ? (
+              <>
+                {" · "}
+                <strong className="text-zinc-800">0</strong> CRM pins (
+                {data.crmAccountsMissingGeo} account{data.crmAccountsMissingGeo === 1 ? "" : "s"} in scope without
+                coordinates)
+              </>
+            ) : null}
+            . Shipment pins follow workbench filters; warehouse pins require{" "}
+            <strong className="text-zinc-800">org.wms → view</strong> (BF-11). CRM pins require{" "}
+            <strong className="text-zinc-800">org.crm → view</strong> and explicit lat/lng on the account (BF-19).
           </p>
 
           {hasLayerOptions ? (
@@ -301,20 +366,37 @@ export function ControlTowerMapClient() {
                     </span>
                   </label>
                 ) : null}
+                {data.crmAccountPins.length > 0 ? (
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={showCrmAccounts}
+                      onChange={(e) => setShowCrmAccounts(e.target.checked)}
+                      className="rounded border-zinc-300"
+                    />
+                    <span>
+                      CRM accounts <span className="text-zinc-500">(◆ HQ coords)</span>
+                    </span>
+                  </label>
+                ) : null}
               </div>
             </fieldset>
           ) : null}
 
           {anyVisible ? (
-            <ControlTowerMapLeaflet shipmentPins={visibleShipments} warehousePins={visibleWarehouses} />
+            <ControlTowerMapLeaflet
+              shipmentPins={visibleShipments}
+              warehousePins={visibleWarehouses}
+              crmPins={visibleCrm}
+            />
           ) : (
             <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-sm text-zinc-600">
               {hasLayerOptions ? (
                 <>All layers are hidden — enable at least one layer above.</>
               ) : (
                 <>
-                  No pins to show. Try fewer filters on shipments, or ensure warehouses have city/country (or a
-                  name matching demo geo hints) so WMS sites can be placed.
+                  No pins to show. Try fewer filters on shipments, add CRM lat/lng on account profiles (BF-19), or
+                  ensure warehouses have city/country (or a name matching demo geo hints) so WMS sites can be placed.
                 </>
               )}
             </div>

@@ -1,6 +1,6 @@
 # Blueprint finish (`BF-xx`) — roadmap after BF-01
 
-**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-18`** minimal slices where noted), **next mega phases** (**`BF-19` … `BF-20`**), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) and [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md).
+**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-19`** minimal slices where noted), **next mega phase** (**`BF-20`**), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) and [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md).
 
 **Authority:** Capsule IDs and themes match [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). **`GAP_MAP.md`** stays the repo ↔ blueprint truth.
 
@@ -22,13 +22,14 @@
 | **BF-08** | Packing GS1/ZPL integration stub | Demo SSCC + ship-station **ZPL** download — [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md), [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md); scanner / carrier APIs backlog |
 | **BF-09** | VAS portal intake & estimates | **`/wms/vas-intake`**, CRM link + **`CUSTOMER_PORTAL`** WO + commercial cents/min ([`WMS_VAS_BF09.md`](./WMS_VAS_BF09.md)); **BF-18** multi-line BOM snapshot + consume ([`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md)); SSO portal backlog |
 | **BF-10** | CRM quote → outbound lineage | **`OutboundOrder.sourceCrmQuoteId`**, CRM handoff link + WMS picker ([`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md)); **BF-14** SKU explosion |
-| **BF-11** | CT map WMS warehouse sites | Optional **■ warehouse pins** on **`/control-tower/map`** when **`org.wms` → view ([`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md)); rack floor / CRM pins on globe still backlog |
+| **BF-11** | CT map WMS warehouse sites | Optional **■ warehouse pins** on **`/control-tower/map`** when **`org.wms` → view ([`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md)); **BF-19** adds CRM HQ ◆ pins when **`org.crm` → view`; rack floor CAD on map still backlog |
 | **BF-12** | Receiving Option B (dock receipt session) | **`WmsReceipt`** / **`WmsReceiptLine`**, `create_wms_receipt` / `close_wms_receipt` / `set_wms_receipt_line` + inbound UI — [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md); receipt accounting beyond audit / CLOSED row history still backlog |
 | **BF-13** | Serial / unit genealogy | **`WmsInventorySerial`** / **`WmsInventorySerialMovement`**, register/balance/attach POST actions + **trace** query — [`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md); automation from handlers / full GS1 still backlog |
 | **BF-14** | CPQ quote lines → outbound | **`CrmQuoteLine.inventorySku`**, **`explode_crm_quote_to_outbound`**, CRM + Operations UI — [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md); full CPQ solver backlog |
 | **BF-15** | Wave allocation v2 (minimal) | **`GREEDY_MIN_BIN_TOUCHES`** + **`pickWaveCartonUnits`** + Setup UI — [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md); MILP / cube / labor-aware backlog |
 | **BF-17** | TMS dock stub (minimal) | **`tmsLoadId` / `tmsCarrierBookingRef`**, **`POST /api/wms/tms-webhook`**, `set_dock_appointment_tms_refs` — [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md); production TMS backlog |
 | **BF-18** | VAS multi-line BOM (minimal) | **`WmsWorkOrderBomLine`**, **`replace_work_order_bom_lines`**, **`consume_work_order_bom_line`** — [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md); automated BOM/MRP backlog |
+| **BF-19** | CT map CRM HQ pins (minimal) | **`CrmAccount.mapLatitude` / `mapLongitude`**, **`crmAccountPins`** on **`GET /api/control-tower/map-pins`**, CRM account workspace save — [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md); geocode / rack-floor map backlog |
 
 ---
 
@@ -36,7 +37,7 @@
 
 Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **Phase A → E**: inventory truth before execution engines; topology/yard before throwing integrations at cross-product epics.
 
-**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-18`** have **minimal slices shipped** in-repo; **`BF-19` … `BF-20`** remain mega-phase definitions until executed: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
+**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-19`** have **minimal slices shipped** in-repo; **`BF-20`** remains mega-phase definition until executed: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
 | Order | ID | Phase | Notes |
 |-------|-----|-------|------|
@@ -47,14 +48,14 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 5 | **BF-16** | D — Governance | ✅ **Minimal landed** — `org.wms.inventory.lot` + POST inventory split; see mega-phase doc |
 | 6 | **BF-17** | C — Topology / yard | ✅ **Minimal landed** — TMS webhook stub + dock refs; see mega-phase doc |
 | 7 | **BF-18** | R3 — VAS depth | ✅ **Minimal landed** — `WmsWorkOrderBomLine` + consume/replace POST + Operations UI + **`db:seed:wms-vas-bom-demo`** |
-| 8 | **BF-19** | Enterprise map | CT map depth (rack **or** CRM geo) |
+| 8 | **BF-19** | Enterprise map | ✅ **Minimal landed** — CRM **`mapLatitude`/`mapLongitude`** + **`crmAccountPins`** + map toggles (`buildCrmAccountMapPins`); demo seed sets Demo Logistics coords |
 | 9 | **BF-20** | D — Analytics | KPI **rates** beyond BF-07 |
 
 **Parallelization:** historical note — **BF-04** / **BF-05** / commercial (**BF-10**) often ran in parallel when teams differed.
 
 ---
 
-## Capsule cards (`BF-02` … `BF-18`)
+## Capsule cards (`BF-02` … `BF-19`)
 
 Use one row as the **scope box** before filing GitHub issues or agent prompts.
 
@@ -69,7 +70,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-08** | Packing | [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md), [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md) | Vendors / hardware | **Partial** — WE-06 pack/ship + BF-08 ZPL + demo SSCC; scanner/carrier backlog |
 | **BF-09** | VAS | [`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md), [`WMS_VAS_BF09.md`](./WMS_VAS_BF09.md) | Portal + commercial assumptions | **Partial** — WE-04 + BF-09 intake + **BF-18** BOM lines; SSO/automated BOM backlog |
 | **BF-10** | Commercial | [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) | **CRM + commercial** | Partial — bill-to + **`sourceCrmQuoteId`** lineage + **BF-14** SKU explosion |
-| **BF-11** | Enterprise CT map | [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) | **CT + WMS** | Partial — WE-11 cross-links + **BF-11** warehouse **site** pins; rack floor / CRM on-map ❌ |
+| **BF-11** | Enterprise CT map | [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) | **CT + WMS + CRM** | **Partial** — WE-11 links + **BF-11** warehouse pins + **BF-19** CRM HQ coords; indoor rack CAD on map ❌ |
 | **BF-12** | Receiving Option B | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) | WMS | **Partial** — `WmsReceipt` session + line posts; receipt accounting depth backlog |
 | **BF-13** | Serial / genealogy | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md) | WMS | **Partial** — registry + trace + Stock UI; handler automation backlog |
 | **BF-14** | Quote → outbound lines | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) | **CRM + WMS** | **Partial** — SKU column + explosion POST + preview UI; CPQ solver backlog |
@@ -77,6 +78,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-16** | Lot vs qty inventory ACL | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md) | Platform + WMS | **Partial** — `org.wms.inventory.lot` + manifest; broader matrix backlog |
 | **BF-17** | TMS dock stub | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | Integrations + WMS | **Partial** — webhook Bearer stub + columns + POST action; carrier certify backlog |
 | **BF-18** | VAS BOM lines | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md) | WMS | **Partial** — snapshot + consumption postings + UI; MRP/engineering-change backlog |
+| **BF-19** | CT CRM map pins | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) | CT + CRM | **Partial** — explicit account lat/lng + map layer; automatic geocode backlog |
 
 ---
 
@@ -92,4 +94,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-05-01 — **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, POST replace/consume, Operations UI, **`db:seed:wms-vas-bom-demo`**); **BF-17** minimal TMS dock stub (`POST /api/wms/tms-webhook`, `set_dock_appointment_tms_refs`, `tms*` columns); **BF-16** minimal inventory ACL split (**`org.wms.inventory.lot`**, `wms-inventory-field-acl`, Stock qty vs lot UI); **BF-15** minimal wave v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal CPQ→outbound explosion (`inventorySku`, `explode_crm_quote_to_outbound`); **BF-13** minimal serial slice (`WmsInventorySerial`, POST actions, trace query, Stock UI); **BF-12** minimal Option B receiving (`WmsReceipt`, POST actions, inbound UI); **`BF-02`–`BF-18`** in Done snapshot (capsules remain partial where noted); **`BF-19`–`BF-20`** mega-phase program ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md)); **BF-11** warehouse pins on **`/control-tower/map`**._
+_Last updated: 2026-05-02 — **BF-19** minimal CRM HQ pins on CT map (`CrmAccount.mapLatitude`/`mapLongitude`, `crmAccountPins`, CRM workspace + demo seed); **BF-18** minimal VAS multi-line BOM; **BF-17** TMS dock stub; **BF-16** inventory ACL split; **BF-15** wave v2; **BF-14** CPQ→outbound explosion; **BF-13** serial slice; **BF-12** Option B receiving; **`BF-02`–`BF-19`** in Done snapshot (capsules remain partial where noted); **`BF-20`** mega-phase ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md)); **BF-11** warehouse pins + **BF-19** CRM pins on **`/control-tower/map`**._

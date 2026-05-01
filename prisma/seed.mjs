@@ -457,6 +457,8 @@ async function seed() {
         name: "Demo Logistics Customer",
         accountType: "CUSTOMER",
         lifecycle: "ACTIVE",
+        mapLatitude: new Prisma.Decimal("51.9244204"),
+        mapLongitude: new Prisma.Decimal("4.4777325"),
       },
       select: { id: true },
     });
@@ -467,6 +469,8 @@ async function seed() {
         lifecycle: "ACTIVE",
         accountType: "CUSTOMER",
         ownerUserId: buyer.id,
+        mapLatitude: new Prisma.Decimal("51.9244204"),
+        mapLongitude: new Prisma.Decimal("4.4777325"),
       },
     });
   }

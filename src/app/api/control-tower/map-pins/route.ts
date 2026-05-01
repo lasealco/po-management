@@ -1,8 +1,10 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
-import { buildWarehouseMapPins } from "@/lib/control-tower/map-layers";
+import { crmAccountInScope, getCrmAccessScope } from "@/lib/crm-scope";
+import { buildCrmAccountMapPins, buildWarehouseMapPins } from "@/lib/control-tower/map-layers";
 import { buildControlTowerMapPins } from "@/lib/control-tower/map-pins";
 import { listControlTowerShipments } from "@/lib/control-tower/list-shipments";
 import { parseControlTowerShipmentsListQuery } from "@/lib/control-tower/shipments-list-query-from-search-params";
@@ -16,6 +18,7 @@ export const dynamic = "force-dynamic";
  * `searchParams` match `GET /api/control-tower/shipments` (workbench / map share semantics).
  * Shipment pins use booking + leg **origin/destination** codes against `product-trace-geo` (demo LOCODES).
  * **BF-11:** with **`org.wms` → view**, active **`Warehouse`** rows append **site** pins (city/country/name heuristic — not rack geometry).
+ * **BF-19:** with **`org.crm` → view**, **`CrmAccount`** rows with **`mapLatitude`/`mapLongitude`** append **CRM HQ** pins (explicit coords only — privacy default is omit).
  */
 export async function GET(request: Request) {
   const gate = await requireApiGrant("org.controltower", "view");
@@ -64,6 +67,53 @@ export async function GET(request: Request) {
     warehouseSiteUnmapped = Math.max(0, warehouses.length - warehousePins.length);
   }
 
+  let crmAccountPins: ReturnType<typeof buildCrmAccountMapPins> = [];
+  let crmAccountsMissingGeo = 0;
+  const canMapCrmGeo = await userHasGlobalGrant(actorId, "org.crm", "view");
+  if (canMapCrmGeo) {
+    const crmScope = await getCrmAccessScope(tenant.id, actorId);
+    const scopedWhere: Prisma.CrmAccountWhereInput = {
+      ...crmAccountInScope(tenant.id, crmScope),
+    };
+    if (ctx.customerCrmAccountId) {
+      scopedWhere.id = ctx.customerCrmAccountId;
+    }
+
+    const [geoRows, totalScoped, withGeoCount] = await Promise.all([
+      prisma.crmAccount.findMany({
+        where: {
+          AND: [
+            scopedWhere,
+            { mapLatitude: { not: null } },
+            { mapLongitude: { not: null } },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          legalName: true,
+          mapLatitude: true,
+          mapLongitude: true,
+        },
+        orderBy: { name: "asc" },
+        take: 200,
+      }),
+      prisma.crmAccount.count({ where: scopedWhere }),
+      prisma.crmAccount.count({
+        where: {
+          AND: [
+            scopedWhere,
+            { mapLatitude: { not: null } },
+            { mapLongitude: { not: null } },
+          ],
+        },
+      }),
+    ]);
+
+    crmAccountPins = buildCrmAccountMapPins(geoRows);
+    crmAccountsMissingGeo = Math.max(0, totalScoped - withGeoCount);
+  }
+
   return NextResponse.json({
     q: parsed.qEcho,
     productTrace: parsed.productTrace ?? null,
@@ -71,6 +121,8 @@ export async function GET(request: Request) {
     unmappedCount,
     warehousePins,
     warehouseSiteUnmapped,
+    crmAccountPins,
+    crmAccountsMissingGeo,
     listLimit: listResult.listLimit,
     itemCount: listResult.rows.length,
     truncated: listResult.truncated,

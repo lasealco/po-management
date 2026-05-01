@@ -5246,6 +5246,11 @@ model CrmAccount {
   segment       String?
   strategicFlag Boolean             @default(false)
 
+  /// BF-19 — optional WGS84 latitude for Control Tower map overlay (°); must pair with `mapLongitude`; null = no pin.
+  mapLatitude  Decimal? @db.Decimal(10, 7)
+  /// BF-19 — optional WGS84 longitude for Control Tower map overlay (°); must pair with `mapLatitude`; null = no pin.
+  mapLongitude Decimal? @db.Decimal(10, 7)
+
   parentAccountId String?
 
   createdAt DateTime @default(now())

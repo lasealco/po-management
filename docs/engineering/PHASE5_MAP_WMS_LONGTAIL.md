@@ -16,7 +16,7 @@
 | **Cross-surface entry** | Shipped: dual-grant WMS ↔ map links (see [CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md](CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md)). | — |
 | **WMS floor / rack** | Not in MVP; WMS GAP rows 🟡. | New issue: data for bin geometry, tile scope, `org.wms` read model. |
 | **Globe / “world” view** | Deferred in map brief. | New issue: product bet vs Leaflet; perf + UX. |
-| **CRM / SO map pins** | Not in MVP; needs `org.crm` + entity geo strategy. | New issue: with CRM; not Control Tower–only. |
+| **CRM / SO map pins** | **BF-19:** account HQ lat/lng + **`crmAccountPins`** when `org.crm` → view; SO-level / auto-geocode still backlog. | Extend CRM geo model before SO pins. |
 
 **Authoritative brief:** [CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md](CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) § “Next (3.4)”.
 

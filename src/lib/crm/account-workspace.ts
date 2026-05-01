@@ -75,3 +75,31 @@ export function validateQuoteDraftInput(input: {
   }
   return { ok: true };
 }
+
+/** BF-19 — optional WGS84 pair for Control Tower map pins; both blank clears stored coordinates. */
+export function validateAccountMapGeoPair(latStr: string, lngStr: string):
+  | { ok: true; lat: null; lng: null }
+  | { ok: true; lat: number; lng: number }
+  | { ok: false; error: string } {
+  const lt = latStr.trim();
+  const lg = lngStr.trim();
+  if (!lt && !lg) return { ok: true, lat: null, lng: null };
+  if (!lt || !lg) {
+    return {
+      ok: false,
+      error: "Enter both latitude and longitude (WGS84), or leave both blank to remove the map pin.",
+    };
+  }
+  const lat = Number(lt);
+  const lng = Number(lg);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { ok: false, error: "Latitude and longitude must be valid numbers." };
+  }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return {
+      ok: false,
+      error: "Latitude must be between −90 and 90; longitude between −180 and 180.",
+    };
+  }
+  return { ok: true, lat, lng };
+}

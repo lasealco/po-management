@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseAccountWorkspaceTab,
+  validateAccountMapGeoPair,
   validateAccountSummaryInput,
   validateContactCreateInput,
   validateQuoteDraftInput,
@@ -105,5 +106,22 @@ describe("validateQuoteDraftInput", () => {
     expect(validateQuoteDraftInput({ title: "Chicago lane proposal Q3" })).toEqual({
       ok: true,
     });
+  });
+});
+
+describe("validateAccountMapGeoPair", () => {
+  it("allows clearing both fields", () => {
+    expect(validateAccountMapGeoPair("", "  ")).toEqual({ ok: true, lat: null, lng: null });
+  });
+
+  it("requires both coordinates together", () => {
+    expect(validateAccountMapGeoPair("1", "").ok).toBe(false);
+    expect(validateAccountMapGeoPair("", "2").ok).toBe(false);
+  });
+
+  it("validates WGS84 bounds", () => {
+    expect(validateAccountMapGeoPair("91", "0").ok).toBe(false);
+    expect(validateAccountMapGeoPair("10", "200").ok).toBe(false);
+    expect(validateAccountMapGeoPair("51.9", "4.47")).toEqual({ ok: true, lat: 51.9, lng: 4.47 });
   });
 });

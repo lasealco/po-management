@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
@@ -37,10 +38,16 @@ export async function GET(
   }
 
   const { id } = await context.params;
-  const account = await loadAccountForActor(tenant.id, id, actorId);
-  if (!account) {
+  const accountRow = await loadAccountForActor(tenant.id, id, actorId);
+  if (!accountRow) {
     return toApiErrorResponse({ error: "Account not found.", code: "NOT_FOUND", status: 404 });
   }
+
+  const account = {
+    ...accountRow,
+    mapLatitude: accountRow.mapLatitude != null ? accountRow.mapLatitude.toString() : null,
+    mapLongitude: accountRow.mapLongitude != null ? accountRow.mapLongitude.toString() : null,
+  };
 
   const [contacts, opportunities, activities, quotes] = await Promise.all([
     prisma.crmContact.findMany({
@@ -115,6 +122,9 @@ type PatchBody = {
   strategicFlag?: boolean;
   lifecycle?: "ACTIVE" | "INACTIVE";
   accountType?: "CUSTOMER" | "PROSPECT" | "PARTNER" | "AGENT" | "OTHER";
+  /** BF-19 — WGS84 °; omit fields to leave unchanged; both `null` clears map pin. */
+  mapLatitude?: number | null;
+  mapLongitude?: number | null;
 };
 
 export async function PATCH(
@@ -158,11 +168,46 @@ export async function PATCH(
   if (body.lifecycle !== undefined) data.lifecycle = body.lifecycle;
   if (body.accountType !== undefined) data.accountType = body.accountType;
 
+  const hasGeoLat = body.mapLatitude !== undefined;
+  const hasGeoLng = body.mapLongitude !== undefined;
+  if (hasGeoLat !== hasGeoLng) {
+    return toApiErrorResponse({
+      error: "mapLatitude and mapLongitude must be updated together (or both omitted).",
+      code: "BAD_INPUT",
+      status: 400,
+    });
+  }
+  if (hasGeoLat && hasGeoLng) {
+    if (body.mapLatitude === null && body.mapLongitude === null) {
+      data.mapLatitude = null;
+      data.mapLongitude = null;
+    } else {
+      const lat = typeof body.mapLatitude === "number" ? body.mapLatitude : Number(body.mapLatitude);
+      const lng = typeof body.mapLongitude === "number" ? body.mapLongitude : Number(body.mapLongitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return toApiErrorResponse({
+          error: "mapLatitude and mapLongitude must be finite numbers (or both null to clear).",
+          code: "BAD_INPUT",
+          status: 400,
+        });
+      }
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        return toApiErrorResponse({
+          error: "Coordinates out of range (lat −90…90, lng −180…180).",
+          code: "BAD_INPUT",
+          status: 400,
+        });
+      }
+      data.mapLatitude = new Prisma.Decimal(String(lat));
+      data.mapLongitude = new Prisma.Decimal(String(lng));
+    }
+  }
+
   if (Object.keys(data).length === 0) {
     return toApiErrorResponse({ error: "No fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
-  const account = await prisma.crmAccount.update({
+  const accountRow = await prisma.crmAccount.update({
     where: { id },
     data: data as never,
     select: {
@@ -176,9 +221,17 @@ export async function PATCH(
       segment: true,
       strategicFlag: true,
       ownerUserId: true,
+      mapLatitude: true,
+      mapLongitude: true,
       updatedAt: true,
     },
   });
+
+  const account = {
+    ...accountRow,
+    mapLatitude: accountRow.mapLatitude != null ? accountRow.mapLatitude.toString() : null,
+    mapLongitude: accountRow.mapLongitude != null ? accountRow.mapLongitude.toString() : null,
+  };
 
   return NextResponse.json({ account });
 }
