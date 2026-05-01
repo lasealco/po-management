@@ -65,6 +65,7 @@ model Tenant {
   warehouseAisles                             WarehouseAisle[]
   warehouseBins                               WarehouseBin[]
   inventoryBalances                           InventoryBalance[]
+  wmsInventorySoftReservations                WmsInventorySoftReservation[]
   inventoryMovements                          InventoryMovement[]
   wmsTasks                                    WmsTask[]
   wmsWaves                                    WmsWave[]
@@ -2567,6 +2568,7 @@ model User {
   shipmentMilestonesUpdated                           ShipmentMilestone[]
   inventoryMovementsCreated                           InventoryMovement[]
   wmsTasksCreated                                     WmsTask[]                                    @relation("WmsTaskCreatedBy")
+  wmsInventorySoftReservationsCreated                 WmsInventorySoftReservation[]                @relation("WmsInventorySoftReservationCreatedBy")
   wmsTasksCompleted                                   WmsTask[]                                    @relation("WmsTaskCompletedBy")
   wmsWavesCreated                                     WmsWave[]
   outboundOrdersCreated                               OutboundOrder[]
@@ -4468,6 +4470,7 @@ model Warehouse {
   wmsWorkOrders      WmsWorkOrder[]
   wmsBillingEvents               WmsBillingEvent[]
   wmsReceivingAccrualStagings    WmsReceivingAccrualStaging[]
+  wmsInventorySoftReservations   WmsInventorySoftReservation[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -4648,9 +4651,33 @@ model InventoryBalance {
   bin       WarehouseBin @relation(fields: [binId], references: [id], onDelete: Cascade)
   product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
   wmsInventorySerials WmsInventorySerial[]
+  wmsInventorySoftReservations WmsInventorySoftReservation[]
 
   @@unique([warehouseId, binId, productId, lotCode])
   @@index([tenantId, warehouseId])
+}
+
+/// BF-36 — time-boxed soft reservation against one balance row (reduces ATP / allocation; not `allocatedQty`).
+model WmsInventorySoftReservation {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  warehouseId        String
+  inventoryBalanceId String
+  quantity           Decimal  @db.Decimal(14, 3)
+  expiresAt          DateTime
+  referenceType      String?  @db.VarChar(80)
+  referenceId        String?  @db.VarChar(128)
+  note               String?  @db.VarChar(500)
+  createdById        String
+  createdAt          DateTime @default(now())
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse          Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  inventoryBalance   InventoryBalance   @relation(fields: [inventoryBalanceId], references: [id], onDelete: Cascade)
+  createdBy          User               @relation("WmsInventorySoftReservationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, warehouseId, expiresAt])
+  @@index([inventoryBalanceId])
 }
 
 model InventoryMovement {

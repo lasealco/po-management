@@ -61,6 +61,9 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_balance_hold: "inventory",
   clear_balance_hold: "inventory",
 
+  create_soft_reservation: "inventory",
+  release_soft_reservation: "inventory",
+
   complete_replenish_task: "operations",
 
   create_cycle_count_task: "inventory",

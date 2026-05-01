@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
 
-**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-34** minimal slice shipped ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-35** minimal slice shipped ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)). Capsules **BF-36** … **BF-50** remain **draft** until executed.
+**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-34** minimal slice shipped ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-35** minimal slice shipped ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-36** minimal slice shipped ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)). Capsules **BF-37** … **BF-50** remain **draft** until executed.
 
 **Rules:**
 
@@ -101,7 +101,7 @@
 
 **Objective:** **Available-to-promise** preview and **soft reservations** on **`InventoryBalance`** (or parallel reservation rows) with TTL for high-touch commercial workflows.
 
-**Exit sketch (minimal slice):** Reservation **`POST`/`DELETE`** actions + **`GET /api/wms`** ATP summary per SKU/wh; picks respect reservations.
+**Shipped (minimal slice):** See [`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md) — **`WmsInventorySoftReservation`**, **`create_soft_reservation`** / **`release_soft_reservation`**, ATP + balance columns + active list on **`GET /api/wms`**, picks / waves / replenishment respect soft qty.
 
 **Out of scope:** Global ATP across tenants, legacy ERP ATP synchronization.
 
@@ -253,4 +253,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — **BF-35** replenishment priority / exception tier minimal landed ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-34** solver prototype minimal landed ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-33** cube-aware greedy minimal landed ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging minimal landed ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-36**–**BF-50** draft objectives._
+_Last updated: 2026-04-30 — **BF-36** ATP / soft reservations minimal landed ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)); **BF-35** replenishment priority / exception tier ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-34** solver prototype ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-33** cube-aware greedy ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-37**–**BF-50** draft objectives._

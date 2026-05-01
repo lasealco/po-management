@@ -29,6 +29,7 @@ import {
   orderPickSlotsMinBinTouchesReservePickFaceCubeAware,
 } from "./carton-cube-allocation";
 import { sortReplenishmentRulesForBatch } from "./replenishment-batch";
+import { softReservedQtyByBalanceIds } from "./soft-reservation";
 import { orderPickSlotsSolverPrototype } from "./pick-wave-solver-prototype";
 import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
 import {
@@ -768,6 +769,11 @@ export async function handleWmsPost(
     ]);
     const sortedRules = sortReplenishmentRulesForBatch(rules);
     const createdPerRule = new Map<string, number>();
+    const replenSoftMap = await softReservedQtyByBalanceIds(
+      prisma,
+      tenantId,
+      balances.map((b) => b.id),
+    );
     let created = 0;
     await prisma.$transaction(async (tx) => {
       for (const rule of sortedRules) {
@@ -781,7 +787,13 @@ export async function handleWmsPost(
             b.productId === rule.productId &&
             (rule.targetZoneId ? b.bin.zoneId === rule.targetZoneId : b.bin.isPickFace),
         );
-        const pickOnHand = pickBins.reduce((s, b) => s + Number(b.onHandQty), 0);
+        const pickOnHand = pickBins.reduce((s, b) => {
+          const eff =
+            Number(b.onHandQty) -
+            Number(b.allocatedQty) -
+            (replenSoftMap.get(b.id) ?? 0);
+          return s + Math.max(0, eff);
+        }, 0);
         if (pickOnHand >= Number(rule.minPickQty)) continue;
         const source = balances
           .filter(
@@ -790,17 +802,39 @@ export async function handleWmsPost(
               !b.onHold &&
               b.productId === rule.productId &&
               (rule.sourceZoneId ? b.bin.zoneId === rule.sourceZoneId : !b.bin.isPickFace) &&
-              Number(b.onHandQty) - Number(b.allocatedQty) > 0,
+              Number(b.onHandQty) - Number(b.allocatedQty) - (replenSoftMap.get(b.id) ?? 0) > 0,
           )
-          .sort(
-            (a, b) =>
-              Number(b.onHandQty) - Number(b.allocatedQty) - (Number(a.onHandQty) - Number(a.allocatedQty)),
-          )[0];
-        const target = pickBins.sort((a, b) => Number(a.onHandQty) - Number(b.onHandQty))[0];
+          .sort((a, b) => {
+            const effA =
+              Number(a.onHandQty) -
+              Number(a.allocatedQty) -
+              (replenSoftMap.get(a.id) ?? 0);
+            const effB =
+              Number(b.onHandQty) -
+              Number(b.allocatedQty) -
+              (replenSoftMap.get(b.id) ?? 0);
+            return effB - effA;
+          })[0];
+        const target = pickBins.sort((a, b) => {
+          const effA =
+            Number(a.onHandQty) -
+            Number(a.allocatedQty) -
+            (replenSoftMap.get(a.id) ?? 0);
+          const effB =
+            Number(b.onHandQty) -
+            Number(b.allocatedQty) -
+            (replenSoftMap.get(b.id) ?? 0);
+          return effA - effB;
+        })[0];
         if (!source || !target) continue;
         const qty = Math.min(
           Number(rule.replenishQty),
-          Math.max(0, Number(source.onHandQty) - Number(source.allocatedQty)),
+          Math.max(
+            0,
+            Number(source.onHandQty) -
+              Number(source.allocatedQty) -
+              (replenSoftMap.get(source.id) ?? 0),
+          ),
         );
         if (qty <= 0) continue;
         await tx.wmsTask.create({
@@ -1171,6 +1205,25 @@ export async function handleWmsPost(
     });
     if (!item) return toApiErrorResponseFromStatus("Outbound line not found.", 404);
     const taskLot = normalizeLotCode(input.lotCode);
+    const bal = await prisma.inventoryBalance.findFirst({
+      where: { tenantId, warehouseId, binId, productId, lotCode: taskLot },
+      select: { id: true, onHandQty: true, allocatedQty: true, onHold: true },
+    });
+    if (!bal) {
+      return toApiErrorResponseFromStatus("No inventory balance for bin/product/lot.", 404);
+    }
+    if (bal.onHold) {
+      return toApiErrorResponseFromStatus("Cannot allocate pick: bin/product is on hold.", 400);
+    }
+    const softPickMap = await softReservedQtyByBalanceIds(prisma, tenantId, [bal.id]);
+    const softPick = softPickMap.get(bal.id) ?? 0;
+    const effectivePick = Number(bal.onHandQty) - Number(bal.allocatedQty) - softPick;
+    if (qty > effectivePick) {
+      return toApiErrorResponseFromStatus(
+        `Insufficient ATP for pick (effective available ${effectivePick}).`,
+        400,
+      );
+    }
     await prisma.$transaction(async (tx) => {
       await tx.wmsTask.create({
         data: {
@@ -1294,6 +1347,11 @@ export async function handleWmsPost(
         where: { tenantId, warehouseId },
         include: { bin: { select: { id: true, code: true, isPickFace: true, capacityCubeCubicMm: true } } },
       });
+      const softWaveMap = await softReservedQtyByBalanceIds(
+        prisma,
+        tenantId,
+        balancesAll.map((b) => b.id),
+      );
       const productIds = [...new Set(balancesAll.map((b) => b.productId))];
       const batchRows =
         productIds.length === 0
@@ -1311,7 +1369,9 @@ export async function handleWmsPost(
       }
       for (const row of balancesAll) {
         if (row.onHold) continue;
-        const available = Number(row.onHandQty) - Number(row.allocatedQty);
+        const softW = softWaveMap.get(row.id) ?? 0;
+        const available =
+          Number(row.onHandQty) - Number(row.allocatedQty) - softW;
         if (available <= 0) continue;
         const lc = normalizeLotCode(row.lotCode);
         const expirySortMs =
@@ -1335,9 +1395,16 @@ export async function handleWmsPost(
         where: { tenantId, warehouseId, lotCode: FUNGIBLE_LOT_CODE },
         include: { bin: { select: { id: true, code: true, isPickFace: true, capacityCubeCubicMm: true } } },
       });
+      const softWaveMap = await softReservedQtyByBalanceIds(
+        prisma,
+        tenantId,
+        balances.map((b) => b.id),
+      );
       for (const row of balances) {
         if (row.onHold) continue;
-        const available = Number(row.onHandQty) - Number(row.allocatedQty);
+        const softW = softWaveMap.get(row.id) ?? 0;
+        const available =
+          Number(row.onHandQty) - Number(row.allocatedQty) - softW;
         if (available <= 0) continue;
         const list = byProduct.get(row.productId) ?? [];
         list.push({
@@ -3128,6 +3195,100 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "create_soft_reservation") {
+    const balanceId = input.balanceId?.trim();
+    const qty = Number(input.quantity);
+    if (!balanceId || !Number.isFinite(qty) || qty <= 0) {
+      return toApiErrorResponseFromStatus("balanceId and positive quantity required.", 400);
+    }
+    const bal = await prisma.inventoryBalance.findFirst({
+      where: { id: balanceId, tenantId },
+      select: {
+        id: true,
+        warehouseId: true,
+        onHandQty: true,
+        allocatedQty: true,
+        onHold: true,
+      },
+    });
+    if (!bal) return toApiErrorResponseFromStatus("Balance row not found.", 404);
+    if (bal.onHold) {
+      return toApiErrorResponseFromStatus("Cannot soft-reserve: balance is on hold.", 400);
+    }
+    const softMap = await softReservedQtyByBalanceIds(prisma, tenantId, [bal.id]);
+    const existingSoft = softMap.get(bal.id) ?? 0;
+    const effective = Number(bal.onHandQty) - Number(bal.allocatedQty) - existingSoft;
+    if (qty > effective) {
+      return toApiErrorResponseFromStatus(
+        `Insufficient ATP for soft reservation (effective available ${effective}).`,
+        400,
+      );
+    }
+
+    let expiresAt: Date;
+    const iso = input.softReservationExpiresAt?.trim();
+    if (iso) {
+      expiresAt = new Date(iso);
+      if (!Number.isFinite(expiresAt.getTime())) {
+        return toApiErrorResponseFromStatus(
+          "softReservationExpiresAt must be a valid ISO datetime.",
+          400,
+        );
+      }
+      if (expiresAt.getTime() <= Date.now()) {
+        return toApiErrorResponseFromStatus("softReservationExpiresAt must be in the future.", 400);
+      }
+    } else {
+      const ttl =
+        input.softReservationTtlSeconds !== undefined
+          ? Number(input.softReservationTtlSeconds)
+          : 3600;
+      if (!Number.isFinite(ttl) || ttl <= 0 || ttl > 86400 * 366) {
+        return toApiErrorResponseFromStatus(
+          "softReservationTtlSeconds must be between 1 and 366 days.",
+          400,
+        );
+      }
+      expiresAt = new Date(Date.now() + ttl * 1000);
+    }
+
+    const refType = input.softReservationRefType?.trim() || null;
+    const refId = input.softReservationRefId?.trim() || null;
+    const note = input.softReservationNote?.trim().slice(0, 500) || null;
+
+    const row = await prisma.wmsInventorySoftReservation.create({
+      data: {
+        tenantId,
+        warehouseId: bal.warehouseId,
+        inventoryBalanceId: bal.id,
+        quantity: qty.toString(),
+        expiresAt,
+        referenceType: refType,
+        referenceId: refId,
+        note,
+        createdById: actorId,
+      },
+      select: { id: true, expiresAt: true },
+    });
+    return NextResponse.json({
+      ok: true,
+      reservationId: row.id,
+      expiresAt: row.expiresAt.toISOString(),
+    });
+  }
+
+  if (action === "release_soft_reservation") {
+    const reservationId = input.softReservationId?.trim();
+    if (!reservationId) {
+      return toApiErrorResponseFromStatus("softReservationId required.", 400);
+    }
+    const n = await prisma.wmsInventorySoftReservation.deleteMany({
+      where: { id: reservationId, tenantId },
+    });
+    if (n.count === 0) return toApiErrorResponseFromStatus("Soft reservation not found.", 404);
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "complete_replenish_task") {
     const taskId = input.taskId?.trim();
     if (!taskId) return toApiErrorResponseFromStatus("taskId required.", 400);
@@ -3165,7 +3326,10 @@ export async function handleWmsPost(
     if (!sourceBalPre) {
       return toApiErrorResponseFromStatus("Source bin has no balance row.", 400);
     }
-    const movable = Number(sourceBalPre.onHandQty) - Number(sourceBalPre.allocatedQty);
+    const replenSoftSingle = await softReservedQtyByBalanceIds(prisma, tenantId, [sourceBalPre.id]);
+    const softRepl = replenSoftSingle.get(sourceBalPre.id) ?? 0;
+    const movable =
+      Number(sourceBalPre.onHandQty) - Number(sourceBalPre.allocatedQty) - softRepl;
     const moveQty = Math.min(qty, Math.max(0, movable));
     if (moveQty <= 0) {
       return toApiErrorResponseFromStatus("No available quantity to move from source bin.", 400);

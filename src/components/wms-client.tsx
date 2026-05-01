@@ -118,6 +118,30 @@ type WmsData = {
     packScanRequired: boolean;
     shipScanRequired: boolean;
   };
+  /** BF-36 — ATP aggregates per warehouse × SKU (soft reservations reduce ATP). */
+  atpByWarehouseProduct?: Array<{
+    warehouseId: string;
+    warehouseLabel: string;
+    productId: string;
+    product: WmsProductRef;
+    onHandQty: string;
+    allocatedQty: string;
+    softReservedQty: string;
+    atpQty: string;
+  }>;
+  /** BF-36 — active (non-expired) soft reservations. */
+  softReservations?: Array<{
+    id: string;
+    quantity: string;
+    expiresAt: string;
+    referenceType: string | null;
+    referenceId: string | null;
+    note: string | null;
+    inventoryBalanceId: string;
+    warehouse: { id: string; code: string | null; name: string };
+    bin: { id: string; code: string; name: string };
+    product: WmsProductRef;
+  }>;
   outboundOrders: Array<{
     id: string;
     outboundNo: string;
@@ -167,7 +191,9 @@ type WmsData = {
     } | null;
     onHandQty: string;
     allocatedQty: string;
+    softReservedQty?: string;
     availableQty: string;
+    effectiveAvailableQty?: string;
     onHold: boolean;
     holdReason: string | null;
   }>;
@@ -719,6 +745,9 @@ export function WmsClient({
   const [vasTaskQty, setVasTaskQty] = useState("");
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
+  const [bf36SoftBalanceId, setBf36SoftBalanceId] = useState("");
+  const [bf36SoftQty, setBf36SoftQty] = useState("");
+  const [bf36SoftTtl, setBf36SoftTtl] = useState("3600");
   const [woEstDraft, setWoEstDraft] = useState<Record<string, { m: string; l: string }>>({});
   /** BF-26 — draft CRM quote line id for link action (initialized from payload). */
   const [woQuoteLineLinkDraft, setWoQuoteLineLinkDraft] = useState<Record<string, string>>({});
@@ -1211,6 +1240,18 @@ export function WmsClient({
       section !== "stock" || !selectedWarehouseId ? rows : rows.filter((b) => b.warehouse.id === selectedWarehouseId);
     return onHoldOnly ? byWarehouse.filter((b) => b.onHold) : byWarehouse;
   }, [data?.balances, onHoldOnly, section, selectedWarehouseId]);
+
+  const atpRowsShown = useMemo(() => {
+    const rows = data?.atpByWarehouseProduct ?? [];
+    if (!selectedWarehouseId) return rows;
+    return rows.filter((r) => r.warehouseId === selectedWarehouseId);
+  }, [data?.atpByWarehouseProduct, selectedWarehouseId]);
+
+  const softReservationsShown = useMemo(() => {
+    const rows = data?.softReservations ?? [];
+    if (!selectedWarehouseId) return rows;
+    return rows.filter((r) => r.warehouse.id === selectedWarehouseId);
+  }, [data?.softReservations, selectedWarehouseId]);
 
   const lotBatchProductOptions = useMemo(() => {
     const rows = data?.balances ?? [];
@@ -5740,6 +5781,154 @@ export function WmsClient({
       </section>
 
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Availability</p>
+        <h2 className="mt-2 text-sm font-semibold text-zinc-900">ATP & soft reservations (BF-36)</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Soft reservations reduce ATP for picks, waves, and replenishment moves until they expire or are released.
+          Default TTL is 3600s when omitted.
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+              <tr>
+                <th className="px-2 py-1">Warehouse</th>
+                <th className="px-2 py-1">Product</th>
+                <th className="px-2 py-1">On hand</th>
+                <th className="px-2 py-1">Allocated</th>
+                <th className="px-2 py-1">Soft res.</th>
+                <th className="px-2 py-1">ATP</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200">
+              {atpRowsShown.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-2 py-2 text-zinc-500">
+                    No ATP rows (pick a warehouse above or add balances).
+                  </td>
+                </tr>
+              ) : (
+                atpRowsShown.map((r) => (
+                  <tr key={`${r.warehouseId}-${r.productId}`}>
+                    <td className="px-2 py-1">{r.warehouseLabel}</td>
+                    <td className="px-2 py-1">
+                      {r.product.productCode || r.product.sku || "—"} · {r.product.name}
+                    </td>
+                    <td className="px-2 py-1">{r.onHandQty}</td>
+                    <td className="px-2 py-1">{r.allocatedQty}</td>
+                    <td className="px-2 py-1">{r.softReservedQty}</td>
+                    <td className="px-2 py-1 font-medium">{r.atpQty}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-4">
+          <select
+            value={bf36SoftBalanceId}
+            onChange={(e) => setBf36SoftBalanceId(e.target.value)}
+            className="min-w-[14rem] rounded border border-zinc-300 px-3 py-2 text-sm"
+            disabled={!data || balancesShown.length === 0}
+          >
+            <option value="">Balance row</option>
+            {balancesShown.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.bin.code} · {(b.product.productCode || b.product.sku || "SKU").slice(0, 14)} · eff{" "}
+                {b.effectiveAvailableQty ?? b.availableQty}
+              </option>
+            ))}
+          </select>
+          <input
+            value={bf36SoftQty}
+            onChange={(e) => setBf36SoftQty(e.target.value)}
+            placeholder="Qty"
+            inputMode="decimal"
+            className="w-24 rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={bf36SoftTtl}
+            onChange={(e) => setBf36SoftTtl(e.target.value)}
+            placeholder="TTL sec"
+            inputMode="numeric"
+            className="w-28 rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            disabled={
+              !stockQtyEdit ||
+              busy ||
+              !bf36SoftBalanceId ||
+              !Number.isFinite(Number(bf36SoftQty)) ||
+              Number(bf36SoftQty) <= 0
+            }
+            onClick={() => {
+              const ttlRaw = bf36SoftTtl.trim();
+              void runAction({
+                action: "create_soft_reservation",
+                balanceId: bf36SoftBalanceId,
+                quantity: Number(bf36SoftQty),
+                ...(ttlRaw !== "" ? { softReservationTtlSeconds: Number(ttlRaw) } : {}),
+              });
+            }}
+            className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            Create soft reservation
+          </button>
+        </div>
+        <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">Active reservations</h3>
+        <div className="mt-2 max-h-48 overflow-auto rounded border border-zinc-200">
+          <table className="min-w-full text-sm">
+            <thead className="sticky top-0 bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+              <tr>
+                <th className="px-2 py-1">Expires</th>
+                <th className="px-2 py-1">Qty</th>
+                <th className="px-2 py-1">Bin</th>
+                <th className="px-2 py-1">Product</th>
+                <th className="px-2 py-1" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200">
+              {softReservationsShown.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-2 py-2 text-zinc-500">
+                    No active soft reservations.
+                  </td>
+                </tr>
+              ) : (
+                softReservationsShown.map((r) => (
+                  <tr key={r.id}>
+                    <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">
+                      {new Date(r.expiresAt).toLocaleString()}
+                    </td>
+                    <td className="px-2 py-1">{r.quantity}</td>
+                    <td className="px-2 py-1">{r.bin.code}</td>
+                    <td className="px-2 py-1 text-xs">
+                      {r.product.productCode || r.product.sku || "—"} · {r.product.name}
+                    </td>
+                    <td className="px-2 py-1">
+                      <button
+                        type="button"
+                        disabled={!stockQtyEdit || busy}
+                        onClick={() =>
+                          void runAction({
+                            action: "release_soft_reservation",
+                            softReservationId: r.id,
+                          })
+                        }
+                        className="rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                      >
+                        Release
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Inventory serialization</p>
         <h2 className="mt-2 text-sm font-semibold text-zinc-900">Unit serial trace (BF-13)</h2>
         <p className="mt-1 max-w-3xl text-xs text-zinc-600">
@@ -6361,6 +6550,8 @@ export function WmsClient({
                 <th className="px-2 py-1">On hand</th>
                 <th className="px-2 py-1">Allocated</th>
                 <th className="px-2 py-1">Available</th>
+                <th className="px-2 py-1">Soft res.</th>
+                <th className="px-2 py-1">ATP (eff.)</th>
                 <th className="px-2 py-1">Hold</th>
                 <th className="px-2 py-1">QC</th>
                 <th className="px-2 py-1">Balance id</th>
@@ -6369,7 +6560,7 @@ export function WmsClient({
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {balancesTableRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={14} className="px-2 py-3 text-zinc-500">
                     {balancesShown.length === 0
                       ? "No balances in this view."
                       : `No balances match this filter${balanceTextFilter.trim() ? `: "${balanceTextFilter.trim()}"` : "."}`}
@@ -6395,6 +6586,10 @@ export function WmsClient({
                     <td className="px-2 py-1">{b.onHandQty}</td>
                     <td className="px-2 py-1">{b.allocatedQty}</td>
                     <td className="px-2 py-1 font-medium">{b.availableQty}</td>
+                    <td className="px-2 py-1 text-zinc-600">{b.softReservedQty ?? "0.000"}</td>
+                    <td className="px-2 py-1 font-semibold text-zinc-900">
+                      {b.effectiveAvailableQty ?? b.availableQty}
+                    </td>
                     <td className="px-2 py-1 text-xs text-zinc-600">
                       {b.onHold ? (
                         <span title={b.holdReason ?? ""}>Yes</span>

@@ -4,6 +4,7 @@ import { userHasGlobalGrant } from "@/lib/authz";
 import { crmAccountInScope } from "@/lib/crm-scope";
 import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "@/lib/wms/lot-code";
+import { softReservedQtyByBalanceIds } from "@/lib/wms/soft-reservation";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { allowedNextWmsReceiveStatuses } from "@/lib/wms/wms-receive-status";
 import { loadInventorySerialTrace, type SerialTraceQueryInput } from "@/lib/wms/inventory-serial-trace";
@@ -468,8 +469,102 @@ export async function getWmsDashboardPayload(
     shipScanRequired: process.env.WMS_REQUIRE_SHIP_SCAN === "1",
   };
 
+  const softByBalanceId = await softReservedQtyByBalanceIds(
+    prisma,
+    tenantId,
+    balances.map((b) => b.id),
+  );
+
+  const softReservationWhere: Prisma.WmsInventorySoftReservationWhereInput = {
+    tenantId,
+    expiresAt: { gt: new Date() },
+    ...(viewScope.inventoryProduct
+      ? { inventoryBalance: { product: viewScope.inventoryProduct } }
+      : {}),
+  };
+  const softReservationRows = await prisma.wmsInventorySoftReservation.findMany({
+    where: softReservationWhere,
+    orderBy: { expiresAt: "asc" },
+    take: 200,
+    include: {
+      inventoryBalance: {
+        select: {
+          id: true,
+          bin: { select: { id: true, code: true, name: true } },
+          product: { select: WMS_PRODUCT_REF_SELECT },
+          warehouse: { select: { id: true, code: true, name: true } },
+        },
+      },
+    },
+  });
+
+  const atpAgg = new Map<
+    string,
+    {
+      warehouseId: string;
+      warehouseLabel: string;
+      productId: string;
+      product: ReturnType<typeof mapWmsProductJson>;
+      onHand: number;
+      allocated: number;
+      softReserved: number;
+    }
+  >();
+  for (const b of balances) {
+    const key = `${b.warehouseId}\t${b.productId}`;
+    const soft = softByBalanceId.get(b.id) ?? 0;
+    const on = Number(b.onHandQty);
+    const alloc = Number(b.allocatedQty);
+    const prev = atpAgg.get(key);
+    if (!prev) {
+      atpAgg.set(key, {
+        warehouseId: b.warehouseId,
+        warehouseLabel: `${b.warehouse.code ?? ""} ${b.warehouse.name}`.trim(),
+        productId: b.productId,
+        product: mapWmsProductJson(b.product),
+        onHand: on,
+        allocated: alloc,
+        softReserved: soft,
+      });
+    } else {
+      prev.onHand += on;
+      prev.allocated += alloc;
+      prev.softReserved += soft;
+    }
+  }
+  const atpByWarehouseProduct = [...atpAgg.values()]
+    .map((r) => {
+      const atp = Math.max(0, r.onHand - r.allocated - r.softReserved);
+      return {
+        warehouseId: r.warehouseId,
+        warehouseLabel: r.warehouseLabel,
+        productId: r.productId,
+        product: r.product,
+        onHandQty: r.onHand.toFixed(3),
+        allocatedQty: r.allocated.toFixed(3),
+        softReservedQty: r.softReserved.toFixed(3),
+        atpQty: atp.toFixed(3),
+      };
+    })
+    .sort((a, b) =>
+      `${a.warehouseLabel}${a.product.name}`.localeCompare(`${b.warehouseLabel}${b.product.name}`),
+    );
+
   return {
     packShipScanPolicy,
+    atpByWarehouseProduct,
+    softReservations: softReservationRows.map((r) => ({
+      id: r.id,
+      quantity: r.quantity.toString(),
+      expiresAt: r.expiresAt.toISOString(),
+      referenceType: r.referenceType,
+      referenceId: r.referenceId,
+      note: r.note,
+      inventoryBalanceId: r.inventoryBalanceId,
+      warehouse: r.inventoryBalance.warehouse,
+      bin: r.inventoryBalance.bin,
+      product: mapWmsProductJson(r.inventoryBalance.product),
+    })),
     warehouses: warehouses.map((w) => ({
       id: w.id,
       code: w.code,
@@ -602,7 +697,12 @@ export async function getWmsDashboardPayload(
         lotCode: b.lotCode,
         onHandQty: b.onHandQty.toString(),
         allocatedQty: b.allocatedQty.toString(),
+        softReservedQty: (softByBalanceId.get(b.id) ?? 0).toFixed(3),
         availableQty: new Prisma.Decimal(b.onHandQty).minus(b.allocatedQty).toString(),
+        effectiveAvailableQty: new Prisma.Decimal(b.onHandQty)
+          .minus(b.allocatedQty)
+          .minus(new Prisma.Decimal(softByBalanceId.get(b.id) ?? 0))
+          .toString(),
         onHold: Boolean(b.onHold),
         holdReason: b.holdReason ?? null,
         lotBatchProfile: profileRow

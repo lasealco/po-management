@@ -203,4 +203,14 @@ export type WmsBody = {
   /** BF-29 — scan tokens (SKU / product code / product id per unit) for pack or ship verification. */
   packScanTokens?: string[];
   shipScanTokens?: string[];
+
+  /** BF-36 — `release_soft_reservation`. */
+  softReservationId?: string;
+  /** BF-36 — TTL seconds when `softReservationExpiresAt` omitted (server default 3600). */
+  softReservationTtlSeconds?: number;
+  /** BF-36 — absolute expiry ISO datetime (future); overrides TTL when set. */
+  softReservationExpiresAt?: string | null;
+  softReservationRefType?: string | null;
+  softReservationRefId?: string | null;
+  softReservationNote?: string | null;
 };
