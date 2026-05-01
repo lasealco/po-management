@@ -47,8 +47,10 @@ Customer portal role (**`customer@demo-company.com`**) includes **`org.wms` → 
 
 ## Exit sketch (remaining)
 
-SAML/OIDC or JWKS-verified JWT from a real IdP; multi-tenant broker routing; session hardening beyond cookie TTL; grant matrix tests for every portal route.
+Per-tenant IdP registry in DB, refresh-token rotation, SAML 2.0 assertion POST endpoint, session hardening beyond cookie TTL.
+
+**Shipped (BF-46):** OIDC authorization code + PKCE + JWKS **`id_token`** verification — [`WMS_CUSTOMER_PORTAL_OIDC_BF46.md`](./WMS_CUSTOMER_PORTAL_OIDC_BF46.md).
 
 **Out of scope:** Full B2B marketplace, vendor SSO.
 
-_Last updated: 2026-04-29 — minimal HMAC/simulate bridge + CRM lock on VAS intake._
+_Last updated: 2026-04-29 — minimal HMAC/simulate bridge + CRM lock on VAS intake; **BF-46** OIDC code flow._

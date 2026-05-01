@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
@@ -18,6 +18,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [portalSsoBanner, setPortalSsoBanner] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (!code) return;
+    if (code === "customer_portal_oidc_not_configured") {
+      setPortalSsoBanner(
+        "Customer portal OIDC is not configured on this deployment (set CUSTOMER_PORTAL_OIDC_* env vars).",
+      );
+    } else if (code.startsWith("customer_portal_oidc")) {
+      setPortalSsoBanner(
+        "Customer portal single sign-on did not complete. You can still sign in with email and password.",
+      );
+    }
+  }, []);
 
   async function submit() {
     setBusy(true);
@@ -44,6 +60,11 @@ export default function LoginPage() {
   return (
     <main className="mx-auto max-w-md px-6 py-16">
       <h1 className="text-2xl font-semibold text-zinc-900">Sign in</h1>
+      {portalSsoBanner ? (
+        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          {portalSsoBanner}
+        </p>
+      ) : null}
       <p className="mt-2 text-sm text-zinc-600">
         Sign in with <strong>email</strong> and password. After{" "}
         <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">npm run db:seed</code> on the

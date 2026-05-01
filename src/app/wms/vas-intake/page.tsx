@@ -3,6 +3,7 @@ import Link from "next/link";
 import { VasIntakeClient } from "@/components/vas-intake-client";
 import { AccessDenied } from "@/components/access-denied";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
+import { readCustomerPortalOidcEnv } from "@/lib/auth/customer-portal-oidc";
 import { getViewerGrantSet, viewerHas, viewerHasWmsSectionMutationEdit } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function WmsVasIntakePage() {
   const access = await getViewerGrantSet();
+  const customerPortalOidcAvailable = Boolean(readCustomerPortalOidcEnv());
 
   if (!access?.user) {
     return (
@@ -19,6 +21,18 @@ export default async function WmsVasIntakePage() {
           title="VAS intake"
           message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
+        {customerPortalOidcAvailable ? (
+          <div className="mx-auto mt-4 max-w-lg px-6 text-center text-sm text-zinc-600">
+            Or{" "}
+            <Link
+              href="/api/auth/customer-portal/oidc/start"
+              className="font-semibold text-[var(--arscmp-primary)] hover:underline"
+            >
+              sign in with your organization (OIDC)
+            </Link>
+            .
+          </div>
+        ) : null}
       </div>
     );
   }
