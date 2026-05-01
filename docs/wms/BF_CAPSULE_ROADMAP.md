@@ -1,6 +1,6 @@
 # Blueprint finish (`BF-xx`) — roadmap after BF-01
 
-**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-11`**), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md).
+**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-11`**), **next mega phases** (**`BF-12` … `BF-20`**), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) and [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md).
 
 **Authority:** Capsule IDs and themes match [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). **`GAP_MAP.md`** stays the repo ↔ blueprint truth.
 
@@ -30,11 +30,19 @@
 
 Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **Phase A → E**: inventory truth before execution engines; topology/yard before throwing integrations at cross-product epics.
 
-**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md) / product bets.
+**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** Next **mega phases** **`BF-12` … `BF-20`** are defined (documentation program — not shipped until executed): [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
 | Order | ID | Phase | Notes |
 |-------|-----|-------|------|
-| — | — | — | Use **`GAP_MAP.md`** + phased roadmap for the next program slice after **`BF-11`**. |
+| 1 | **BF-12** | A — Inventory / receiving | Option **B** receipt header — see mega-phase doc |
+| 2 | **BF-13** | A — Lots / serialization | Unit genealogy beyond batch buckets |
+| 3 | **BF-14** | E — Cross-product | Quote lines → outbound lines |
+| 4 | **BF-15** | B — Execution | Solver / cartonization v2 |
+| 5 | **BF-16** | D — Governance | Per-field ACL matrix |
+| 6 | **BF-17** | C — Topology / yard | TMS stub on dock path |
+| 7 | **BF-18** | R3 — VAS depth | Multi-line BOM consumption |
+| 8 | **BF-19** | Enterprise map | CT map depth (rack **or** CRM geo) |
+| 9 | **BF-20** | D — Analytics | KPI **rates** beyond BF-07 |
 
 **Parallelization:** historical note — **BF-04** / **BF-05** / commercial (**BF-10**) often ran in parallel when teams differed.
 
@@ -71,4 +79,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-04-29 — **BF-11** optional WMS warehouse pins on **`/control-tower/map`** (`buildWarehouseMapPins`, dual grants); **BF-10** CRM quote lineage (`WMS_COMMERCIAL_HANDOFF.md`); **BF-09** VAS intake (`WMS_VAS_BF09.md`); **BF-08** packing ZPL; roadmap **`BF-02`–`BF-11`** Done snapshot._
+_Last updated: 2026-04-29 — Added **`BF-12`–`BF-20`** mega-phase program ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md)) + backlog rows; **`BF-02`–`BF-11`** remain Done snapshot; **BF-11** warehouse pins on **`/control-tower/map`**._

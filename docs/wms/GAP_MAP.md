@@ -4,7 +4,7 @@
 
 **Enterprise finish line:** **`WE-01` … `WE-12`** — **closed** ([`ENTERPRISE_TRACK.md`](./ENTERPRISE_TRACK.md), [`WMS_ENTERPRISE_EXIT_WE12.md`](./WMS_ENTERPRISE_EXIT_WE12.md)). Next increments → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
-**Blueprint finish (post‑enterprise):** thematic backlog + **`BF-xx` capsules** — [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md); **`BF-02`–`BF-11` roadmap snapshot** — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md).
+**Blueprint finish (post‑enterprise):** thematic backlog + **`BF-xx` capsules** — [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md); **`BF-02`–`BF-11` roadmap snapshot** — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **next mega phases `BF-12`–`BF-20`** — [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md).
 
 **Legend:** ✅ covered · 🟡 partial / simplified · ❌ not in schema or not wired
 

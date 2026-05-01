@@ -48,10 +48,19 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 | **BF-09** | **VAS portal & BOM costing** | VAS row | Commercial assumptions | [`WMS_VAS_BF09.md`](./WMS_VAS_BF09.md) — intake + CRM + estimate snapshots (**multi-line BOM**/SSO backlog) | WMS + CRM |
 | **BF-10** | **Commercial CPQ → outbound lineage** — optional **`sourceCrmQuoteId`**; CPQ→SKU lines backlog | Commercial row | CRM (+ WMS API) | [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) — BF-10 quote attribution + CRM handoff link (**automated quote lines → outbound lines** still backlog) | CRM + WMS |
 | **BF-11** | **CT map merged layers** — optional **`Warehouse`** site pins on **`/control-tower/map`**; rack floor + CRM geo backlog | Enterprise CT map row | WE-11 navigation landed | [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) — **`buildWarehouseMapPins`** + **`GET /api/control-tower/map-pins`** (**BF-11**) | CT + WMS |
+| **BF-12** | **Receiving Option B** — **`WmsReceipt`** (or equivalent) header + multi-event dock receipts vs Option A-only shipments | Inbound / receiving row | BF-01 line variance stable | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-12 + [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) | WMS |
+| **BF-13** | **Serial / unit genealogy** beyond **`lotCode`** + **`WmsLotBatch`** | SKU / lot row | BF-02 metadata | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-13 + [`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md) | WMS + catalog |
+| **BF-14** | **CPQ → outbound lines** — explode **`CrmQuoteLine`** into **`OutboundOrderLine`** with confirmation | Commercial row | BF-10 lineage | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-14 + [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) | CRM + WMS |
+| **BF-15** | **Wave / allocation solver v2** — carton or capacity-aware batching beyond current heuristics | Allocation row | BF-03 strategies | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-15 + [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md) | WMS |
+| **BF-16** | **Per-field WMS ACL** — matrix beyond BF-06 coarse tiers | Permissions row | BF-06 tiers | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-16 + [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md) | Platform + WMS |
+| **BF-17** | **TMS / carrier stub** — external refs + webhook placeholders on dock path | Appointments / TMS row | BF-05 yard slice | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-17 + [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | WMS + integrations |
+| **BF-18** | **VAS multi-line BOM** consumption vs single-row **`VALUE_ADD`** | VAS row | BF-09 intake | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-18 + [`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md) | WMS + CRM |
+| **BF-19** | **CT map depth** — rack/bin OR CRM geo overlay (pick one primary per ship) | Enterprise CT map row | BF-11 warehouse pins | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-19 + [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) | CT + WMS (+ CRM if geo) |
+| **BF-20** | **Executive KPI rates** — OTIF / labor / slotting proxies beyond BF-07 narratives | Dashboards row | BF-07 home KPIs | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-20 + [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md) | Product + WMS |
 
 **Note:** IDs are **not** commitments — merge/split capsules when estimates land (e.g. **BF-02 + BF-01** often sequenced tightly).
 
-**Do not bundle **`BF-02`–`BF-11`** into one prompt:** each row is a **separate** thematic capsule (lot master, allocation depth, topology, dock TMS depth, RBAC matrix, KPIs, packing hardware, VAS portal, CPQ automation, CT map layers). **`BF-01`** (line variance) is intentionally minimal migration vs Option B — see [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md).
+**Do not bundle **`BF-02`–`BF-11`** (nor **`BF-12`–`BF-20`**) into one prompt:** each row is a **separate** thematic capsule. Next mega-phase definitions: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md). **`BF-01`** (line variance) is intentionally minimal migration vs Option B — see [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md).
 
 **If your goal is receiving line variance:** use capsule **`BF-01`** — not **`BF-03`**, **`BF-04`**, **`BF-05`**, or **`BF-06`**. Those IDs mean **allocation depth** ([`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md)), **zone topology** ([`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md)), **dock / TMS depth** ([`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md)), and **WMS RBAC depth** ([`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md), [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md)).
 
@@ -69,8 +78,9 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 ## Next step
 
 1. See **`BF-02` … `BF-11`** recommended order and capsule cards — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md).
-2. Product prioritizes **`BF-xx`** order (or swaps Phase A/B/C above).
-3. Open **one capsule** → **`GAP_MAP`** delta → ship → repeat.
+2. For **`BF-12` … `BF-20`** mega-phase objectives and prompt stubs — [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md).
+3. Product prioritizes **`BF-xx`** order (or swaps Phase A/B/C above).
+4. Open **one capsule** → **`GAP_MAP`** delta → ship → repeat.
 
 ---
 
@@ -95,4 +105,4 @@ Deliverables:
 Exit when BF-01 row in BLUEPRINT_FINISH_BACKLOG.md is satisfied: GAP_MAP reflects line variance depth or explicit documented deferral for remaining gaps.
 ```
 
-_Last updated: 2026-04-29 — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md) (**BF-02**–**BF-11** order + cards); **BF-03** FEFO pick waves (`WMS_ALLOCATION_STRATEGIES.md`); **BF-02** lot batch master (`WMS_LOT_BATCH_BF02.md`); **BF-01** minimal receiving line variance landed (`WMS_RECEIVING_LINE_VARIANCE_BF01.md`); BF-01 vs **BF-03–BF-06** ID reminder; initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._
+_Last updated: 2026-04-29 — Added **`BF-12`–`BF-20`** catalog rows + [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md); **`BF-02`–`BF-11`** capsule snapshot in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); BF-01 vs **BF-03–BF-06** ID reminder; BF-01 prompt template._
