@@ -33,4 +33,23 @@ When scoped:
 - True **OTIF %** (delivered vs promised by lane/customer), **labor productivity** (hours, engineered standards), **slotting optimization** (ABC, velocity curves, cubic utilization).
 - Local-site **midnight** for dock “today” (still **UTC** in WE-09/BF-07 — see [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md)).
 
-_Last updated: 2026-04-29 — BF-07 shipped._
+_Last updated: 2026-05-02 — **BF-20** computed proxy rates on `fetchWmsHomeKpis` (`rates` + `rateMethodology`); **BF-07** narratives unchanged._
+
+---
+
+## BF-20 — Executive KPI rate proxies (minimal)
+
+**Purpose:** Add **numeric rates** alongside BF-07 counts so **`GET /api/wms?homeKpis=1`** and **`/wms`** explain denominators without claiming delivered OTIF %, engineered labor productivity, or ABC slotting.
+
+| Field | Definition |
+|-------|------------|
+| **`rates.otifPastDueSharePercent`** | Past-due scheduled orders ÷ **scheduled cohort** × 100 (**one decimal**). **Scheduled cohort** = active outbound (`DRAFT`–`PACKED`) with **`requestedShipDate` not null**. **Past due** matches BF-07 (date **before** UTC day start). **`null`** when cohort count is **0**. |
+| **`rates.outboundScheduledCohortCount`** | Denominator for the OTIF proxy rate (scheduled in-flight orders). |
+| **`rates.pickTasksPerActiveOutbound`** | **`openPickTasks` ÷ max(1, active outbound count)** — **two decimals**; backlog **intensity**, not picks/hour. |
+| **`rates.replenishmentShareOfPickFaceWorkloadPercent`** | **`openReplenishmentTasks` ÷ (openPick + openReplenish) × 100** (**one decimal**); **0** when both queues are empty. |
+
+**Payload:** `rateMethodology` mirrors these definitions as bullet strings for dashboard/API parity (`WMS_HOME_RATE_METHODOLOGY_BF20` in `wms-home-kpis.ts`).
+
+**Explicit backlog (not BF-20):** Delivered OTIF % by lane/customer, labor hours vs standards, velocity-based slotting optimization.
+
+_Last updated: 2026-05-02 — BF-20 minimal rates shipped._

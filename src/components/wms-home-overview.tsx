@@ -30,7 +30,7 @@ export async function WmsHomeOverview({
           docs
         </Link>{" "}
         → <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">docs/wms/WMS_EXECUTIVE_KPIS.md</code>{" "}
-        and <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">docs/wms/WMS_EXECUTIVE_KPIS_BF07.md</code> in-repo.
+        and <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">docs/wms/WMS_EXECUTIVE_KPIS_BF07.md</code> (includes BF-20 rate proxies) in-repo.
       </p>
 
       <Suspense fallback={<div className="mt-4 h-10 rounded-lg bg-zinc-100/80" aria-hidden />}>
@@ -59,8 +59,8 @@ export async function WmsHomeOverview({
       <div className="mt-8">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Executive highlights</h3>
         <p className="mt-1 text-xs text-zinc-600">
-          Leadership-oriented snapshots beyond raw task tiles — receiving backlog, dock schedule density, VAS workload, hold exposure, and BF-07
-          OTIF/labor/slotting proxies (see <span className="font-medium text-zinc-800">WMS_EXECUTIVE_KPIS.md</span>).
+          Leadership-oriented snapshots beyond raw task tiles — receiving backlog, dock schedule density, VAS workload, hold exposure, BF-07 proxies,
+          and BF-20 computed rate fields (see <span className="font-medium text-zinc-800">WMS_EXECUTIVE_KPIS.md</span>).
         </p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <li className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
@@ -109,6 +109,18 @@ export async function WmsHomeOverview({
             </p>
             <p className="mt-1 text-xs text-zinc-600">
               Active outbound orders whose requested ship date is before today (UTC), not yet shipped.
+              {data.rates.otifPastDueSharePercent != null ? (
+                <>
+                  {" "}
+                  <span className="font-medium text-zinc-800">
+                    {data.rates.otifPastDueSharePercent}% past due
+                  </span>{" "}
+                  of {data.rates.outboundScheduledCohortCount} scheduled in-flight order
+                  {data.rates.outboundScheduledCohortCount === 1 ? "" : "s"} (BF-20 proxy rate).
+                </>
+              ) : (
+                <> No scheduled cohort (no requested ship dates on in-flight orders) — OTIF share N/A.</>
+              )}
             </p>
             <Link href="/wms/operations" className="mt-2 inline-block text-xs font-semibold text-[var(--arscmp-primary)]">
               Outbound →
@@ -117,7 +129,11 @@ export async function WmsHomeOverview({
           <li className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Open pick tasks</p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{data.executive.openPickTasks}</p>
-            <p className="mt-1 text-xs text-zinc-600">Labor backlog proxy (task counts, not productivity rates).</p>
+            <p className="mt-1 text-xs text-zinc-600">
+              Labor backlog proxy (task counts). BF-20 intensity:{" "}
+              <span className="font-medium text-zinc-800">{data.rates.pickTasksPerActiveOutbound}</span> open picks per
+              in-flight outbound (not picks/hour).
+            </p>
             <Link href="/wms/operations" className="mt-2 inline-block text-xs font-semibold text-[var(--arscmp-primary)]">
               Task queue →
             </Link>
@@ -125,7 +141,13 @@ export async function WmsHomeOverview({
           <li className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Open replenishments</p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{data.executive.openReplenishmentTasks}</p>
-            <p className="mt-1 text-xs text-zinc-600">Pick-face / slotting pressure proxy (open REPLENISH tasks).</p>
+            <p className="mt-1 text-xs text-zinc-600">
+              Pick-face / slotting pressure proxy (open REPLENISH tasks). BF-20:{" "}
+              <span className="font-medium text-zinc-800">
+                {data.rates.replenishmentShareOfPickFaceWorkloadPercent}%
+              </span>{" "}
+              of open pick+replen workload.
+            </p>
             <Link href="/wms/operations" className="mt-2 inline-block text-xs font-semibold text-[var(--arscmp-primary)]">
               Operations →
             </Link>
@@ -137,6 +159,14 @@ export async function WmsHomeOverview({
           <p className="mt-2 text-sm text-zinc-800">{data.narratives.otif}</p>
           <p className="mt-2 text-sm text-zinc-800">{data.narratives.labor}</p>
           <p className="mt-2 text-sm text-zinc-800">{data.narratives.slotting}</p>
+          <p className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            Rate methodology (BF-20, same JSON as <code className="text-[10px]">rateMethodology</code>)
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-zinc-600">
+            {data.rateMethodology.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
         </div>
       </div>
 

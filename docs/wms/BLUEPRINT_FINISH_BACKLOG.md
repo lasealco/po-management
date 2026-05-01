@@ -56,7 +56,7 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 | **BF-17** | **TMS / carrier stub** — dock refs + Bearer webhook placeholder | Appointments / TMS row | BF-05 dock slice | Minimal landed (`POST /api/wms/tms-webhook`, `set_dock_appointment_tms_refs`, BF-17 columns — [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-17, [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md)); carrier certify backlog | WMS + integrations |
 | **BF-18** | **VAS multi-line BOM** consumption vs single-row **`VALUE_ADD`** | VAS row | BF-09 intake | Minimal landed: **`WmsWorkOrderBomLine`**, **`replace_work_order_bom_lines`**, **`consume_work_order_bom_line`**, WMS UI, **`db:seed:wms-vas-bom-demo`** ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-18, [`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md)); MRP/ECO backlog | WMS + CRM |
 | **BF-19** | **CT map depth** — **minimal landed:** CRM account lat/lng HQ pins (**not** rack/bin); geocode + indoor map backlog | Enterprise CT map row | BF-11 warehouse pins | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-19 + [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) — **`buildCrmAccountMapPins`**, CRM PATCH geo | CT + CRM (+ WMS grants for map) |
-| **BF-20** | **Executive KPI rates** — OTIF / labor / slotting proxies beyond BF-07 narratives | Dashboards row | BF-07 home KPIs | [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-20 + [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md) | Product + WMS |
+| **BF-20** | **Executive KPI rates** — minimal proxy numeric rates + methodology on **`fetchWmsHomeKpis`** | Dashboards row | BF-07 home KPIs | Minimal landed: **`rates`** + **`rateMethodology`** ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md) §BF-20, [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md)); delivered OTIF % / engineered labor / ABC slotting backlog | Product + WMS |
 
 **Note:** IDs are **not** commitments — merge/split capsules when estimates land (e.g. **BF-02 + BF-01** often sequenced tightly).
 
@@ -105,4 +105,4 @@ Deliverables:
 Exit when BF-01 row in BLUEPRINT_FINISH_BACKLOG.md is satisfied: GAP_MAP reflects line variance depth or explicit documented deferral for remaining gaps.
 ```
 
-_Last updated: 2026-04-29 — Added **`BF-12`–`BF-20`** catalog rows + [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md); **`BF-02`–`BF-11`** capsule snapshot in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); BF-01 vs **BF-03–BF-06** ID reminder; BF-01 prompt template._
+_Last updated: 2026-05-02 — **BF-20** catalog row reflects minimal KPI proxy rates landed (`fetchWmsHomeKpis.rates`); prior **2026-04-29** note — **`BF-12`–`BF-20`** catalog rows + [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md); **`BF-02`–`BF-11`** capsule snapshot in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); BF-01 vs **BF-03–BF-06** ID reminder; BF-01 prompt template._

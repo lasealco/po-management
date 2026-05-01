@@ -16,6 +16,62 @@ export type WmsHomeExecutiveNarratives = {
   slotting: string;
 };
 
+/** Doc-aligned strings surfaced on `/wms` + `GET /api/wms?homeKpis=1` (BF-20). */
+export const WMS_HOME_RATE_METHODOLOGY_BF20 = [
+  "OTIF past-due share (%): past-due scheduled orders ÷ active outbound with requestedShipDate set (UTC calendar-day boundary). Omitted when the scheduled cohort is empty.",
+  "Pick intensity: open PICK tasks ÷ max(1, active outbound orders). Backlog proxy, not picks/hour productivity.",
+  "Replenishment share (%): open REPLENISH ÷ (open PICK + open REPLENISH). Slotting / pick-face pressure proxy (0% when both queues are empty).",
+] as const;
+
+export type WmsHomeExecutiveRates = {
+  /** % of scheduled active outbound (requestedShipDate set) that is past due UTC; null when cohort is empty. */
+  otifPastDueSharePercent: number | null;
+  /** Active outbound with requestedShipDate — denominator for OTIF proxy rate. */
+  outboundScheduledCohortCount: number;
+  /** Open PICK tasks per in-flight outbound order (≥1 denominator). */
+  pickTasksPerActiveOutbound: number;
+  /** Open REPLENISH as % of open PICK + REPLENISH (one decimal, 0–100). */
+  replenishmentShareOfPickFaceWorkloadPercent: number;
+};
+
+/** Pure helper — BF-20 rate proxies from BF-07 counts. */
+export function buildExecutiveRates(input: {
+  outboundPastDueCount: number;
+  outboundScheduledCohortCount: number;
+  openPickTasks: number;
+  openReplenishmentTasks: number;
+  outboundActive: number;
+}): WmsHomeExecutiveRates {
+  const {
+    outboundPastDueCount,
+    outboundScheduledCohortCount,
+    openPickTasks,
+    openReplenishmentTasks,
+    outboundActive,
+  } = input;
+
+  const otifPastDueSharePercent =
+    outboundScheduledCohortCount <= 0
+      ? null
+      : Math.round((1000 * outboundPastDueCount) / outboundScheduledCohortCount) / 10;
+
+  const pickTasksPerActiveOutbound =
+    Math.round((100 * openPickTasks) / Math.max(1, outboundActive)) / 100;
+
+  const pickPlusReplen = openPickTasks + openReplenishmentTasks;
+  const replenishmentShareOfPickFaceWorkloadPercent =
+    pickPlusReplen <= 0
+      ? 0
+      : Math.round((1000 * openReplenishmentTasks) / pickPlusReplen) / 10;
+
+  return {
+    otifPastDueSharePercent,
+    outboundScheduledCohortCount,
+    pickTasksPerActiveOutbound,
+    replenishmentShareOfPickFaceWorkloadPercent,
+  };
+}
+
 /** Pure helper — used by `/wms` home and tests. */
 export function buildExecutiveNarratives(input: {
   outboundPastDueCount: number;
@@ -63,6 +119,9 @@ export type WmsHomeKpisPayload = {
     openReplenishmentTasks: number;
   };
   narratives: WmsHomeExecutiveNarratives;
+  /** BF-20 — derived proxy rates (methodology: `rateMethodology`). */
+  rates: WmsHomeExecutiveRates;
+  rateMethodology: readonly string[];
 };
 
 export type FetchWmsHomeKpisOptions = {
@@ -72,7 +131,7 @@ export type FetchWmsHomeKpisOptions = {
 
 /**
  * Tenant-wide (or warehouse-scoped) operational + executive KPIs for `/wms` home and optional JSON export (`GET /api/wms?homeKpis=1`).
- * See `docs/wms/WMS_EXECUTIVE_KPIS.md` + `WMS_EXECUTIVE_KPIS_BF07.md` for definitions vs blueprint.
+ * See `docs/wms/WMS_EXECUTIVE_KPIS.md`, `WMS_EXECUTIVE_KPIS_BF07.md`, and BF-20 rate notes in the latter for definitions vs blueprint.
  */
 export async function fetchWmsHomeKpis(
   tenantId: string,
@@ -131,6 +190,7 @@ export async function fetchWmsHomeKpis(
     openValueAddTasks,
     outboundActive,
     outboundPastDueCount,
+    outboundScheduledCohortCount,
     wavesActive,
     balanceRows,
     balancesOnHold,
@@ -160,6 +220,13 @@ export async function fetchWmsHomeKpis(
         ...outboundWhere,
         status: { in: [...outboundActiveStatuses] },
         requestedShipDate: { not: null, lt: startOfUtcDay },
+      },
+    }),
+    prisma.outboundOrder.count({
+      where: {
+        ...outboundWhere,
+        status: { in: [...outboundActiveStatuses] },
+        requestedShipDate: { not: null },
       },
     }),
     prisma.wmsWave.count({
@@ -239,6 +306,14 @@ export async function fetchWmsHomeKpis(
     openReplenishmentTasks: openReplenish,
   });
 
+  const rates = buildExecutiveRates({
+    outboundPastDueCount,
+    outboundScheduledCohortCount,
+    openPickTasks: openPick,
+    openReplenishmentTasks: openReplenish,
+    outboundActive,
+  });
+
   return {
     asOf: asOf.toISOString(),
     scopedWarehouseId: wh,
@@ -248,5 +323,7 @@ export async function fetchWmsHomeKpis(
     confidenceSignals,
     executive,
     narratives,
+    rates,
+    rateMethodology: [...WMS_HOME_RATE_METHODOLOGY_BF20],
   };
 }

@@ -2,7 +2,7 @@
 
 **Purpose:** Agreed leadership-facing metrics for **`/wms`** “At a glance” vs blueprint-style dashboards — implemented as **operational tiles + executive highlights + optional JSON export**, not as a separate BI warehouse.
 
-**Agreement:** These KPIs prioritize **floor-to-leadership alignment** (receiving, dock, VAS, inventory quality) using tables already in repo (`Shipment.wmsReceiveStatus`, `WmsDockAppointment`, `WmsTask`, `InventoryBalance`). Full blueprint OTIF **rates**, labor **productivity**, and **slotting optimization** remain **out of scope** unless modeled elsewhere — **BF-07** adds **proxies + narratives** ([`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md)).
+**Agreement:** These KPIs prioritize **floor-to-leadership alignment** (receiving, dock, VAS, inventory quality) using tables already in repo (`Shipment.wmsReceiveStatus`, `WmsDockAppointment`, `WmsTask`, `InventoryBalance`). **BF-07** adds **proxies + narratives**; **BF-20** adds **computed proxy rates** (`rates` + `rateMethodology` on `fetchWmsHomeKpis` — [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md)). Full blueprint delivered OTIF %, engineered labor productivity, and ABC slotting optimization remain **out of scope** unless modeled elsewhere.
 
 ## KPI inventory
 
@@ -13,8 +13,11 @@
 | **Open VAS workload** | Count of **`WmsTask`** rows with **`taskType = VALUE_ADD`** and **`status = OPEN`**. | `WmsTask` |
 | **Hold rate (% of rows)** | `onHold` balance rows ÷ total balance rows × 100, **one decimal**, **0%** if no rows. | `InventoryBalance` |
 | **Outbound past due (BF-07)** | Active outbound (`DRAFT`–`PACKED`) with **`requestedShipDate`** **before** UTC day start. OTIF **risk** proxy, not delivered OTIF %. | `OutboundOrder` |
+| **OTIF proxy rate (BF-20)** | Past-due count ÷ scheduled cohort × 100 (`rates.otifPastDueSharePercent`); cohort = active outbound with **`requestedShipDate` set**. | Same + `fetchWmsHomeKpis` |
 | **Open pick tasks (BF-07)** | **`WmsTask`** **`PICK`** + **`OPEN`** — labor **backlog** proxy. | `WmsTask` |
+| **Pick intensity (BF-20)** | Open picks ÷ max(1, active outbound) — **`rates.pickTasksPerActiveOutbound`**. | `WmsTask` + `OutboundOrder` |
 | **Open replenishments (BF-07)** | **`WmsTask`** **`REPLENISH`** + **`OPEN`** — slotting / pick-face **pressure** proxy. | `WmsTask` |
+| **Replenishment workload share (BF-20)** | REPLENISH ÷ (PICK + REPLENISH) open tasks × 100. | `WmsTask` |
 
 ### Operational tiles (triage)
 
@@ -37,4 +40,5 @@ Implementation: **`src/lib/wms/wms-home-kpis.ts`** (`fetchWmsHomeKpis`).
 
 - **Dock “today”** uses **UTC** midnight boundaries — align reporting TZ in a future slice if leadership requires local-site midnight.
 - **`BF-07`:** Optional warehouse scope via **`wh`** / **`warehouseId`** on **`homeKpis`** or **`/wms?wh=`**; receiving pipeline stays **tenant-wide** when scoped (see [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md)).
+- **`BF-20`:** **`rates`** fields are **proxy shares/intensity** from operational tables — not carrier OTIF certification or engineered labor standards (same doc).
 - KPIs are **operational**, not **financial close** — same disclaimer as on the home page.

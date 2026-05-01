@@ -24,7 +24,7 @@
 | **BF-17** | TMS / carrier stub | Carrier milestones → EDI/API hooks (not full TMS) | BF-05 dock transport |
 | **BF-18** | VAS multi-line BOM | Consumption engine beyond single-row **`VALUE_ADD`** | BF-09 intake |
 | **BF-19** | CT map depth | **CRM HQ pins minimal landed** (`CrmAccount` lat/lng + map layer); **rack floor** on CT map still deferred | BF-11 warehouse pins |
-| **BF-20** | KPI rates layer | OTIF **rates**, labor/slotting proxies beyond BF-07 narratives | BF-07 home KPIs |
+| **BF-20** | KPI rates layer | **Minimal landed** — `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**; delivered OTIF % / engineered labor / ABC slotting backlog | BF-07 home KPIs |
 
 **Suggested dependency-aware sequence (not mandatory):** BF-12 → BF-13 → BF-14 (receiving truth → serials → commercial automation); BF-15 parallel to BF-14 when owners differ; BF-16 early if security gates block expansion; BF-17 after BF-05; BF-18 after BF-09; BF-19 after BF-11; BF-20 last or parallel once reporting consumers exist.
 
@@ -128,7 +128,9 @@
 
 **Objective:** Promote BF-07 narratives to **computed rates** (OTIF proxy, pick productivity proxy, slotting health index) with definitions versioned in docs.
 
-**Exit sketch:** **`fetchWmsHomeKpis`** (or successor) emits rate fields + methodology comment; dashboard copy explains denominators; **`GAP_MAP`** dashboards row updated.
+**Minimal slice shipped (repo):** **`fetchWmsHomeKpis`** returns **`rates`** (`otifPastDueSharePercent`, `outboundScheduledCohortCount`, `pickTasksPerActiveOutbound`, `replenishmentShareOfPickFaceWorkloadPercent`) plus **`rateMethodology`** bullet strings; extra **`OutboundOrder`** count for scheduled cohort; **`/wms`** executive cards + narratives panel document denominators ([`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md)); **`GAP_MAP`** dashboards row updated.
+
+**Exit sketch (remaining):** Delivered OTIF % by lane/customer; labor hours vs standards; velocity-based slotting scores.
 
 **Out of scope:** Data warehouse export, ML forecasting.
 
@@ -140,4 +142,4 @@
 
 ---
 
-_Last updated: 2026-05-02 — **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
+_Last updated: 2026-05-02 — **BF-20** minimal executive KPI proxy rates (`buildExecutiveRates`, `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**, `/wms` copy); **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
