@@ -34,6 +34,9 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_shipment_inbound_fields: "operations",
   set_wms_receiving_status: "operations",
   set_shipment_item_receive_line: "operations",
+  create_wms_receipt: "operations",
+  close_wms_receipt: "operations",
+  set_wms_receipt_line: "operations",
 
   set_wms_lot_batch: "inventory",
 

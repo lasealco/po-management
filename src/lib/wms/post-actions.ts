@@ -11,6 +11,7 @@ import {
 } from "./crm-account-link";
 import { normalizeDockCode, parseDockYardMilestone, truncateDockTransportField, DOCK_TRANSPORT_LIMITS } from "./dock-appointment";
 import { orderPickSlotsForWave, type WavePickSlot } from "./allocation-strategy";
+import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
 import { resolveVarianceDisposition } from "./receive-line-variance";
 import {
   parseLotBatchExpiryInput,
@@ -1255,33 +1256,214 @@ export async function handleWmsPost(
           ? null
           : String(rawNote).trim().slice(0, 1000);
 
+    await prisma.$transaction(async (tx) => {
+      await writeShipmentItemReceiveLineInTx(
+        tx,
+        tenantId,
+        actorId,
+        {
+          itemId: item.id,
+          shipmentId: item.shipmentId,
+          quantityShipped: shipped,
+          receivedQty,
+          disposition,
+          varianceNotePayload,
+        },
+        { source: "set_shipment_item_receive_line" },
+      );
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_wms_receipt") {
+    const shipmentId = input.shipmentId?.trim();
+    if (!shipmentId) {
+      return toApiErrorResponseFromStatus("shipmentId required.", 400);
+    }
+    const ship = await prisma.shipment.findFirst({
+      where: { id: shipmentId, order: { tenantId } },
+      select: { id: true },
+    });
+    if (!ship) {
+      return toApiErrorResponseFromStatus("Shipment not found.", 404);
+    }
+
+    const existingOpen = await prisma.wmsReceipt.findFirst({
+      where: { tenantId, shipmentId, status: "OPEN" },
+      select: { id: true },
+    });
+    if (existingOpen) {
+      return NextResponse.json({ ok: true, receiptId: existingOpen.id });
+    }
+
+    let receiptDockReceivedAt: Date | undefined;
+    if (input.receiptDockReceivedAt !== undefined && input.receiptDockReceivedAt !== null) {
+      const raw = String(input.receiptDockReceivedAt).trim();
+      if (raw === "") {
+        receiptDockReceivedAt = undefined;
+      } else {
+        const parsed = new Date(raw);
+        if (Number.isNaN(parsed.getTime())) {
+          return toApiErrorResponseFromStatus("Invalid receiptDockReceivedAt.", 400);
+        }
+        receiptDockReceivedAt = parsed;
+      }
+    }
+
+    const receiptDockNote =
+      input.receiptDockNote !== undefined
+        ? input.receiptDockNote === null || String(input.receiptDockNote).trim() === ""
+          ? null
+          : String(input.receiptDockNote).trim().slice(0, 2000)
+        : undefined;
+
+    const created = await prisma.$transaction(async (tx) => {
+      const row = await tx.wmsReceipt.create({
+        data: {
+          tenantId,
+          shipmentId,
+          createdByUserId: actorId,
+          ...(receiptDockNote !== undefined ? { dockNote: receiptDockNote } : {}),
+          ...(receiptDockReceivedAt !== undefined ? { dockReceivedAt: receiptDockReceivedAt } : {}),
+        },
+        select: { id: true, shipmentId: true },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: row.shipmentId,
+          entityType: "SHIPMENT",
+          entityId: row.id,
+          action: "wms_receipt_created",
+          payload: { wmsReceiptId: row.id },
+          actorUserId: actorId,
+        },
+      });
+      return row;
+    });
+
+    return NextResponse.json({ ok: true, receiptId: created.id });
+  }
+
+  if (action === "close_wms_receipt") {
+    const receiptId = input.receiptId?.trim();
+    if (!receiptId) {
+      return toApiErrorResponseFromStatus("receiptId required.", 400);
+    }
+    const rec = await prisma.wmsReceipt.findFirst({
+      where: { id: receiptId, tenantId },
+      select: { id: true, status: true, shipmentId: true },
+    });
+    if (!rec) {
+      return toApiErrorResponseFromStatus("Receipt not found.", 404);
+    }
+    if (rec.status !== "OPEN") {
+      return toApiErrorResponseFromStatus("Receipt already closed.", 400);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsReceipt.update({
+        where: { id: rec.id },
+        data: { status: "CLOSED", closedAt: new Date(), closedByUserId: actorId },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: rec.shipmentId,
+          entityType: "SHIPMENT",
+          entityId: rec.id,
+          action: "wms_receipt_closed",
+          payload: { wmsReceiptId: rec.id },
+          actorUserId: actorId,
+        },
+      });
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_wms_receipt_line") {
+    const receiptId = input.receiptId?.trim();
+    const shipmentItemId = input.shipmentItemId?.trim();
+    const rawRecv = input.receivedQty;
+    if (!receiptId || !shipmentItemId || rawRecv === undefined || rawRecv === null) {
+      return toApiErrorResponseFromStatus("receiptId, shipmentItemId and receivedQty required.", 400);
+    }
+    const receivedQty = Number(rawRecv);
+    if (!Number.isFinite(receivedQty) || receivedQty < 0) {
+      return toApiErrorResponseFromStatus("receivedQty must be a non-negative number.", 400);
+    }
+
+    const receipt = await prisma.wmsReceipt.findFirst({
+      where: { id: receiptId, tenantId },
+      select: { id: true, status: true, shipmentId: true },
+    });
+    if (!receipt) {
+      return toApiErrorResponseFromStatus("Receipt not found.", 404);
+    }
+    if (receipt.status !== "OPEN") {
+      return toApiErrorResponseFromStatus("Receipt is not open.", 400);
+    }
+
+    const item = await prisma.shipmentItem.findFirst({
+      where: { id: shipmentItemId, shipmentId: receipt.shipmentId, shipment: { order: { tenantId } } },
+      select: {
+        id: true,
+        shipmentId: true,
+        quantityShipped: true,
+      },
+    });
+    if (!item) {
+      return toApiErrorResponseFromStatus("Shipment item not found for this receipt.", 404);
+    }
+
+    const shipped = Number(item.quantityShipped);
+    const disposition = resolveVarianceDisposition(shipped, receivedQty, input.varianceDisposition ?? null);
+
+    const rawNote = input.varianceNote;
+    const varianceNotePayload =
+      rawNote === undefined
+        ? undefined
+        : rawNote === null || String(rawNote).trim() === ""
+          ? null
+          : String(rawNote).trim().slice(0, 1000);
+
     const qtyStr = receivedQty.toFixed(3);
 
     await prisma.$transaction(async (tx) => {
-      await tx.shipmentItem.update({
-        where: { id: item.id },
-        data: {
+      await tx.wmsReceiptLine.upsert({
+        where: {
+          receiptId_shipmentItemId: { receiptId: receipt.id, shipmentItemId: item.id },
+        },
+        create: {
+          receiptId: receipt.id,
+          shipmentItemId: item.id,
+          quantityReceived: qtyStr,
+          wmsVarianceDisposition: disposition,
+          ...(varianceNotePayload !== undefined ? { wmsVarianceNote: varianceNotePayload } : {}),
+        },
+        update: {
           quantityReceived: qtyStr,
           wmsVarianceDisposition: disposition,
           ...(varianceNotePayload !== undefined ? { wmsVarianceNote: varianceNotePayload } : {}),
         },
       });
-      await tx.ctAuditLog.create({
-        data: {
-          tenantId,
+
+      await writeShipmentItemReceiveLineInTx(
+        tx,
+        tenantId,
+        actorId,
+        {
+          itemId: item.id,
           shipmentId: item.shipmentId,
-          entityType: "SHIPMENT_ITEM",
-          entityId: item.id,
-          action: "inbound_receive_line_updated",
-          payload: {
-            quantityShipped: shipped,
-            quantityReceived: receivedQty,
-            disposition,
-            ...(varianceNotePayload !== undefined && varianceNotePayload !== null ? { note: varianceNotePayload } : {}),
-          },
-          actorUserId: actorId,
+          quantityShipped: shipped,
+          receivedQty,
+          disposition,
+          varianceNotePayload,
         },
-      });
+        { wmsReceiptId: receipt.id, source: "set_wms_receipt_line" },
+      );
     });
 
     return NextResponse.json({ ok: true });

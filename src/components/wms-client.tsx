@@ -187,6 +187,26 @@ type WmsData = {
         | "OTHER";
       wmsVarianceNote: string | null;
     }>;
+    /** BF-12 — at most one OPEN `WmsReceipt` per shipment (enforced server-side). */
+    openWmsReceipt: {
+      id: string;
+      status: "OPEN";
+      dockNote: string | null;
+      dockReceivedAt: string | null;
+      createdAt: string;
+      lines: Array<{
+        shipmentItemId: string;
+        quantityReceived: string;
+        wmsVarianceDisposition:
+          | "UNSET"
+          | "MATCH"
+          | "SHORT"
+          | "OVER"
+          | "DAMAGED"
+          | "OTHER";
+        wmsVarianceNote: string | null;
+      }>;
+    } | null;
   }>;
   putawayCandidates: Array<{
     shipmentItemId: string;
@@ -460,7 +480,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [outboundCrmAccountId, setOutboundCrmAccountId] = useState("");
   const [outboundSourceQuoteId, setOutboundSourceQuoteId] = useState("");
   const [inboundEdits, setInboundEdits] = useState<
-    Record<string, { asn: string; expectedReceiveAt: string }>
+    Record<string, { asn: string; expectedReceiveAt: string; receiptDockNote: string; receiptDockAt: string }>
   >({});
   const [outboundAsnEdits, setOutboundAsnEdits] = useState<
     Record<string, { asn: string; requestedShip: string }>
@@ -735,13 +755,18 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   useEffect(() => {
     if (!data) return;
     startTransition(() => {
-      const next: Record<string, { asn: string; expectedReceiveAt: string }> = {};
+      const next: Record<
+        string,
+        { asn: string; expectedReceiveAt: string; receiptDockNote: string; receiptDockAt: string }
+      > = {};
       for (const s of data.inboundShipments) {
         next[s.id] = {
           asn: s.asnReference ?? "",
           expectedReceiveAt: s.expectedReceiveAt
             ? s.expectedReceiveAt.slice(0, 16)
             : "",
+          receiptDockNote: "",
+          receiptDockAt: "",
         };
       }
       setInboundEdits(next);
@@ -1898,7 +1923,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           Lightweight receiving header on purchase-order shipments: ASN reference, expected receive time,
           WMS receiving workflow states before putaway, and{" "}
           <span className="font-medium">line-level received qty vs shipped (variance disposition)</span> per ASN line.
-          Putaway still runs per shipment line below.
+          Optional <span className="font-medium">dock receipt sessions</span> (BF-12) wrap line posts with a tenant-scoped{" "}
+          <span className="font-medium">WmsReceipt</span> without replacing Option A/BF-01 fields. Putaway still runs per
+          shipment line below.
         </p>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -1926,7 +1953,14 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 </tr>
               ) : (
                 data.inboundShipments.map((s) => {
-                  const draft = inboundEdits[s.id] ?? { asn: "", expectedReceiveAt: "" };
+                  const openRec = s.openWmsReceipt;
+                  const draft =
+                    inboundEdits[s.id] ?? {
+                      asn: "",
+                      expectedReceiveAt: "",
+                      receiptDockNote: "",
+                      receiptDockAt: "",
+                    };
                   const lineColSpan = canEdit ? 11 : 8;
                   return (
                     <Fragment key={s.id}>
@@ -2102,6 +2136,102 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                             record physical <span className="font-medium">received</span>. Leave disposition on{" "}
                             <span className="font-medium">Auto</span> to derive Match / Short / Over vs expected.
                           </p>
+                          <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                              Dock receipt session (BF-12)
+                            </p>
+                            <p className="mt-1 max-w-3xl text-[11px] text-zinc-600">
+                              Optional Option B wrapper on this shipment: while a session is{" "}
+                              <span className="font-medium">open</span>, line saves use{" "}
+                              <span className="font-medium">set_wms_receipt_line</span> (same BF-01 quantities on the
+                              shipment line; audit carries <span className="font-medium">wmsReceiptId</span>). With no
+                              session, <span className="font-medium">Save line</span> stays on direct Option A/BF-01
+                              posting.
+                            </p>
+                            {openRec ? (
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-zinc-700">
+                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-900">
+                                  Session open
+                                </span>
+                                <span className="text-zinc-500">
+                                  {openRec.id.slice(0, 10)}… · {openRec.lines.length} receipt line
+                                  {openRec.lines.length === 1 ? "" : "s"}
+                                </span>
+                                {openRec.dockNote ? (
+                                  <span className="max-w-md truncate text-zinc-600" title={openRec.dockNote}>
+                                    Note: {openRec.dockNote}
+                                  </span>
+                                ) : null}
+                                {canEdit ? (
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      void runAction({
+                                        action: "close_wms_receipt",
+                                        receiptId: openRec.id,
+                                      })
+                                    }
+                                    className="ml-auto rounded-lg border border-zinc-300 px-3 py-1.5 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                                  >
+                                    Close dock receipt
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : canEdit ? (
+                              <div className="mt-2 flex flex-wrap items-end gap-2">
+                                <label className="block min-w-[10rem] text-[11px] font-medium text-zinc-600">
+                                  Receipt note
+                                  <input
+                                    value={draft.receiptDockNote}
+                                    onChange={(e) =>
+                                      setInboundEdits((prev) => ({
+                                        ...prev,
+                                        [s.id]: { ...draft, receiptDockNote: e.target.value },
+                                      }))
+                                    }
+                                    className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1 text-[11px]"
+                                    placeholder="Optional"
+                                    disabled={busy}
+                                  />
+                                </label>
+                                <label className="block text-[11px] font-medium text-zinc-600">
+                                  Dock received at
+                                  <input
+                                    type="datetime-local"
+                                    value={draft.receiptDockAt}
+                                    onChange={(e) =>
+                                      setInboundEdits((prev) => ({
+                                        ...prev,
+                                        [s.id]: { ...draft, receiptDockAt: e.target.value },
+                                      }))
+                                    }
+                                    className="mt-0.5 rounded-lg border border-zinc-300 px-2 py-1 text-[11px]"
+                                    disabled={busy}
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    void runAction({
+                                      action: "create_wms_receipt",
+                                      shipmentId: s.id,
+                                      receiptDockNote: draft.receiptDockNote.trim() || null,
+                                      receiptDockReceivedAt: draft.receiptDockAt.trim()
+                                        ? new Date(draft.receiptDockAt).toISOString()
+                                        : null,
+                                    })
+                                  }
+                                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-[11px] font-semibold text-white disabled:opacity-40"
+                                >
+                                  Start dock receipt
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-[11px] text-zinc-500">No open dock receipt session.</p>
+                            )}
+                          </div>
                           <div className="mt-2 overflow-x-auto">
                             <table className="min-w-[720px] w-full border-collapse text-xs">
                               <thead>
@@ -2209,13 +2339,25 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                                               return;
                                             }
                                             const vd = dispEl?.value?.trim() ?? "";
-                                            void runAction({
-                                              action: "set_shipment_item_receive_line",
+                                            const noteVal = noteEl?.value ?? "";
+                                            const base = {
                                               shipmentItemId: line.shipmentItemId,
                                               receivedQty,
                                               varianceDisposition: vd === "" ? undefined : vd,
-                                              varianceNote: noteEl?.value ?? "",
-                                            });
+                                              varianceNote: noteVal,
+                                            };
+                                            void runAction(
+                                              openRec
+                                                ? {
+                                                    action: "set_wms_receipt_line",
+                                                    receiptId: openRec.id,
+                                                    ...base,
+                                                  }
+                                                : {
+                                                    action: "set_shipment_item_receive_line",
+                                                    ...base,
+                                                  },
+                                            );
                                           }}
                                           className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
                                         >

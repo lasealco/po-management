@@ -76,6 +76,7 @@ model Tenant {
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
   wmsSavedLedgerViews                         WmsSavedLedgerView[]
   wmsDockAppointments                         WmsDockAppointment[]
+  wmsReceipts                                 WmsReceipt[]
   wmsLotBatches                               WmsLotBatch[]
   wmsWorkOrders                               WmsWorkOrder[]
   loadPlans                                   LoadPlan[]
@@ -2565,6 +2566,8 @@ model User {
   wmsWavesCreated                                     WmsWave[]
   outboundOrdersCreated                               OutboundOrder[]
   wmsDockAppointmentsCreated                          WmsDockAppointment[]
+  wmsReceiptsCreated                                  WmsReceipt[]                                  @relation("WmsReceiptCreatedBy")
+  wmsReceiptsClosed                                   WmsReceipt[]                                  @relation("WmsReceiptClosedBy")
   wmsWorkOrdersCreated                                WmsWorkOrder[]
   loadPlansCreated                                    LoadPlan[]
   preferences                                         UserPreference[]
@@ -3691,6 +3694,12 @@ enum WmsShipmentItemVarianceDisposition {
   OTHER
 }
 
+/// BF-12 — dock receipt session (Option B); coexists with Option A `Shipment.wmsReceiveStatus` + BF-01 line fields.
+enum WmsReceiptStatus {
+  OPEN
+  CLOSED
+}
+
 model Shipment {
   id                      String         @id @default(cuid())
   orderId                 String
@@ -3756,6 +3765,7 @@ model Shipment {
   ctCostLines                CtShipmentCostLine[]
   tariffShipmentApplications TariffShipmentApplication[]
   dockAppointments           WmsDockAppointment[]
+  wmsReceipts                WmsReceipt[]
 
   @@index([orderId, createdAt])
   @@index([status])
@@ -3785,10 +3795,52 @@ model ShipmentItem {
   shipment            Shipment               @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   orderItem           PurchaseOrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
   containerCargoLines CtContainerCargoLine[]
+  wmsReceiptLines     WmsReceiptLine[]
 
   @@unique([shipmentId, orderItemId])
   @@index([shipmentId])
   @@index([orderItemId])
+}
+
+/// BF-12 — tenant-scoped dock receipt session for one inbound shipment; lines mirror BF-01 counts on `ShipmentItem`.
+model WmsReceipt {
+  id               String           @id @default(cuid())
+  tenantId         String
+  shipmentId       String
+  status           WmsReceiptStatus @default(OPEN)
+  dockNote         String?          @db.VarChar(2000)
+  dockReceivedAt   DateTime?
+  closedAt         DateTime?
+  closedByUserId   String?
+  createdByUserId  String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment  Shipment         @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  closedBy  User?            @relation("WmsReceiptClosedBy", fields: [closedByUserId], references: [id], onDelete: SetNull)
+  createdBy User?            @relation("WmsReceiptCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  lines     WmsReceiptLine[]
+
+  @@index([tenantId, shipmentId])
+  @@index([tenantId, status])
+}
+
+model WmsReceiptLine {
+  id                     String                             @id @default(cuid())
+  receiptId              String
+  shipmentItemId         String
+  quantityReceived       Decimal                            @db.Decimal(14, 3)
+  wmsVarianceDisposition WmsShipmentItemVarianceDisposition   @default(UNSET)
+  wmsVarianceNote        String?                            @db.VarChar(1000)
+  createdAt              DateTime                           @default(now())
+  updatedAt              DateTime                           @updatedAt
+
+  receipt      WmsReceipt    @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  shipmentItem ShipmentItem  @relation(fields: [shipmentItemId], references: [id], onDelete: Cascade)
+
+  @@unique([receiptId, shipmentItemId])
+  @@index([shipmentItemId])
 }
 
 model ShipmentBooking {

@@ -105,4 +105,11 @@ export type WmsBody = {
   estimatedLaborMinutes?: number | null;
   /** BF-10 — optional `CrmQuote.id`; must belong to same `crmAccountId`. */
   sourceCrmQuoteId?: string | null;
+
+  /** BF-12 — `WmsReceipt.id` for `close_wms_receipt` / `set_wms_receipt_line`. */
+  receiptId?: string;
+  /** BF-12 — optional operator note on `create_wms_receipt` (max 2000). */
+  receiptDockNote?: string | null;
+  /** BF-12 — optional dock/unload timestamp on `create_wms_receipt` (ISO string). */
+  receiptDockReceivedAt?: string | null;
 };

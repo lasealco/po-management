@@ -18,7 +18,8 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("set_wms_lot_batch")).toBe("inventory");
   });
 
-  it("returns undefined for unknown actions", () => {
-    expect(wmsMutationTierForPostAction("not_a_real_action")).toBeUndefined();
+  it("maps receiving mutations including BF-12 receipts", () => {
+    expect(wmsMutationTierForPostAction("create_wms_receipt")).toBe("operations");
+    expect(wmsMutationTierForPostAction("set_wms_receipt_line")).toBe("operations");
   });
 });

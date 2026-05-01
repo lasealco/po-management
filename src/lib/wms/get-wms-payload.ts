@@ -238,6 +238,26 @@ export async function getWmsDashboardPayload(
             orderItem: { select: { lineNo: true, description: true } },
           },
         },
+        wmsReceipts: {
+          where: { status: "OPEN" },
+          take: 1,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            status: true,
+            dockNote: true,
+            dockReceivedAt: true,
+            createdAt: true,
+            lines: {
+              select: {
+                shipmentItemId: true,
+                quantityReceived: true,
+                wmsVarianceDisposition: true,
+                wmsVarianceNote: true,
+              },
+            },
+          },
+        },
       },
     }),
     prisma.inventoryMovement.findMany({
@@ -519,6 +539,23 @@ export async function getWmsDashboardPayload(
             wmsVarianceDisposition: li.wmsVarianceDisposition,
             wmsVarianceNote: li.wmsVarianceNote,
           })),
+        openWmsReceipt: (() => {
+          const r = s.wmsReceipts[0];
+          if (!r) return null;
+          return {
+            id: r.id,
+            status: r.status,
+            dockNote: r.dockNote,
+            dockReceivedAt: r.dockReceivedAt?.toISOString() ?? null,
+            createdAt: r.createdAt.toISOString(),
+            lines: r.lines.map((ln) => ({
+              shipmentItemId: ln.shipmentItemId,
+              quantityReceived: ln.quantityReceived.toString(),
+              wmsVarianceDisposition: ln.wmsVarianceDisposition,
+              wmsVarianceNote: ln.wmsVarianceNote,
+            })),
+          };
+        })(),
       };
     }),
     putawayCandidates: shipmentItems
