@@ -24,7 +24,7 @@
 
 - [x] **Appointment scheduling** (R2) — **WE-02** minimal dock windows (`WmsDockAppointment`) — [`WMS_DOCK_APPOINTMENTS.md`](../../wms/WMS_DOCK_APPOINTMENTS.md); full TMS backlog.
 - [x] **VAS / work orders** (R3) — **WE-04 MVP** shipped (`WmsWorkOrder`, `VALUE_ADD`, Operations UI — [`WMS_VAS_WORK_ORDERS.md`](../../wms/WMS_VAS_WORK_ORDERS.md)); **BF-09** portal shell + CRM + estimates ([`WMS_VAS_BF09.md`](../../wms/WMS_VAS_BF09.md)); deeper BOM / SSO backlog.
-- [x] **Commercial quotes** (R3 Phase C) — **WE-07** + **BF-10**: [`WMS_COMMERCIAL_HANDOFF.md`](../../wms/WMS_COMMERCIAL_HANDOFF.md) (bill-to **`crmAccountId`** + optional **`sourceCrmQuoteId`**); automated CPQ→SKU outbound lines backlog.
+- [x] **Commercial quotes** (R3 Phase C) — **WE-07** + **BF-10** + **BF-14**: [`WMS_COMMERCIAL_HANDOFF.md`](../../wms/WMS_COMMERCIAL_HANDOFF.md) (bill-to **`crmAccountId`** + optional **`sourceCrmQuoteId`** + **`CrmQuoteLine.inventorySku`** / **`explode_crm_quote_to_outbound`**); full CPQ configurator backlog.
 
 ---
 

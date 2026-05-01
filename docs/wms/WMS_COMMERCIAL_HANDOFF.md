@@ -22,7 +22,11 @@ Define the **cross-module contract** for capsule **WE-07**: how commercial CRM o
 
 ## BF-10 — CRM quote lineage
 
-Optional **`OutboundOrder.sourceCrmQuoteId → CrmQuote`** stores commercial quote attribution alongside **`crmAccountId`** when **`CrmQuote.accountId`** matches the outbound bill-to (**`assertOutboundSourceQuoteAttachable`** in **`src/lib/wms/crm-account-link.ts`**). **`set_outbound_crm_account`** clears **`sourceCrmQuoteId`** when CRM unlinks or when the new bill-to no longer matches the quote’s account. CRM **`CrmQuote`** detail includes **Open WMS outbound handoff** (prefill **`/wms/operations`**); WMS shows quote links on open outbounds. **Outbound lines remain manually keyed** from inventory SKUs — automated CPQ→**`OutboundOrderLine`** mapping stays backlog.
+Optional **`OutboundOrder.sourceCrmQuoteId → CrmQuote`** stores commercial quote attribution alongside **`crmAccountId`** when **`CrmQuote.accountId`** matches the outbound bill-to (**`assertOutboundSourceQuoteAttachable`** in **`src/lib/wms/crm-account-link.ts`**). **`set_outbound_crm_account`** clears **`sourceCrmQuoteId`** when CRM unlinks or when the new bill-to no longer matches the quote’s account. CRM **`CrmQuote`** detail includes **Open WMS outbound handoff** (prefill **`/wms/operations`**); WMS shows quote links on open outbounds.
+
+## BF-14 — CPQ quote lines → outbound lines
+
+CRM **`CrmQuoteLine.inventorySku`** holds the warehouse SKU (**maps to tenant **`Product.sku`**)** maintained from **`/crm/quotes/[id]`**. **`explode_crm_quote_to_outbound`** (**`POST /api/wms`**) previews SKU/qty mapping under the viewer’s **product-division read scope**; with **`quoteExplosionConfirm: true`** it inserts **`OutboundOrderLine`** rows on **quote-linked outbounds that have no lines yet** (DRAFT or RELEASED, not packed/shipped/cancelled). **`create_outbound_order`** accepts **zero lines** when **`sourceCrmQuoteId`** is present so operators can materialize lines after CRM SKU hygiene — **`CtAuditLog`** **`outbound_quote_lines_exploded`**.
 
 ## API surfaces (WMS)
 
@@ -30,6 +34,8 @@ Optional **`OutboundOrder.sourceCrmQuoteId → CrmQuote`** stores commercial quo
 |-----------|------|
 | **`create_outbound_order`** (`crmAccountId` required today for create flow in product) | Anchors bill-to for downstream billing resolution |
 | **`create_outbound_order`** **`sourceCrmQuoteId`** (optional, BF-10) | Stores CRM quote lineage when **`CrmQuote.accountId`** matches **`crmAccountId`** |
+| **`create_outbound_order`** empty **`lines`** + **`sourceCrmQuoteId`** (BF-14) | Quote-shell outbound → explode fills SKU rows |
+| **`explode_crm_quote_to_outbound`** | BF-14 preview / confirm quote **`OutboundOrderLine`** explosion (`quoteExplosionConfirm`) |
 | **`set_outbound_crm_account`** | Adjust CRM link before pack where allowed; clears incompatible **`sourceCrmQuoteId`** |
 | **`mark_outbound_shipped`** | Emits **`SHIPMENT`** movements that feed billing materialization |
 
@@ -37,7 +43,7 @@ Optional **`OutboundOrder.sourceCrmQuoteId → CrmQuote`** stores commercial quo
 
 | Item | Owner / note |
 |------|----------------|
-| Quote → outbound **line auto-create from CRM quote lines** | Commercial SKUs on **`CrmQuoteLine`** — not part of BF-10 |
+| Quote → outbound **line auto-create from CRM quote lines** | **BF-14 minimal landed** — `inventorySku` on **`CrmQuoteLine`** + **`explode_crm_quote_to_outbound`**; **full CPQ configurator / solver still backlog** |
 | Price list / contracted rates on outbound lines | Commercial pricing module — billing rates today are movement-type based |
 | Multi-currency quote alignment | Backlog |
 

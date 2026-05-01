@@ -17,6 +17,7 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   create_outbound_order: "operations",
   set_outbound_order_asn_fields: "operations",
   set_outbound_crm_account: "operations",
+  explode_crm_quote_to_outbound: "operations",
   release_outbound_order: "operations",
 
   create_putaway_task: "operations",

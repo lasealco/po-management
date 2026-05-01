@@ -106,6 +106,9 @@ export type WmsBody = {
   /** BF-10 — optional `CrmQuote.id`; must belong to same `crmAccountId`. */
   sourceCrmQuoteId?: string | null;
 
+  /** BF-14 — `explode_crm_quote_to_outbound`: when true, creates outbound lines from CRM quote lines. */
+  quoteExplosionConfirm?: boolean;
+
   /** BF-12 — `WmsReceipt.id` for `close_wms_receipt` / `set_wms_receipt_line`. */
   receiptId?: string;
   /** BF-12 — optional operator note on `create_wms_receipt` (max 2000). */

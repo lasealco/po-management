@@ -18,7 +18,7 @@
 |----|-------------------|--------------------------------------------------------|---------------------|
 | **BF-12** | Receiving Option B — receipt header | Separate **`WmsReceipt`** / multi-event dock receipts vs Option A only | BF-01 variance semantics stable |
 | **BF-13** | Serial / unit genealogy | Per-unit serial beyond **`lotCode`** + **`WmsLotBatch`** | BF-02 lot metadata |
-| **BF-14** | CPQ → outbound automation | Quote lines → **`OutboundOrderLine`** without manual re-entry | BF-10 quote lineage |
+| **BF-14** | CPQ → outbound automation | Quote lines → **`OutboundOrderLine`** without manual re-entry | BF-10 lineage (**minimal landed**) |
 | **BF-15** | Allocation / wave solver v2 | Cartonization, multi-wave optimizer beyond **FEFO/FIFO** demos | BF-03 strategies |
 | **BF-16** | Per-field WMS ACL | Fine-grained mutations vs **BF-06** coarse tiers | BF-06 tier map stable |
 | **BF-17** | TMS / carrier stub | Carrier milestones → EDI/API hooks (not full TMS) | BF-05 dock transport |
@@ -57,6 +57,8 @@
 **Objective:** Given **`OutboundOrder.sourceCrmQuoteId`** (BF-10), expand **`CrmQuoteLine`** into **`OutboundOrderLine`** rows with SKU/qty mapping rules and human confirmation.
 
 **Exit sketch:** Server action + validation + audit; WMS or CRM UI preview/diff; **`WMS_COMMERCIAL_HANDOFF.md`** updated; feature flagged or grant-gated.
+
+**Minimal slice shipped (repo):** **`CrmQuoteLine.inventorySku`** (maps to tenant **`Product.sku`**); CRM **`POST/PATCH …/lines`** + quote detail UI; **`explode_crm_quote_to_outbound`** on **`POST /api/wms`** (`quoteExplosionConfirm` false = preview JSON, true = insert lines when outbound has **no lines** and quote-linked); **`create_outbound_order`** allows **zero lines** when **`sourceCrmQuoteId`** is set (quote shell); Operations outbound card preview table + confirm; **`CtAuditLog`** **`outbound_quote_lines_exploded`**. Respects **BF-06** **`operations`** tier + **`loadWmsViewReadScope`** product-division filter on SKU resolution.
 
 **Out of scope:** Full CPQ configurator, tier pricing solver.
 
@@ -128,4 +130,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — program draft for BF-12 … BF-20 mega phases._
+_Last updated: 2026-04-29 — **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._

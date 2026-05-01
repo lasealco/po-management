@@ -21,12 +21,14 @@ import {
 } from "./lot-batch-master";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
+import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
 import { nextWaveNo } from "./wave";
 import { nextWorkOrderNo } from "./work-order-no";
 
 import type { WmsBody } from "./wms-body";
+import { loadWmsViewReadScope } from "./wms-read-scope";
 import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
 
 export async function handleWmsPost(
@@ -329,8 +331,8 @@ export async function handleWmsPost(
   if (action === "create_outbound_order") {
     const warehouseId = input.warehouseId?.trim();
     const lines = Array.isArray(input.lines) ? input.lines : [];
-    if (!warehouseId || lines.length === 0) {
-      return toApiErrorResponseFromStatus("warehouseId and lines required.", 400);
+    if (!warehouseId) {
+      return toApiErrorResponseFromStatus("warehouseId required.", 400);
     }
     const crmRaw = input.crmAccountId;
     const crmAccountId =
@@ -362,6 +364,26 @@ export async function handleWmsPost(
         return toApiErrorResponseFromStatus(qGate.error, qGate.status);
       }
       sourceCrmQuoteId = String(sqRaw).trim();
+    }
+    const lineCreates = lines
+      .map((l, idx) => ({
+        lineNo: idx + 1,
+        tenantId,
+        productId: String(l.productId ?? "").trim(),
+        quantity: Number(l.quantity),
+      }))
+      .filter((l) => l.productId && l.quantity > 0)
+      .map((l, idx) => ({
+        lineNo: idx + 1,
+        tenantId,
+        productId: l.productId,
+        quantity: l.quantity.toString(),
+      }));
+    if (lineCreates.length === 0 && !sourceCrmQuoteId) {
+      return toApiErrorResponseFromStatus(
+        "Provide at least one line with productId and quantity, or a sourceCrmQuoteId (BF-14 empty shell → explode quote lines).",
+        400,
+      );
     }
     const outboundNo = `OUT-${Date.now().toString().slice(-8)}`;
     let requestedShipDate: Date | null | undefined;
@@ -398,16 +420,7 @@ export async function handleWmsPost(
         ...(input.requestedShipDate !== undefined ? { requestedShipDate } : {}),
         notes: input.note?.trim() || null,
         createdById: actorId,
-        lines: {
-          create: lines
-            .map((l, idx) => ({
-              lineNo: idx + 1,
-              tenantId,
-              productId: l.productId,
-              quantity: Number(l.quantity).toString(),
-            }))
-            .filter((l) => l.productId && Number(l.quantity) > 0),
-        },
+        ...(lineCreates.length ? { lines: { create: lineCreates } } : {}),
       },
       select: { id: true, outboundNo: true },
     });
@@ -510,6 +523,34 @@ export async function handleWmsPost(
       },
     });
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "explode_crm_quote_to_outbound") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const confirm = input.quoteExplosionConfirm === true;
+    const viewScope = await loadWmsViewReadScope(tenantId, actorId);
+    const result = await explodeCrmQuoteToOutbound({
+      tenantId,
+      actorId,
+      outboundOrderId,
+      outboundScope: viewScope.outboundOrder,
+      productScope: viewScope.inventoryProduct,
+      confirm,
+    });
+    if (!result.ok) {
+      return toApiErrorResponseFromStatus(result.error, result.status);
+    }
+    return NextResponse.json({
+      ok: true,
+      preview: result.preview,
+      applied: result.applied,
+      ...(typeof result.createdLineCount === "number"
+        ? { createdLineCount: result.createdLineCount }
+        : {}),
+    });
   }
 
   if (action === "release_outbound_order") {

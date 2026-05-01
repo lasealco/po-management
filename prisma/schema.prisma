@@ -5371,6 +5371,8 @@ model CrmQuoteLine {
   quoteId        String
   sortOrder      Int      @default(0)
   description    String
+  /// BF-14 — maps to `Product.sku` (tenant) when exploding quote lines to outbound lines.
+  inventorySku   String?  @db.VarChar(128)
   quantity       Decimal  @db.Decimal(14, 4)
   unitPrice      Decimal  @db.Decimal(14, 4)
   extendedAmount Decimal? @db.Decimal(14, 2)

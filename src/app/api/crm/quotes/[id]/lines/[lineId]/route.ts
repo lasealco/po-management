@@ -36,6 +36,8 @@ type PatchBody = {
   quantity?: string | number;
   unitPrice?: string | number;
   sortOrder?: number;
+  /** BF-14 — WMS `Product.sku` mapping; null clears. */
+  inventorySku?: string | null;
 };
 
 export async function PATCH(
@@ -66,6 +68,11 @@ export async function PATCH(
 
   const data: Record<string, unknown> = {};
   if (body.description !== undefined) data.description = body.description.trim();
+  if (body.inventorySku !== undefined) {
+    const raw = body.inventorySku;
+    data.inventorySku =
+      raw === null || String(raw).trim() === "" ? null : String(raw).trim().slice(0, 128);
+  }
   if (body.quantity !== undefined) {
     const qty = Number(body.quantity);
     if (Number.isNaN(qty) || qty <= 0) {

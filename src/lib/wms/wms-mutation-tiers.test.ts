@@ -27,4 +27,8 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("register_inventory_serial")).toBe("inventory");
     expect(wmsMutationTierForPostAction("attach_inventory_serial_to_movement")).toBe("inventory");
   });
+
+  it("maps BF-14 quote explosion to operations tier", () => {
+    expect(wmsMutationTierForPostAction("explode_crm_quote_to_outbound")).toBe("operations");
+  });
 });

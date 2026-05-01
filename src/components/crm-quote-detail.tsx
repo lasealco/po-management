@@ -4,10 +4,48 @@ import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+function QuoteLineSkuEditor({
+  lineId,
+  initialSku,
+  busy,
+  onSave,
+}: {
+  lineId: string;
+  initialSku: string | null;
+  busy: boolean;
+  onSave: (lineId: string, sku: string) => void;
+}) {
+  const [val, setVal] = useState(initialSku ?? "");
+  useEffect(() => {
+    setVal(initialSku ?? "");
+  }, [lineId, initialSku]);
+
+  return (
+    <div className="flex max-w-[11rem] flex-col gap-1 sm:flex-row sm:items-center">
+      <input
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        placeholder="Product.sku"
+        disabled={busy}
+        className="w-full rounded-lg border border-zinc-200 px-2 py-1 font-mono text-xs text-zinc-900"
+      />
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onSave(lineId, val)}
+        className="shrink-0 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-[11px] font-medium text-violet-900 disabled:opacity-50"
+      >
+        Save
+      </button>
+    </div>
+  );
+}
+
 type Line = {
   id: string;
   sortOrder: number;
   description: string;
+  inventorySku: string | null;
   quantity: string;
   unitPrice: string;
   extendedAmount: string | null;
@@ -50,6 +88,7 @@ export function CrmQuoteDetail({
   const [desc, setDesc] = useState("");
   const [qty, setQty] = useState("1");
   const [price, setPrice] = useState("");
+  const [lineSku, setLineSku] = useState("");
 
   const load = useCallback(async () => {
     setError(null);
@@ -105,6 +144,7 @@ export function CrmQuoteDetail({
           description: desc.trim(),
           quantity: qty,
           unitPrice: price,
+          inventorySku: lineSku.trim() ? lineSku.trim() : null,
         }),
       });
       const data: unknown = await res.json();
@@ -112,6 +152,28 @@ export function CrmQuoteDetail({
       setDesc("");
       setQty("1");
       setPrice("");
+      setLineSku("");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveLineInventorySku(lineId: string, sku: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/crm/quotes/${quoteId}/lines/${lineId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inventorySku: sku.trim() ? sku.trim().slice(0, 128) : null,
+        }),
+      });
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -206,7 +268,8 @@ export function CrmQuoteDetail({
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Warehouse fulfillment</p>
         <p className="mt-2 text-sm text-zinc-700">
           Jump to WMS Operations with this quote and bill-to account prefilled for outbound creation (BF-10 quote
-          lineage).
+          lineage). Set each line&apos;s <span className="font-medium text-zinc-900">WMS SKU</span> to match{" "}
+          <span className="font-medium text-zinc-900">Product.sku</span> before exploding lines on the outbound (BF-14).
         </p>
         <Link
           href={`/wms/operations?quoteId=${encodeURIComponent(quote.id)}&crmAccountId=${encodeURIComponent(quote.account.id)}`}
@@ -293,6 +356,7 @@ export function CrmQuoteDetail({
             <thead className="border-b border-zinc-100 bg-zinc-50 text-xs font-medium uppercase text-zinc-500">
               <tr>
                 <th className="px-3 py-2">Description</th>
+                <th className="px-3 py-2">WMS SKU</th>
                 <th className="px-3 py-2 text-right">Qty</th>
                 <th className="px-3 py-2 text-right">Unit price</th>
                 <th className="px-3 py-2 text-right">Line total</th>
@@ -303,7 +367,7 @@ export function CrmQuoteDetail({
               {quote.lines.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={canPatch ? 5 : 4}
+                    colSpan={canPatch ? 6 : 5}
                     className="px-3 py-10 text-center text-sm text-zinc-500"
                   >
                     No line items on this quote yet.
@@ -315,6 +379,18 @@ export function CrmQuoteDetail({
                   .map((l) => (
                     <tr key={l.id} className="border-b border-zinc-50 last:border-0">
                       <td className="max-w-xs px-3 py-2 font-medium text-zinc-900">{l.description}</td>
+                      <td className="px-3 py-2 align-top">
+                        {canPatch ? (
+                          <QuoteLineSkuEditor
+                            lineId={l.id}
+                            initialSku={l.inventorySku}
+                            busy={busy}
+                            onSave={saveLineInventorySku}
+                          />
+                        ) : (
+                          <span className="font-mono text-xs text-zinc-700">{l.inventorySku ?? "—"}</span>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-zinc-700">
                         {l.quantity}
                       </td>
@@ -358,13 +434,21 @@ export function CrmQuoteDetail({
               </Link>
               .
             </p>
-            <form onSubmit={addLine} className="mt-4 grid gap-2 sm:grid-cols-4">
+            <form onSubmit={addLine} className="mt-4 grid gap-2 sm:grid-cols-6">
               <input
                 placeholder="Description"
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
                 className="rounded-lg border border-zinc-200 px-3 py-2 text-sm sm:col-span-2"
                 disabled={busy}
+              />
+              <input
+                placeholder="WMS SKU (optional)"
+                value={lineSku}
+                onChange={(e) => setLineSku(e.target.value)}
+                className="rounded-lg border border-zinc-200 px-3 py-2 font-mono text-sm"
+                disabled={busy}
+                title="Matches tenant Product.sku for BF-14 outbound explosion"
               />
               <input
                 placeholder="Qty"
@@ -383,7 +467,7 @@ export function CrmQuoteDetail({
               <button
                 type="submit"
                 disabled={busy || !desc.trim() || !price.trim()}
-                className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-900 sm:col-span-4"
+                className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-900 sm:col-span-6"
               >
                 Add line
               </button>

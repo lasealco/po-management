@@ -352,6 +352,24 @@ type SavedLedgerView = {
 
 export type WmsSection = "setup" | "operations" | "stock";
 
+/** BF-14 — server preview payload from `explode_crm_quote_to_outbound`. */
+type QuoteExplosionPreviewPayload = {
+  outboundOrderId: string;
+  outboundNo: string;
+  sourceQuoteId: string;
+  quoteLineCount: number;
+  ready: boolean;
+  rows: Array<{
+    quoteLineId: string;
+    description: string;
+    quantity: string;
+    inventorySku: string | null;
+    status: string;
+    productId: string | null;
+    productLabel: string | null;
+  }>;
+};
+
 const STOCK_LEDGER_MV_TYPE_PRESETS: Array<{ label: string; value: "" | InventoryMovementType }> = [
   { label: "All types", value: "" },
   { label: "Receipt", value: "RECEIPT" },
@@ -519,6 +537,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [outboundLineQty, setOutboundLineQty] = useState("");
   const [outboundCrmAccountId, setOutboundCrmAccountId] = useState("");
   const [outboundSourceQuoteId, setOutboundSourceQuoteId] = useState("");
+  const [quoteExplosionPreviewByOutboundId, setQuoteExplosionPreviewByOutboundId] = useState<
+    Record<string, QuoteExplosionPreviewPayload | undefined>
+  >({});
   const [inboundEdits, setInboundEdits] = useState<
     Record<string, { asn: string; expectedReceiveAt: string; receiptDockNote: string; receiptDockAt: string }>
   >({});
@@ -1120,9 +1141,13 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     }
   }
 
-  async function runAction(body: Record<string, unknown>) {
+  async function runAction(
+    body: Record<string, unknown>,
+    options?: { reload?: boolean },
+  ): Promise<Record<string, unknown> | null> {
     setBusy(true);
     setError(null);
+    const reload = options?.reload !== false;
     const res = await fetch("/api/wms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1132,10 +1157,15 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     if (!res.ok) {
       setError(apiClientErrorMessage(parsed, "WMS action failed."));
       setBusy(false);
-      return;
+      return null;
     }
-    await load();
+    const parsedObj =
+      parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+    if (reload) {
+      await load();
+    }
     setBusy(false);
+    return parsedObj;
   }
 
   if (!data) {
@@ -2959,7 +2989,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             ). Full quote lineage on outbound (
             <span className="font-medium text-zinc-900">BF-10</span>,{" "}
             <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">sourceCrmQuoteId</code>
-            ); SKU lines stay warehouse-entered — automated CPQ→SKU mapping remains backlog —{" "}
+            ). <span className="font-medium text-zinc-900">BF-14</span> explodes CRM quote lines into outbound SKU lines
+            after you set each quote line&apos;s WMS SKU (see CRM quote detail). Docs:{" "}
             <span className="font-medium text-zinc-900">docs/wms/WMS_COMMERCIAL_HANDOFF.md</span>.
           </p>
         </div>
@@ -3077,6 +3108,14 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               o.status !== "SHIPPED" &&
               o.status !== "CANCELLED" &&
               o.status !== "PACKED";
+            const canQuoteExplode =
+              canEdit &&
+              Boolean(o.sourceQuote) &&
+              o.lines.length === 0 &&
+              o.status !== "PACKED" &&
+              o.status !== "SHIPPED" &&
+              o.status !== "CANCELLED";
+            const explosionPreview = quoteExplosionPreviewByOutboundId[o.id];
             const asnDraft = outboundAsnEdits[o.id] ?? { asn: "", requestedShip: "" };
             const allPicked = o.lines.every((l) => Number(l.pickedQty) >= Number(l.quantity));
             const allPacked = o.lines.every((l) => Number(l.packedQty) >= Number(l.quantity));
@@ -3302,6 +3341,112 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   </span>
                 ))}
               </div>
+              {canQuoteExplode ? (
+                <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50/60 p-3 text-xs">
+                  <p className="font-semibold text-violet-950">BF-14 · Quote lines → outbound lines</p>
+                  <p className="mt-1 text-violet-900/90">
+                    Preview maps CRM quote SKUs to tenant products (respects product-division scope). Confirm applies only
+                    while this outbound has no lines.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void (async () => {
+                          const r = await runAction(
+                            {
+                              action: "explode_crm_quote_to_outbound",
+                              outboundOrderId: o.id,
+                              quoteExplosionConfirm: false,
+                            },
+                            { reload: false },
+                          );
+                          const preview = r?.preview;
+                          if (preview && typeof preview === "object") {
+                            setQuoteExplosionPreviewByOutboundId((prev) => ({
+                              ...prev,
+                              [o.id]: preview as QuoteExplosionPreviewPayload,
+                            }));
+                          }
+                        })()
+                      }
+                      className="rounded-xl border border-violet-300 bg-white px-4 py-2 text-xs font-semibold text-violet-950 disabled:opacity-40"
+                    >
+                      Preview mapping
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy || !explosionPreview?.ready}
+                      onClick={() =>
+                        void (async () => {
+                          const r = await runAction({
+                            action: "explode_crm_quote_to_outbound",
+                            outboundOrderId: o.id,
+                            quoteExplosionConfirm: true,
+                          });
+                          if (r?.applied === true) {
+                            setQuoteExplosionPreviewByOutboundId((prev) => {
+                              const next = { ...prev };
+                              delete next[o.id];
+                              return next;
+                            });
+                          }
+                        })()
+                      }
+                      className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                    >
+                      Confirm explosion
+                    </button>
+                    {explosionPreview ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          setQuoteExplosionPreviewByOutboundId((prev) => {
+                            const next = { ...prev };
+                            delete next[o.id];
+                            return next;
+                          })
+                        }
+                        className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800"
+                      >
+                        Clear preview
+                      </button>
+                    ) : null}
+                  </div>
+                  {explosionPreview ? (
+                    <div className="mt-3 overflow-x-auto rounded-lg border border-violet-100 bg-white">
+                      <table className="min-w-full text-left text-[11px]">
+                        <thead className="border-b border-zinc-100 bg-zinc-50 font-medium uppercase text-zinc-500">
+                          <tr>
+                            <th className="px-2 py-1.5">Description</th>
+                            <th className="px-2 py-1.5">SKU</th>
+                            <th className="px-2 py-1.5 text-right">Qty</th>
+                            <th className="px-2 py-1.5">Status</th>
+                            <th className="px-2 py-1.5">Product</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {explosionPreview.rows.map((row) => (
+                            <tr key={row.quoteLineId} className="border-b border-zinc-50 last:border-0">
+                              <td className="max-w-[10rem] px-2 py-1.5 text-zinc-900">{row.description}</td>
+                              <td className="px-2 py-1.5 font-mono text-zinc-800">{row.inventorySku ?? "—"}</td>
+                              <td className="px-2 py-1.5 text-right tabular-nums">{row.quantity}</td>
+                              <td className="px-2 py-1.5">{row.status}</td>
+                              <td className="px-2 py-1.5 text-zinc-700">{row.productLabel ?? "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <p className="border-t border-zinc-100 px-2 py-2 text-[11px] text-zinc-600">
+                        Quote lines: {explosionPreview.quoteLineCount}. Ready:{" "}
+                        {explosionPreview.ready ? "yes" : "no — fix CRM quote line SKUs or division scope"}.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             );
           })}

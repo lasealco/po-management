@@ -32,6 +32,8 @@ type PostBody = {
   quantity?: string | number;
   unitPrice?: string | number;
   sortOrder?: number;
+  /** BF-14 — maps to `Product.sku` when exploding quote lines to outbound. */
+  inventorySku?: string | null;
 };
 
 export async function POST(
@@ -77,6 +79,13 @@ export async function POST(
       : (maxSort._max.sortOrder ?? -1) + 1;
 
   const extended = new Prisma.Decimal((qty * price).toFixed(2));
+  const skuRaw = body.inventorySku;
+  const inventorySku =
+    skuRaw === undefined
+      ? undefined
+      : skuRaw === null || String(skuRaw).trim() === ""
+        ? null
+        : String(skuRaw).trim().slice(0, 128);
 
   const line = await prisma.$transaction(async (tx) => {
     const created = await tx.crmQuoteLine.create({
@@ -84,6 +93,7 @@ export async function POST(
         quoteId,
         sortOrder,
         description,
+        ...(inventorySku !== undefined ? { inventorySku } : {}),
         quantity: new Prisma.Decimal(String(qty)),
         unitPrice: new Prisma.Decimal(String(price)),
         extendedAmount: extended,
