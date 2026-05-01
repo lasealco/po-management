@@ -104,7 +104,9 @@
 
 **Objective:** **`WmsWorkOrder`** consumes **multiple** component lines with exploded BOM snapshot and variance vs estimate.
 
-**Exit sketch:** Schema for BOM lines + completion postings; **`WMS_VAS_BF09.md`** / **`WMS_VAS_WORK_ORDERS.md`** updated; demo seed path.
+**Minimal slice shipped (repo):** **`WmsWorkOrderBomLine`** (`plannedQty` / `consumedQty`); **`replace_work_order_bom_lines`** (full replace while WO **`OPEN`/`IN_PROGRESS`** and **no** line has **`consumedQty` > 0**); **`consume_work_order_bom_line`** ( **`ADJUSTMENT`** movement, **`referenceType = WO_BOM_LINE`**, **`referenceId` = BOM line id); Operations UI BOM table + replace + consume; optional **`npm run db:seed:wms-vas-bom-demo`** after **`db:seed:wms-demo`**.
+
+**Exit sketch (remaining):** Automated BOM sync from CRM/engineering change; variance analytics vs **`estimatedMaterialsCents`**.
 
 **Out of scope:** MRP regeneration, engineering change workflow.
 
@@ -136,4 +138,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
+_Last updated: 2026-05-01 — **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._

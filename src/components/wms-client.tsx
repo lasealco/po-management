@@ -285,6 +285,19 @@ type WmsData = {
     warehouse: { id: string; code: string | null; name: string };
     createdBy: { id: string; name: string };
     crmAccount: { id: string; name: string } | null;
+    bomLines?: Array<{
+      id: string;
+      lineNo: number;
+      plannedQty: string;
+      consumedQty: string;
+      lineNote: string | null;
+      componentProduct: {
+        id: string;
+        productCode: string | null;
+        sku: string | null;
+        name: string;
+      };
+    }>;
   }>;
   /** BF-02 — tenant lot/batch master registry (expiry / origin / notes per product + lotCode). */
   lotBatches?: Array<{
@@ -592,6 +605,12 @@ export function WmsClient({
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
   const [woEstDraft, setWoEstDraft] = useState<Record<string, { m: string; l: string }>>({});
+  const [woBomDraft, setWoBomDraft] = useState<Record<string, Array<{ productId: string; qty: string }>>>(
+    {},
+  );
+  const [woBomConsumeDraft, setWoBomConsumeDraft] = useState<
+    Record<string, { balanceLineId: string; qty: string }>
+  >({});
 
   useEffect(() => {
     if (!data) return;
@@ -603,6 +622,22 @@ export function WmsClient({
       };
     }
     setWoEstDraft(next);
+  }, [data]);
+
+  useEffect(() => {
+    if (!data) return;
+    const next: Record<string, Array<{ productId: string; qty: string }>> = {};
+    for (const wo of data.workOrders) {
+      const lines = wo.bomLines ?? [];
+      next[wo.id] =
+        lines.length > 0
+          ? lines.map((bl) => ({
+              productId: bl.componentProduct.id,
+              qty: bl.plannedQty,
+            }))
+          : [{ productId: "", qty: "1" }];
+    }
+    setWoBomDraft(next);
   }, [data]);
   const [ledgerSince, setLedgerSince] = useState("");
   const [ledgerUntil, setLedgerUntil] = useState("");
@@ -949,6 +984,22 @@ export function WmsClient({
       ),
     [data?.workOrders, selectedWarehouseId],
   );
+
+  const productPickOptionsForWarehouse = useMemo(() => {
+    const m = new Map<
+      string,
+      { id: string; productCode: string | null; sku: string | null; name: string }
+    >();
+    for (const b of balancesForWarehouseOps) {
+      m.set(b.product.id, b.product);
+    }
+    for (const wo of workOrdersForWarehouse) {
+      for (const bl of wo.bomLines ?? []) {
+        m.set(bl.componentProduct.id, bl.componentProduct);
+      }
+    }
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [balancesForWarehouseOps, workOrdersForWarehouse]);
 
   const balanceLinesByBinId = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -3612,11 +3663,13 @@ export function WmsClient({
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
         <h2 className="mt-2 text-sm font-semibold text-zinc-900">Value-add / work orders</h2>
         <p className="mt-1 text-xs text-zinc-600">
-          Warehouse-scoped tickets with <span className="font-medium text-zinc-800">VALUE_ADD</span> tasks.
-          Completing a task with material consumption posts an{" "}
-          <span className="font-medium text-zinc-800">ADJUSTMENT</span> movement (billing linkage notes in{" "}
+          Warehouse-scoped tickets with <span className="font-medium text-zinc-800">VALUE_ADD</span> tasks and
+          optional multi-line <span className="font-medium text-zinc-800">BOM</span> snapshots (BF-18). Completing a
+          task with material consumption posts an{" "}
+          <span className="font-medium text-zinc-800">ADJUSTMENT</span> movement; BOM consumption uses{" "}
+          <span className="font-medium text-zinc-800">referenceType WO_BOM_LINE</span>. Billing notes:{" "}
           <span className="font-medium text-zinc-800">docs/wms/WMS_VAS_WORK_ORDERS.md</span>, BF-09{" "}
-          <span className="font-medium text-zinc-800">docs/wms/WMS_VAS_BF09.md</span>). Customer intake:{" "}
+          <span className="font-medium text-zinc-800">docs/wms/WMS_VAS_BF09.md</span>. Customer intake:{" "}
           <Link href="/wms/vas-intake" className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline">
             VAS intake
           </Link>
@@ -3858,6 +3911,263 @@ export function WmsClient({
                         </button>
                       </div>
                     ) : null}
+                    <div className="mt-2 border-t border-zinc-50 pt-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                        BOM lines
+                      </p>
+                      {(() => {
+                        const bomLines = wo.bomLines ?? [];
+                        const anyConsumed = bomLines.some((bl) => Number(bl.consumedQty) > 0);
+                        const bomEditable =
+                          canEdit &&
+                          (wo.status === "OPEN" || wo.status === "IN_PROGRESS") &&
+                          !anyConsumed;
+                        const bomRows = woBomDraft[wo.id] ?? [{ productId: "", qty: "1" }];
+                        return (
+                          <>
+                            {bomLines.length > 0 ? (
+                              <table className="mt-1 w-full border-collapse text-[11px]">
+                                <thead>
+                                  <tr className="border-b border-zinc-100 text-left text-zinc-500">
+                                    <th className="py-1 pr-2 font-medium">#</th>
+                                    <th className="py-1 pr-2 font-medium">Component</th>
+                                    <th className="py-1 pr-2 text-right font-medium">Planned</th>
+                                    <th className="py-1 text-right font-medium">Consumed</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {bomLines.map((bl) => {
+                                    const remaining = Number(bl.plannedQty) - Number(bl.consumedQty);
+                                    const canConsumeLine =
+                                      canEdit &&
+                                      (wo.status === "OPEN" || wo.status === "IN_PROGRESS") &&
+                                      remaining > 0;
+                                    const consumeDraft = woBomConsumeDraft[bl.id] ?? {
+                                      balanceLineId: "",
+                                      qty: "",
+                                    };
+                                    const balChoices = balancesForWarehouseOps.filter(
+                                      (b) =>
+                                        b.product.id === bl.componentProduct.id &&
+                                        Number(b.onHandQty) > 0 &&
+                                        !b.onHold,
+                                    );
+                                    return (
+                                      <Fragment key={bl.id}>
+                                        <tr className="border-b border-zinc-50 align-top">
+                                          <td className="py-1 pr-2 tabular-nums">{bl.lineNo}</td>
+                                          <td className="py-1 pr-2">
+                                            {(bl.componentProduct.productCode ||
+                                              bl.componentProduct.sku ||
+                                              "—"
+                                            ).slice(0, 16)}{" "}
+                                            · {bl.componentProduct.name.slice(0, 48)}
+                                          </td>
+                                          <td className="py-1 pr-2 text-right tabular-nums">{bl.plannedQty}</td>
+                                          <td className="py-1 text-right tabular-nums">{bl.consumedQty}</td>
+                                        </tr>
+                                        {canConsumeLine ? (
+                                          <tr className="border-b border-zinc-100">
+                                            <td className="pb-2" />
+                                            <td className="pb-2" colSpan={3}>
+                                              <div className="flex flex-wrap items-end gap-2 pl-1">
+                                                <label className="text-[10px] text-zinc-600">
+                                                  From balance
+                                                  <select
+                                                    value={consumeDraft.balanceLineId}
+                                                    onChange={(e) =>
+                                                      setWoBomConsumeDraft((prev) => ({
+                                                        ...prev,
+                                                        [bl.id]: {
+                                                          ...(prev[bl.id] ?? {
+                                                            balanceLineId: "",
+                                                            qty: "",
+                                                          }),
+                                                          balanceLineId: e.target.value,
+                                                        },
+                                                      }))
+                                                    }
+                                                    className="mt-0.5 block max-w-[14rem] rounded border border-zinc-300 px-2 py-1 text-[11px]"
+                                                  >
+                                                    <option value="">Select balance</option>
+                                                    {balChoices.map((b) => (
+                                                      <option key={b.id} value={b.id}>
+                                                        {b.bin.code} · on-hand {b.onHandQty}
+                                                        {b.lotCode ? ` · ${b.lotCode}` : ""}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                </label>
+                                                <label className="text-[10px] text-zinc-600">
+                                                  Qty
+                                                  <input
+                                                    type="number"
+                                                    step="any"
+                                                    min={0}
+                                                    value={consumeDraft.qty}
+                                                    onChange={(e) =>
+                                                      setWoBomConsumeDraft((prev) => ({
+                                                        ...prev,
+                                                        [bl.id]: {
+                                                          ...(prev[bl.id] ?? {
+                                                            balanceLineId: "",
+                                                            qty: "",
+                                                          }),
+                                                          qty: e.target.value,
+                                                        },
+                                                      }))
+                                                    }
+                                                    className="mt-0.5 block w-20 rounded border border-zinc-300 px-2 py-1 tabular-nums"
+                                                  />
+                                                </label>
+                                                <button
+                                                  type="button"
+                                                  disabled={
+                                                    busy ||
+                                                    !consumeDraft.balanceLineId ||
+                                                    !consumeDraft.qty.trim() ||
+                                                    Number(consumeDraft.qty) <= 0
+                                                  }
+                                                  onClick={() => {
+                                                    const bal = balancesForWarehouseOps.find(
+                                                      (b) => b.id === consumeDraft.balanceLineId,
+                                                    );
+                                                    if (!bal) return;
+                                                    void runAction({
+                                                      action: "consume_work_order_bom_line",
+                                                      bomLineId: bl.id,
+                                                      binId: bal.bin.id,
+                                                      quantity: Number(consumeDraft.qty),
+                                                      lotCode: bal.lotCode || null,
+                                                    });
+                                                  }}
+                                                  className="rounded-lg bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                                                >
+                                                  Post consume
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        ) : null}
+                                      </Fragment>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <p className="mt-1 text-[11px] text-zinc-500">No BOM lines yet.</p>
+                            )}
+                            {bomEditable ? (
+                              <div className="mt-2 space-y-2 rounded-lg border border-zinc-100 bg-zinc-50/80 p-2">
+                                <p className="text-[10px] font-medium text-zinc-600">
+                                  Replace BOM snapshot (blocked after any consumption posts)
+                                </p>
+                                {bomRows.map((row, idx) => (
+                                  <div key={idx} className="flex flex-wrap items-end gap-2">
+                                    <label className="text-[10px] text-zinc-600">
+                                      Component
+                                      <select
+                                        value={row.productId}
+                                        onChange={(e) =>
+                                          setWoBomDraft((prev) => {
+                                            const cur = [...(prev[wo.id] ?? bomRows)];
+                                            cur[idx] = { ...cur[idx], productId: e.target.value };
+                                            return { ...prev, [wo.id]: cur };
+                                          })
+                                        }
+                                        className="mt-0.5 block min-w-[10rem] rounded border border-zinc-300 px-2 py-1 text-[11px]"
+                                      >
+                                        <option value="">Select product</option>
+                                        {productPickOptionsForWarehouse.map((p) => (
+                                          <option key={p.id} value={p.id}>
+                                            {(p.productCode || p.sku || "").slice(0, 12)} · {p.name.slice(0, 36)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                    <label className="text-[10px] text-zinc-600">
+                                      Planned qty
+                                      <input
+                                        type="number"
+                                        step="any"
+                                        min={0}
+                                        value={row.qty}
+                                        onChange={(e) =>
+                                          setWoBomDraft((prev) => {
+                                            const cur = [...(prev[wo.id] ?? bomRows)];
+                                            cur[idx] = { ...cur[idx], qty: e.target.value };
+                                            return { ...prev, [wo.id]: cur };
+                                          })
+                                        }
+                                        className="mt-0.5 block w-24 rounded border border-zinc-300 px-2 py-1 tabular-nums"
+                                      />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      disabled={busy || bomRows.length <= 1}
+                                      onClick={() =>
+                                        setWoBomDraft((prev) => {
+                                          const cur = [...(prev[wo.id] ?? bomRows)];
+                                          cur.splice(idx, 1);
+                                          return {
+                                            ...prev,
+                                            [wo.id]: cur.length ? cur : [{ productId: "", qty: "1" }],
+                                          };
+                                        })
+                                      }
+                                      className="rounded border border-zinc-300 px-2 py-1 text-[10px] font-semibold text-zinc-700 disabled:opacity-40"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                ))}
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      setWoBomDraft((prev) => ({
+                                        ...prev,
+                                        [wo.id]: [
+                                          ...(prev[wo.id] ?? [{ productId: "", qty: "1" }]),
+                                          { productId: "", qty: "1" },
+                                        ],
+                                      }))
+                                    }
+                                    className="rounded border border-zinc-300 px-2 py-1 text-[10px] font-semibold text-zinc-700"
+                                  >
+                                    Add line
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() => {
+                                      const rows = woBomDraft[wo.id] ?? bomRows;
+                                      const payload = rows
+                                        .filter((r) => r.productId.trim())
+                                        .map((r, i) => ({
+                                          lineNo: i + 1,
+                                          componentProductId: r.productId.trim(),
+                                          plannedQty: Number(r.qty),
+                                        }))
+                                        .filter((r) => Number.isFinite(r.plannedQty) && r.plannedQty > 0);
+                                      void runAction({
+                                        action: "replace_work_order_bom_lines",
+                                        workOrderId: wo.id,
+                                        bomLines: payload,
+                                      });
+                                    }}
+                                    className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-[11px] font-semibold text-white disabled:opacity-40"
+                                  >
+                                    Save BOM
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </>
+                        );
+                      })()}
+                    </div>
                   </li>
                 );
               })}

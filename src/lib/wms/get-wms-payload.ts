@@ -348,6 +348,19 @@ export async function getWmsDashboardPayload(
       warehouse: { select: { id: true, code: true, name: true } },
       createdBy: { select: { id: true, name: true } },
       crmAccount: { select: { id: true, name: true } },
+      bomLines: {
+        orderBy: { lineNo: "asc" },
+        select: {
+          id: true,
+          lineNo: true,
+          plannedQty: true,
+          consumedQty: true,
+          lineNote: true,
+          componentProduct: {
+            select: { id: true, productCode: true, sku: true, name: true },
+          },
+        },
+      },
     },
   });
 
@@ -678,6 +691,14 @@ export async function getWmsDashboardPayload(
       warehouse: w.warehouse,
       createdBy: w.createdBy,
       crmAccount: w.crmAccount,
+      bomLines: w.bomLines.map((bl) => ({
+        id: bl.id,
+        lineNo: bl.lineNo,
+        plannedQty: bl.plannedQty.toString(),
+        consumedQty: bl.consumedQty.toString(),
+        lineNote: bl.lineNote,
+        componentProduct: bl.componentProduct,
+      })),
     })),
     lotBatches: lotBatchesRaw.map((lb) => ({
       id: lb.id,

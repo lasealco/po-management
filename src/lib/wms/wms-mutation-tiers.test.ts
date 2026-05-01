@@ -39,4 +39,9 @@ describe("wmsMutationTierForPostAction", () => {
   it("maps BF-15 carton cap mutation to setup tier", () => {
     expect(wmsMutationTierForPostAction("set_warehouse_pick_wave_carton_units")).toBe("setup");
   });
+
+  it("maps BF-18 work order BOM mutations to operations tier", () => {
+    expect(wmsMutationTierForPostAction("replace_work_order_bom_lines")).toBe("operations");
+    expect(wmsMutationTierForPostAction("consume_work_order_bom_line")).toBe("operations");
+  });
 });

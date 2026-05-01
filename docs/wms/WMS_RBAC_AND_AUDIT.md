@@ -53,7 +53,7 @@ Every **`InventoryMovement`** row stores **`createdById`** — full inventory mu
 |--------------|---------------------------|
 | Outbound pack / ship | `outbound_mark_packed`, `outbound_mark_shipped` |
 | Receiving (Option A) | `wms_receive_transition` |
-| VAS / work orders | `work_order_created`, `value_add_task_completed` |
+| VAS / work orders | `work_order_created`, `value_add_task_completed`, `work_order_bom_replaced`, `work_order_bom_line_consumed` |
 
 Other **`POST`** actions (tasks, holds, waves, dock appointments, etc.) rely on **movement rows + task rows** with **`createdById`** until/unless extended with **`CtAuditLog`** in a later hardening capsule.
 

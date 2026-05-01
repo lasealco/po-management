@@ -66,6 +66,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_work_order_commercial_estimate: "operations",
   create_value_add_task: "operations",
   complete_value_add_task: "operations",
+  replace_work_order_bom_lines: "operations",
+  consume_work_order_bom_line: "operations",
 };
 
 /** Tier for a known handler action, or `undefined` when the keyword is not mapped (legacy `org.wms` edit only). */

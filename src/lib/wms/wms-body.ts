@@ -136,4 +136,14 @@ export type WmsBody = {
   serialBalanceId?: string | null;
   /** BF-13 — optional operator note on `register_inventory_serial` (max 500); null clears. */
   inventorySerialNote?: string | null;
+
+  /** BF-18 — `WmsWorkOrderBomLine.id` for `consume_work_order_bom_line`. */
+  bomLineId?: string;
+  /** BF-18 — full replace snapshot on `replace_work_order_bom_lines` (work order must be OPEN/IN_PROGRESS and no line consumed yet). */
+  bomLines?: Array<{
+    lineNo?: number;
+    componentProductId: string;
+    plannedQty: number;
+    lineNote?: string | null;
+  }>;
 };

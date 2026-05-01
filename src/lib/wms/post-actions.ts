@@ -35,6 +35,7 @@ import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
 import { nextWaveNo } from "./wave";
+import { parseConsumeWorkOrderBomQuantity, parseReplaceWorkOrderBomLinesPayload } from "./work-order-bom";
 import { nextWorkOrderNo } from "./work-order-no";
 
 import type { WmsBody } from "./wms-body";
@@ -2821,6 +2822,228 @@ export async function handleWmsPost(
         },
       });
     });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "replace_work_order_bom_lines") {
+    const workOrderId = input.workOrderId?.trim();
+    if (!workOrderId) {
+      return toApiErrorResponseFromStatus("workOrderId required.", 400);
+    }
+    const parsed = parseReplaceWorkOrderBomLinesPayload(input.bomLines);
+    if (!parsed.ok) {
+      return toApiErrorResponseFromStatus(parsed.message, 400);
+    }
+
+    const wo = await prisma.wmsWorkOrder.findFirst({
+      where: {
+        id: workOrderId,
+        tenantId,
+        status: { in: ["OPEN", "IN_PROGRESS"] },
+      },
+      select: { id: true },
+    });
+    if (!wo) {
+      return toApiErrorResponseFromStatus("Work order not found or not open.", 404);
+    }
+
+    const consumed = await prisma.wmsWorkOrderBomLine.findFirst({
+      where: {
+        workOrderId,
+        tenantId,
+        consumedQty: { gt: new Prisma.Decimal(0) },
+      },
+      select: { id: true },
+    });
+    if (consumed) {
+      return toApiErrorResponseFromStatus(
+        "Cannot replace BOM after a line has consumed quantity.",
+        400,
+      );
+    }
+
+    const productIds = [...new Set(parsed.lines.map((l) => l.componentProductId))];
+    const products =
+      productIds.length === 0
+        ? []
+        : await prisma.product.findMany({
+            where: { tenantId, id: { in: productIds } },
+            select: { id: true },
+          });
+    if (products.length !== productIds.length) {
+      return toApiErrorResponseFromStatus("One or more component products not found.", 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsWorkOrderBomLine.deleteMany({ where: { workOrderId, tenantId } });
+      if (parsed.lines.length > 0) {
+        await tx.wmsWorkOrderBomLine.createMany({
+          data: parsed.lines.map((l) => ({
+            tenantId,
+            workOrderId,
+            lineNo: l.lineNo,
+            componentProductId: l.componentProductId,
+            plannedQty: l.plannedQty,
+            lineNote: l.lineNote,
+          })),
+        });
+      }
+    });
+
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_WORK_ORDER",
+        entityId: workOrderId,
+        action: "work_order_bom_replaced",
+        payload: { lineCount: parsed.lines.length },
+        actorUserId: actorId,
+      },
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "consume_work_order_bom_line") {
+    const bomLineId = input.bomLineId?.trim();
+    const binId = input.binId?.trim();
+    if (!bomLineId || !binId) {
+      return toApiErrorResponseFromStatus("bomLineId and binId required.", 400);
+    }
+    const qtyParsed = parseConsumeWorkOrderBomQuantity(input.quantity);
+    if (!qtyParsed.ok) {
+      return toApiErrorResponseFromStatus(qtyParsed.message, 400);
+    }
+    const qtyDec = qtyParsed.qty;
+    const qtyStr = qtyDec.toFixed();
+    const lot = normalizeLotCode(input.lotCode);
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        const line = await tx.wmsWorkOrderBomLine.findFirst({
+          where: { id: bomLineId, tenantId },
+          select: {
+            id: true,
+            workOrderId: true,
+            componentProductId: true,
+            plannedQty: true,
+            consumedQty: true,
+          },
+        });
+        if (!line) {
+          throw new Error("__WMS_BOM_CONSUME__:NOT_FOUND");
+        }
+
+        const woRow = await tx.wmsWorkOrder.findFirst({
+          where: {
+            id: line.workOrderId,
+            tenantId,
+            status: { in: ["OPEN", "IN_PROGRESS"] },
+          },
+          select: { id: true, warehouseId: true },
+        });
+        if (!woRow) {
+          throw new Error("__WMS_BOM_CONSUME__:WO_CLOSED");
+        }
+
+        const newConsumed = new Prisma.Decimal(line.consumedQty).add(qtyDec);
+        if (newConsumed.gt(new Prisma.Decimal(line.plannedQty))) {
+          throw new Error("__WMS_BOM_CONSUME__:OVER_CONSUME");
+        }
+
+        const bin = await tx.warehouseBin.findFirst({
+          where: { id: binId, tenantId },
+          select: { warehouseId: true },
+        });
+        if (!bin) {
+          throw new Error("__WMS_BOM_CONSUME__:BAD_BIN");
+        }
+        if (bin.warehouseId !== woRow.warehouseId) {
+          throw new Error("__WMS_BOM_CONSUME__:BAD_BIN");
+        }
+
+        const bal = await tx.inventoryBalance.findFirst({
+          where: {
+            tenantId,
+            warehouseId: woRow.warehouseId,
+            binId,
+            productId: line.componentProductId,
+            lotCode: lot,
+          },
+          select: { onHandQty: true, onHold: true },
+        });
+        if (!bal) {
+          throw new Error("__WMS_BOM_CONSUME__:BAD_BAL");
+        }
+        if (bal.onHold) {
+          throw new Error("__WMS_BOM_CONSUME__:BAD_BAL");
+        }
+        if (new Prisma.Decimal(bal.onHandQty).lt(qtyDec)) {
+          throw new Error("__WMS_BOM_CONSUME__:NO_STOCK");
+        }
+
+        await tx.inventoryBalance.updateMany({
+          where: {
+            tenantId,
+            warehouseId: woRow.warehouseId,
+            binId,
+            productId: line.componentProductId,
+            lotCode: lot,
+          },
+          data: { onHandQty: { decrement: qtyStr } },
+        });
+        await tx.inventoryMovement.create({
+          data: {
+            tenantId,
+            warehouseId: woRow.warehouseId,
+            binId,
+            productId: line.componentProductId,
+            movementType: "ADJUSTMENT",
+            quantity: qtyStr,
+            referenceType: "WO_BOM_LINE",
+            referenceId: bomLineId,
+            note: "VAS BOM line consumption",
+            createdById: actorId,
+          },
+        });
+        await tx.wmsWorkOrderBomLine.update({
+          where: { id: bomLineId },
+          data: { consumedQty: newConsumed },
+        });
+
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            entityType: "WMS_WORK_ORDER",
+            entityId: woRow.id,
+            action: "work_order_bom_line_consumed",
+            payload: { bomLineId, quantity: qtyStr, binId, referenceType: "WO_BOM_LINE" },
+            actorUserId: actorId,
+          },
+        });
+      });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
+      const code = msg.startsWith("__WMS_BOM_CONSUME__:") ? msg.slice("__WMS_BOM_CONSUME__:".length) : "";
+      if (code === "NOT_FOUND") return toApiErrorResponseFromStatus("BOM line not found.", 404);
+      if (code === "WO_CLOSED") return toApiErrorResponseFromStatus("Work order not found or closed.", 404);
+      if (code === "OVER_CONSUME") {
+        return toApiErrorResponseFromStatus(
+          "Consume quantity exceeds remaining planned qty on BOM line.",
+          400,
+        );
+      }
+      if (code === "BAD_BIN") return toApiErrorResponseFromStatus("Bin not found or not in work order warehouse.", 404);
+      if (code === "BAD_BAL") {
+        return toApiErrorResponseFromStatus(
+          "Cannot consume: balance missing, wrong product/lot, or on hold.",
+          400,
+        );
+      }
+      if (code === "NO_STOCK") return toApiErrorResponseFromStatus("Insufficient stock for BOM consumption.", 400);
+      throw e;
+    }
 
     return NextResponse.json({ ok: true });
   }

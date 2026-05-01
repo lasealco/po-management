@@ -80,6 +80,7 @@ model Tenant {
   wmsInventorySerials                         WmsInventorySerial[]
   wmsLotBatches                               WmsLotBatch[]
   wmsWorkOrders                               WmsWorkOrder[]
+  wmsWorkOrderBomLines                       WmsWorkOrderBomLine[]
   loadPlans                                   LoadPlan[]
   userPreferences                             UserPreference[]
   workflows                                   Workflow[]
@@ -3349,6 +3350,7 @@ model Product {
   wmsTasks           WmsTask[]
   replenishmentRules ReplenishmentRule[]
   wmsLotBatches      WmsLotBatch[]
+  wmsWorkOrderBomLines WmsWorkOrderBomLine[]
   outboundOrderLines OutboundOrderLine[]
   documents          ProductDocument[]
   productSuppliers   ProductSupplier[]
@@ -4832,10 +4834,33 @@ model WmsWorkOrder {
   warehouse   Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   createdBy   User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
   crmAccount  CrmAccount? @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
+  bomLines    WmsWorkOrderBomLine[]
 
   @@unique([tenantId, workOrderNo])
   @@index([tenantId, warehouseId, status])
   @@index([tenantId, crmAccountId])
+}
+
+/// BF-18 — exploded BOM snapshot per value-add work order (`plannedQty` vs ledger-backed `consumedQty`).
+model WmsWorkOrderBomLine {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  workOrderId        String
+  lineNo             Int
+  componentProductId String
+  plannedQty         Decimal  @db.Decimal(14, 3)
+  consumedQty        Decimal  @default(0) @db.Decimal(14, 3)
+  lineNote           String?  @db.VarChar(500)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workOrder        WmsWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  componentProduct Product      @relation(fields: [componentProductId], references: [id], onDelete: Restrict)
+
+  @@unique([workOrderId, lineNo])
+  @@index([tenantId, workOrderId])
+  @@index([componentProductId])
 }
 
 /// Per-user saved movement-ledger filter presets on WMS Stock (parity with `CtSavedFilter` for workbench).

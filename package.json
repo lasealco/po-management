@@ -58,6 +58,7 @@
     "db:seed:crm-demo": "node prisma/crm-demo-seed.mjs",
     "db:seed:srm-demo": "node prisma/seed-srm-demo.mjs",
     "db:seed:wms-demo": "node prisma/wms-demo-seed.mjs",
+    "db:seed:wms-vas-bom-demo": "node prisma/seed-wms-vas-bom-demo.mjs",
     "db:seed:demo-full": "node scripts/seed-demo-full.mjs",
     "db:seed:product-trace-demo": "node prisma/product-trace-demo-repair.mjs",
     "db:seed:invoice-audit-demo": "node prisma/seed-invoice-audit-demo.mjs",
