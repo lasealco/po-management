@@ -5,6 +5,8 @@ import { Prisma, ShipmentMilestoneCode, type WmsPickAllocationStrategy, type Wms
 
 import { prisma } from "@/lib/prisma";
 
+import { actorIsCustomerCrmScoped } from "@/lib/authz";
+
 import {
   assertOutboundCrmAccountLinkable,
   assertOutboundSourceQuoteAttachable,
@@ -2974,6 +2976,18 @@ export async function handleWmsPost(
     });
     if (!acct) {
       return toApiErrorResponseFromStatus("CRM account not found.", 404);
+    }
+    if (await actorIsCustomerCrmScoped(actorId)) {
+      const portalActor = await prisma.user.findFirst({
+        where: { id: actorId, tenantId },
+        select: { customerCrmAccountId: true },
+      });
+      if (!portalActor?.customerCrmAccountId || portalActor.customerCrmAccountId !== crmAccountId) {
+        return toApiErrorResponseFromStatus(
+          "Customer portal users may only submit intake for their assigned CRM account.",
+          403,
+        );
+      }
     }
     const workOrderNo = await nextWorkOrderNo(tenantId);
     const desc = input.workOrderDescription?.trim();

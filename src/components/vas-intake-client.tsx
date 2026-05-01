@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
@@ -9,14 +9,25 @@ export function VasIntakeClient(props: {
   warehouses: { id: string; code: string | null; name: string }[];
   crmAccounts: { id: string; name: string }[];
   canSubmit: boolean;
+  /** When set (customer portal user), CRM account is fixed to this tenant identity scope. */
+  lockedCrmAccountId?: string | null;
 }) {
+  const lockedId = props.lockedCrmAccountId ?? null;
   const [warehouseId, setWarehouseId] = useState(props.warehouses[0]?.id ?? "");
-  const [crmAccountId, setCrmAccountId] = useState("");
+  const [crmAccountId, setCrmAccountId] = useState(() =>
+    lockedId ? props.crmAccounts[0]?.id ?? "" : "",
+  );
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!lockedId) return;
+    const first = props.crmAccounts[0];
+    if (first?.id) setCrmAccountId(first.id);
+  }, [lockedId, props.crmAccounts]);
 
   async function submit() {
     setOkMsg(null);
@@ -104,18 +115,25 @@ export function VasIntakeClient(props: {
 
         <label className="mt-4 block">
           <span className="text-xs font-semibold text-zinc-700">CRM account</span>
-          <select
-            value={crmAccountId}
-            onChange={(e) => setCrmAccountId(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="">Select account</option>
-            {props.crmAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          {lockedId ? (
+            <div className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+              <p className="text-sm font-medium text-zinc-900">{props.crmAccounts[0]?.name ?? "—"}</p>
+              <p className="mt-0.5 text-xs text-zinc-500">Locked to your customer portal scope.</p>
+            </div>
+          ) : (
+            <select
+              value={crmAccountId}
+              onChange={(e) => setCrmAccountId(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select account</option>
+              {props.crmAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
 
         <label className="mt-4 block">

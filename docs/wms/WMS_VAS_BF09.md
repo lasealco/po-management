@@ -31,13 +31,19 @@ Tier mapping (**BF-06**): operations ([`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md)).
 
 | Surface | Behavior |
 |---------|----------|
-| **`/wms/vas-intake`** | Authenticated shell; requires **`org.wms` → view** and **`org.crm` → view**; submit requires **`org.wms.operations` → edit** (or full **`org.wms` → edit**). |
+| **`/wms/vas-intake`** | Authenticated shell; requires **`org.wms` → view** and **`org.crm` → view**; submit requires **`org.wms.operations` → edit** (or full **`org.wms` → edit**). When **`User.customerCrmAccountId`** is set (**customer portal** scope), CRM account is **locked** in UI and API (**BF-30** [`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md)). |
 | **Operations → Value-add** | Ops-created WOs optional CRM select; list shows **Portal/Ops** badge, CRM name, **Save estimate** for materials $ + labor min; BF-18 **BOM** table + replace + consume (same section). |
+
+## SSO-shaped portal bridge (**BF-30**)
+
+Minimal **`POST /api/auth/customer-portal/sso`** plus **`User.customerPortalExternalSubject`**: map external **`sub`** (and/or email) to the tenant **`User`** that carries **`customerCrmAccountId`**. See [`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md).
+
+---
 
 ## Explicit backlog
 
-- Customer SSO portal (tenant-branded) beyond authenticated demo shell.
+- SAML/OIDC or JWKS from a production IdP (beyond HMAC/simulate bridge).
 - Automated BOM sync / rollup into **`wmsBillingEvents`** from **`ADJUSTMENT`** contexts ( **`VALUE_ADD_TASK`** + **`WO_BOM_LINE`** ).
 - VAS SKU pricing matrices attached to **`CrmAccount`** contracts.
 
-_Last updated: 2026-05-01 — BF-09 + BF-18 BOM POST actions and Operations UI._
+_Last updated: 2026-04-29 — BF-09 + BF-18 BOM POST actions; **BF-30** portal SSO bridge + VAS CRM lock ([`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md))._

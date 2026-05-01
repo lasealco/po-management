@@ -2600,6 +2600,8 @@ model User {
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
   customerCrmAccountId                                String?
   customerCrmAccount                                  CrmAccount?                                  @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  /// BF-30 — IdP external subject (`sub`) for customer-portal SSO bridge; unique per tenant when set.
+  customerPortalExternalSubject                       String?                                      @db.VarChar(255)
   /// Phase H: supplier-portal user linked to the supplier org they represent (same tenant).
   portalLinkedSupplierId                              String?
   portalLinkedSupplier                                Supplier?                                    @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
@@ -2743,6 +2745,7 @@ model User {
   productDivisionScope                                UserProductDivision[]
 
   @@unique([tenantId, email])
+  @@unique([tenantId, customerPortalExternalSubject])
   @@index([tenantId])
   @@index([customerCrmAccountId])
   @@index([portalLinkedSupplierId])

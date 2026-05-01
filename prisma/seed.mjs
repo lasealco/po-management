@@ -443,6 +443,10 @@ async function seed() {
     ["org.controltower", "view"],
     /** Read purchase orders and product trace limited to `User.customerCrmAccountId` (see getPurchaseOrderScopeWhere). */
     ["org.orders", "view"],
+    /** BF-30 — VAS intake shell (`/wms/vas-intake`); CRM account locked server-side when `customerCrmAccountId` is set. */
+    ["org.wms", "view"],
+    ["org.crm", "view"],
+    ["org.wms.operations", "edit"],
   ]);
 
   let demoLogisticsCrmAccount = await prisma.crmAccount.findFirst({
@@ -484,6 +488,7 @@ async function seed() {
       isActive: true,
       passwordHash: seedPasswordHash("demo12345", "customer@demo-company.com"),
       customerCrmAccountId: demoLogisticsCrmAccount.id,
+      customerPortalExternalSubject: "demo-customer-portal-sub",
     },
     create: {
       tenantId: tenant.id,
@@ -491,6 +496,7 @@ async function seed() {
       name: "Customer Portal User",
       passwordHash: seedPasswordHash("demo12345", "customer@demo-company.com"),
       customerCrmAccountId: demoLogisticsCrmAccount.id,
+      customerPortalExternalSubject: "demo-customer-portal-sub",
     },
   });
   await prisma.userRole.upsert({

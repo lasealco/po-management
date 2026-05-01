@@ -148,4 +148,4 @@ _Last updated: 2026-04-29 — **BF-26** CRM engineering BOM sync extends BF-18 V
 
 ## Next program wave
 
-Definitions for **BF-21 … BF-30**: shipped capsules **BF-21 … BF-29** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); remaining draft **BF-30** continues there.
+Definitions for **BF-21 … BF-30**: minimal slices shipped — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md) (**BF-30** [`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md)).

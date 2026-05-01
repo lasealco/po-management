@@ -25,7 +25,7 @@
 | **BF-27** | CT map indoor / rack pins | **Minimal landed** — **`warehouseBinPins`** scatter near BF-11 sites (`buildWarehouseBinMapPins`, cap 200, CT toggle) — [`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md) | BF-11 / BF-19 map stack |
 | **BF-28** | Billing / invoice depth (Phase B+) | **Minimal landed** — disputed billing events held out of draft runs ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); accrual / approval gates / accounting export backlog | Phase B billing row |
 | **BF-29** | Packing scanner & carrier label APIs | **Minimal landed** — pack/ship scan multiset + env gates + **`DEMO_PARCEL`** ZPL adapter ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); production carrier purchases backlog | BF-08 pack/ship + labels |
-| **BF-30** | Customer portal SSO & identity | AuthZ for **`/wms/vas-intake`** + quote/order visibility | BF-09 portal assumptions |
+| **BF-30** | Customer portal SSO & identity | **Minimal landed** — **`customerPortalExternalSubject`**, **`POST /api/auth/customer-portal/sso`** (simulate + HMAC), VAS intake CRM lock + API guard ([`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md)); SAML/OIDC / JWKS backlog | BF-09 portal assumptions |
 
 **Suggested dependency-aware sequence (not mandatory):** BF-21 → BF-22 → BF-23 (receiving truth → commercial price truth → solver); BF-24 parallel when migrations owned separately; BF-25 after BF-17 patterns proven (**minimal landed**); BF-26 after BF-18 usage (**minimal landed**); BF-27 after map product decision (**minimal landed**); BF-28 when finance owns invoice UX; BF-29 with vendor picks; BF-30 when CRM/platform owns IdP.
 
@@ -143,7 +143,9 @@
 
 **Objective:** **BF-09** depth: **SSO** (SAML/OIDC) or tenant-branded login for **`CUSTOMER_PORTAL`** flows; scoped claims → **`customerCrmAccountId`** mapping.
 
-**Exit sketch:** Auth provider config; session hardening doc; portal routes grant-tested.
+**Minimal slice shipped (repo):** Prisma **`User.customerPortalExternalSubject`** + partial unique index per tenant; **`signCustomerPortalSsoPayload`** / **`verifyCustomerPortalSsoPayload`** / **`resolveUserForCustomerPortalSso`**; **`POST /api/auth/customer-portal/sso`** (`CUSTOMER_PORTAL_SSO_SIMULATE_SECRET` + header, or **`CUSTOMER_PORTAL_SSO_HMAC_SECRET`** + **`sub`/`email`/`ts`/`sig`**); **`request_customer_vas_work_order`** CRM parity when actor is customer-scoped; **`/wms/vas-intake`** locked CRM picker when **`customerCrmAccountId`** set; seed **`customer@demo-company.com`** grants + demo **`externalSubject`**; Vitest **`customer-portal-sso.test.ts`**; [`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md).
+
+**Exit sketch (remaining):** Real IdP (SAML/OIDC/JWKS); auth provider config per tenant; session hardening; portal routes grant-tested beyond VAS intake.
 
 **Out of scope:** Full B2B marketplace multi-vendor.
 
@@ -155,4 +157,4 @@
 
 ---
 
-_Last updated: 2026-05-01 — **BF-29** packing scan verify + demo carrier label minimal ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); **BF-28** billing dispute hold minimal ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); **BF-27** CT map approximate bin scatter minimal ([`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency minimal ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** minimal **`WarehouseAisle`** slice ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); program capsules **BF-21**–**BF-29** have minimal slices shipped in-repo; **`BF-02`–`BF-29`** Done table in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **BF-30** draft._
+_Last updated: 2026-04-29 — **BF-30** customer portal SSO bridge + VAS CRM lock minimal ([`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md)); **BF-29** packing scan verify + demo carrier label minimal ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); **BF-28** billing dispute hold minimal ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); **BF-27** CT map approximate bin scatter minimal ([`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency minimal ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** minimal **`WarehouseAisle`** slice ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); program capsules **BF-21**–**BF-30** minimal slices shipped in-repo where noted; **`BF-02`–`BF-30`** Done table in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md)._

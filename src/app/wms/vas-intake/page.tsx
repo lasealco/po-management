@@ -67,6 +67,14 @@ export default async function WmsVasIntakePage() {
 
   const canSubmit = viewerHasWmsSectionMutationEdit(access.grantSet, "operations");
 
+  const viewerRow = await prisma.user.findFirst({
+    where: { id: access.user.id, tenantId: tenant.id },
+    select: { customerCrmAccountId: true },
+  });
+  const lockedCrmAccountId = viewerRow?.customerCrmAccountId ?? null;
+  const crmAccountsFiltered =
+    lockedCrmAccountId != null ? crmAccounts.filter((a) => a.id === lockedCrmAccountId) : crmAccounts;
+
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10">
       <nav className="mb-4 text-xs text-zinc-500">
@@ -86,7 +94,12 @@ export default async function WmsVasIntakePage() {
         </p>
       </header>
 
-      <VasIntakeClient warehouses={warehouses} crmAccounts={crmAccounts} canSubmit={canSubmit} />
+      <VasIntakeClient
+        warehouses={warehouses}
+        crmAccounts={crmAccountsFiltered}
+        canSubmit={canSubmit}
+        lockedCrmAccountId={lockedCrmAccountId}
+      />
     </main>
   );
 }
