@@ -82,6 +82,7 @@ model Tenant {
   wmsBillingRates                             WmsBillingRate[]
   wmsBillingEvents                            WmsBillingEvent[]
   wmsReceivingAccrualStagings                 WmsReceivingAccrualStaging[]
+  wmsInboundAsnAdvises                       WmsInboundAsnAdvise[]
   wmsBillingInvoiceRuns                       WmsBillingInvoiceRun[]
   wmsBillingCreditMemoStubs                  WmsBillingCreditMemoStub[]
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
@@ -2590,6 +2591,7 @@ model User {
   outboundOrdersCreated                               OutboundOrder[]
   wmsDockAppointmentsCreated                          WmsDockAppointment[]
   wmsReceiptsCreated                                  WmsReceipt[]                                  @relation("WmsReceiptCreatedBy")
+  wmsInboundAsnAdvisesCreated                         WmsInboundAsnAdvise[]                         @relation("WmsInboundAsnAdviseCreatedBy")
   wmsReceiptsClosed                                   WmsReceipt[]                                  @relation("WmsReceiptClosedBy")
   wmsWorkOrdersCreated                                WmsWorkOrder[]
   loadPlansCreated                                    LoadPlan[]
@@ -3557,6 +3559,7 @@ model PurchaseOrder {
   splitProposal          SplitProposal?       @relation("SplitProposalDraftOrders", fields: [splitProposalId], references: [id], onDelete: SetNull)
   items                  PurchaseOrderItem[]
   shipments              Shipment[]
+  wmsInboundAsnAdvises   WmsInboundAsnAdvise[]
   wmsTasks               WmsTask[]
   transitions            OrderTransitionLog[]
   chats                  OrderChatMessage[]
@@ -3832,6 +3835,7 @@ model Shipment {
   dockAppointments           WmsDockAppointment[]
   wmsReceipts                WmsReceipt[]
   receivingAccrualStagings   WmsReceivingAccrualStaging[]
+  wmsInboundAsnAdvises      WmsInboundAsnAdvise[]
 
   @@index([orderId, createdAt])
   @@index([status])
@@ -3944,6 +3948,36 @@ model WmsReceivingAccrualStaging {
 
   @@index([tenantId, createdAt])
   @@index([tenantId, shipmentId])
+}
+
+/// BF-59 — idempotent ASN pre-advise (JSON) ahead of physical receipt; complements BF-31 tolerance evaluation.
+model WmsInboundAsnAdvise {
+  id                String    @id @default(cuid())
+  tenantId          String
+  /// Partner / carrier ASN key — unique per tenant (`POST` upserts).
+  externalAsnId     String    @db.VarChar(256)
+  warehouseId       String?
+  purchaseOrderId   String?
+  shipmentId        String?
+  asnReference      String?   @db.VarChar(256)
+  expectedReceiveAt DateTime?
+  /// Normalized lines from `parseInboundAsnAdviseLines`.
+  linesJson         Json
+  rawPayloadJson    Json?
+  createdById       String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse?     @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  shipment      Shipment?      @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  createdBy     User           @relation("WmsInboundAsnAdviseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, externalAsnId])
+  @@index([tenantId, createdAt])
+  @@index([shipmentId])
+  @@index([purchaseOrderId])
 }
 
 model WmsReceiptLine {
@@ -4543,6 +4577,7 @@ model Warehouse {
   wmsWorkOrders      WmsWorkOrder[]
   wmsBillingEvents               WmsBillingEvent[]
   wmsReceivingAccrualStagings    WmsReceivingAccrualStaging[]
+  wmsInboundAsnAdvises          WmsInboundAsnAdvise[]
   wmsInventorySoftReservations   WmsInventorySoftReservation[]
   wmsStockTransfersFrom          WmsStockTransfer[]             @relation("WmsStockTransferFromWarehouse")
   wmsStockTransfersTo            WmsStockTransfer[]             @relation("WmsStockTransferToWarehouse")

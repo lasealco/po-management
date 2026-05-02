@@ -387,6 +387,27 @@ export async function getWmsDashboardPayload(
     }),
   ]);
 
+  const inboundAsnAdvises = await prisma.wmsInboundAsnAdvise.findMany({
+    where: { tenantId },
+    orderBy: { updatedAt: "desc" },
+    take: 40,
+    select: {
+      id: true,
+      externalAsnId: true,
+      asnReference: true,
+      expectedReceiveAt: true,
+      linesJson: true,
+      shipmentId: true,
+      purchaseOrderId: true,
+      warehouseId: true,
+      createdAt: true,
+      updatedAt: true,
+      warehouse: { select: { id: true, code: true, name: true } },
+      purchaseOrder: { select: { id: true, orderNumber: true } },
+      shipment: { select: { id: true, shipmentNo: true } },
+    },
+  });
+
   const serialTrace =
     serialTraceQuery?.productId?.trim() && serialTraceQuery?.serialNoRaw?.trim()
       ? await loadInventorySerialTrace(tenantId, viewScope, {
@@ -973,6 +994,21 @@ export async function getWmsDashboardPayload(
       openTaskCount: w.tasks.filter((t) => t.status === "OPEN").length,
       totalQty: w.tasks.reduce((s, t) => s + Number(t.quantity), 0).toFixed(3),
       createdAt: w.createdAt.toISOString(),
+    })),
+    inboundAsnAdvises: inboundAsnAdvises.map((a) => ({
+      id: a.id,
+      externalAsnId: a.externalAsnId,
+      asnReference: a.asnReference,
+      expectedReceiveAt: a.expectedReceiveAt?.toISOString() ?? null,
+      lineCount: Array.isArray(a.linesJson) ? a.linesJson.length : 0,
+      shipmentId: a.shipmentId,
+      purchaseOrderId: a.purchaseOrderId,
+      warehouseId: a.warehouseId,
+      warehouse: a.warehouse,
+      purchaseOrder: a.purchaseOrder,
+      shipment: a.shipment,
+      createdAt: a.createdAt.toISOString(),
+      updatedAt: a.updatedAt.toISOString(),
     })),
     inboundShipments: inboundShipments.map((s) => {
       const m0 = s.milestones[0];

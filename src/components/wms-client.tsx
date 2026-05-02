@@ -468,6 +468,22 @@ type WmsData = {
       lineCount: number;
     }>;
   }>;
+  /** BF-59 — idempotent ASN pre-advise rows (`POST /api/wms/inbound-asn-advise`). */
+  inboundAsnAdvises: Array<{
+    id: string;
+    externalAsnId: string;
+    asnReference: string | null;
+    expectedReceiveAt: string | null;
+    lineCount: number;
+    shipmentId: string | null;
+    purchaseOrderId: string | null;
+    warehouseId: string | null;
+    warehouse: { id: string; code: string | null; name: string } | null;
+    purchaseOrder: { id: string; orderNumber: string } | null;
+    shipment: { id: string; shipmentNo: string | null } | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   putawayCandidates: Array<{
     shipmentItemId: string;
     shipmentId: string;
@@ -844,6 +860,9 @@ export function WmsClient({
   const lastLedgerUrlNormalized = useRef("");
   const [data, setData] = useState<WmsData | null>(null);
   const [busy, setBusy] = useState(false);
+  const [bf59AdviseJson, setBf59AdviseJson] = useState(
+    '{\n  "externalAsnId": "ADVISE-DEMO-001",\n  "asnReference": "ASN-DEMO",\n  "lines": [{ "lineNo": 1, "productSku": "DEMO-SKU", "quantityExpected": 12 }]\n}',
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -1823,6 +1842,34 @@ export function WmsClient({
     }
     setBusy(false);
     return parsedObj;
+  }
+
+  async function submitInboundAsnAdvise(): Promise<void> {
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(bf59AdviseJson) as Record<string, unknown>;
+    } catch {
+      window.alert("Invalid JSON — fix the payload before posting.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const res = await fetch("/api/wms/inbound-asn-advise", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const parsed: unknown = await res.json();
+    if (!res.ok) {
+      setError(apiClientErrorMessage(parsed, "ASN pre-advise failed."));
+      setBusy(false);
+      return;
+    }
+    await load();
+    setBusy(false);
+    const o = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+    const upd = o.updated === true ? "updated" : "created";
+    window.alert(`ASN pre-advise ${upd} (id: ${String(o.id ?? "")}).`);
   }
 
   if (!data) {
@@ -4212,7 +4259,63 @@ export function WmsClient({
           <span className="font-medium">QA sampling hints</span>, disposition{" "}
           <span className="font-medium">note templates</span> (Setup), and one-click{" "}
           <span className="font-medium">Apply template</span> into the variance note.
+          <span className="font-medium"> BF-59</span> adds JSON{" "}
+          <span className="font-medium">ASN pre-advise</span> ingestion (
+          <span className="font-mono text-[11px]">POST /api/wms/inbound-asn-advise</span>, idempotent{" "}
+          <span className="font-medium">externalAsnId</span>) to prime expected lines ahead of receipt — see{" "}
+          <span className="font-medium">docs/wms/WMS_INBOUND_ASN_ADVISE_BF59.md</span>.
         </p>
+        {canEdit ? (
+          <section className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">BF-59 · ASN pre-advise</p>
+            <p className="mt-2 text-xs text-zinc-600">
+              Post structured lines (JSON). Re-using the same <span className="font-medium">externalAsnId</span> replaces
+              the stored advise for this tenant.
+            </p>
+            <textarea
+              value={bf59AdviseJson}
+              onChange={(e) => setBf59AdviseJson(e.target.value)}
+              rows={8}
+              className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void submitInboundAsnAdvise()}
+              className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Post ASN pre-advise
+            </button>
+            {(data.inboundAsnAdvises ?? []).length > 0 ? (
+              <div className="mt-4 overflow-x-auto">
+                <p className="text-xs font-medium text-zinc-800">Recent advises ({data.inboundAsnAdvises.length})</p>
+                <table className="mt-2 min-w-full text-xs">
+                  <thead className="bg-zinc-100 text-left text-[10px] uppercase text-zinc-600">
+                    <tr>
+                      <th className="px-2 py-1">External ASN id</th>
+                      <th className="px-2 py-1">Lines</th>
+                      <th className="px-2 py-1">PO</th>
+                      <th className="px-2 py-1">Shipment</th>
+                      <th className="px-2 py-1">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200">
+                    {data.inboundAsnAdvises.map((a) => (
+                      <tr key={a.id}>
+                        <td className="px-2 py-1 font-mono">{a.externalAsnId}</td>
+                        <td className="px-2 py-1">{a.lineCount}</td>
+                        <td className="px-2 py-1">{a.purchaseOrder?.orderNumber ?? "—"}</td>
+                        <td className="px-2 py-1">{a.shipment?.shipmentNo ?? a.shipmentId?.slice(0, 8) ?? "—"}</td>
+                        <td className="px-2 py-1 text-zinc-600">{a.updatedAt.slice(0, 19)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label className="flex flex-wrap items-center gap-2 text-xs text-zinc-700">
             Inbound tag filter
