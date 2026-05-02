@@ -32,6 +32,30 @@ describe("evaluateWmsInventoryPostMutationAccess (BF-16 + BF-48)", () => {
     if (!d.allowed) expect(d.error).toContain("org.wms.inventory → edit");
   });
 
+  it("allows release_inventory_freeze with inventory edit alone", () => {
+    expect(
+      evaluateWmsInventoryPostMutationAccess({
+        action: "release_inventory_freeze",
+        legacyWmsEdit: false,
+        inventoryEdit: true,
+        inventoryLotEdit: false,
+        inventorySerialEdit: false,
+      }).allowed,
+    ).toBe(true);
+  });
+
+  it("denies release_inventory_freeze with inventory.lot edit alone", () => {
+    const d = evaluateWmsInventoryPostMutationAccess({
+      action: "release_inventory_freeze",
+      legacyWmsEdit: false,
+      inventoryEdit: false,
+      inventoryLotEdit: true,
+      inventorySerialEdit: false,
+    });
+    expect(d.allowed).toBe(false);
+    if (!d.allowed) expect(d.error).toContain("org.wms.inventory → edit");
+  });
+
   it("denies register_inventory_serial with inventory.lot edit alone", () => {
     const d = evaluateWmsInventoryPostMutationAccess({
       action: "register_inventory_serial",

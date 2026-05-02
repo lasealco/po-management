@@ -5,6 +5,7 @@
 ## Catalog / grants
 
 - **`org.wms.inventory.serial`** view / edit rows live in **`GLOBAL_PERMISSION_CATALOG`** (`src/lib/permission-catalog.ts`).
+- **BF-58** — **`org.wms.inventory.hold.release_quality`** and **`org.wms.inventory.hold.release_compliance`** (view/edit) for delegated release of restricted inventory holds ([`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md)).
 - **`viewerHasWmsInventorySerialMutationEdit`** in **`src/lib/authz.ts`** mirrors runtime gates (legacy **`org.wms`**, full **`org.wms.inventory`**, or **`inventory.serial`** only).
 
 ## Manifest + classification

@@ -75,4 +75,9 @@ describe("wmsMutationTierForPostAction", () => {
   it("maps BF-57 outbound LU hierarchy validate to operations tier", () => {
     expect(wmsMutationTierForPostAction("validate_outbound_lu_hierarchy")).toBe("operations");
   });
+
+  it("maps BF-58 inventory freeze actions to inventory tier", () => {
+    expect(wmsMutationTierForPostAction("apply_inventory_freeze")).toBe("inventory");
+    expect(wmsMutationTierForPostAction("release_inventory_freeze")).toBe("inventory");
+  });
 });

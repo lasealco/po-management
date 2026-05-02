@@ -55,6 +55,12 @@ export async function gateWmsPostMutation(actorId: string, action: string | unde
       inventorySerialEdit,
     });
     if (decision.allowed) return null;
+    /** BF-58 — delegated release paths; handler enforces per-row grant + standard-hold inventory edit. */
+    if (raw === "clear_balance_hold" || raw === "release_inventory_freeze") {
+      const q = await userHasGlobalGrant(actorId, "org.wms.inventory.hold.release_quality", "edit");
+      const c = await userHasGlobalGrant(actorId, "org.wms.inventory.hold.release_compliance", "edit");
+      if (q || c) return null;
+    }
     return NextResponse.json({ error: decision.error }, { status: 403 });
   }
 

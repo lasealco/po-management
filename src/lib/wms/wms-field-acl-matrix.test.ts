@@ -25,5 +25,7 @@ describe("wms-field-acl-matrix (BF-48)", () => {
     expect(inventoryAclKindForAction("set_wms_lot_batch")).toBe("lot_metadata");
     expect(inventoryAclKindForAction("register_inventory_serial")).toBe("serial_registry");
     expect(inventoryAclKindForAction("set_balance_hold")).toBe("full_inventory");
+    expect(inventoryAclKindForAction("apply_inventory_freeze")).toBe("full_inventory");
+    expect(inventoryAclKindForAction("release_inventory_freeze")).toBe("full_inventory");
   });
 });

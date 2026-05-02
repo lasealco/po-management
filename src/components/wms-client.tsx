@@ -18,6 +18,7 @@ import {
   normalizeMovementLedgerQueryString,
   readStockLedgerUrlState,
 } from "@/lib/wms/stock-ledger-url";
+import { WMS_INVENTORY_FREEZE_REASON_CODES } from "@/lib/wms/inventory-freeze-matrix";
 import { WMS_RECEIVE_STATUS_LABEL } from "@/lib/wms/wms-receive-status";
 import {
   defaultTrailerChecklistPayload,
@@ -344,6 +345,11 @@ type WmsData = {
     effectiveAvailableQty?: string;
     onHold: boolean;
     holdReason: string | null;
+    /** BF-58 — structured freeze reason when set. */
+    holdReasonCode?: string | null;
+    holdAppliedAt?: string | null;
+    /** BF-58 — delegated release grant resource or null. */
+    holdReleaseGrant?: string | null;
   }>;
   openTasks: Array<{
     id: string;
@@ -8448,7 +8454,9 @@ export function WmsClient({
               ) : null}
               Balance holds, cycle counts, and saved ledger views require{" "}
               <span className="font-medium">org.wms.inventory → edit</span> (or legacy{" "}
-              <span className="font-medium">org.wms → edit</span>).
+              <span className="font-medium">org.wms → edit</span>). BF-58 restricted releases may use{" "}
+              <span className="font-medium">org.wms.inventory.hold.release_quality</span> or{" "}
+              <span className="font-medium">…release_compliance</span> → edit instead of full inventory edit.
             </p>
           </section>
         ) : null}
@@ -9319,6 +9327,7 @@ export function WmsClient({
                 <th className="px-2 py-1">Soft res.</th>
                 <th className="px-2 py-1">ATP (eff.)</th>
                 <th className="px-2 py-1">Hold</th>
+                <th className="px-2 py-1">Hold code</th>
                 <th className="px-2 py-1">QC</th>
                 <th className="px-2 py-1">Balance id</th>
               </tr>
@@ -9326,7 +9335,7 @@ export function WmsClient({
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {balancesTableRows.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={15} className="px-2 py-3 text-zinc-500">
                     {balancesShown.length === 0
                       ? "No balances in this view."
                       : `No balances match this filter${balanceTextFilter.trim() ? `: "${balanceTextFilter.trim()}"` : "."}`}
@@ -9358,9 +9367,24 @@ export function WmsClient({
                     </td>
                     <td className="px-2 py-1 text-xs text-zinc-600">
                       {b.onHold ? (
-                        <span title={b.holdReason ?? ""}>Yes</span>
+                        <span title={b.holdReason ?? ""}>
+                          Yes
+                          {b.holdReleaseGrant ? " · restricted" : ""}
+                        </span>
                       ) : (
                         "No"
+                      )}
+                    </td>
+                    <td className="px-2 py-1 text-xs font-medium text-zinc-700">
+                      {b.onHold && b.holdReasonCode ? (
+                        <span
+                          className="rounded-md bg-amber-100 px-1.5 py-0.5 text-amber-950"
+                          title={b.holdAppliedAt ? `Applied ${b.holdAppliedAt}` : ""}
+                        >
+                          {b.holdReasonCode}
+                        </span>
+                      ) : (
+                        "—"
                       )}
                     </td>
                     <td className="whitespace-nowrap px-2 py-1">
@@ -9385,11 +9409,59 @@ export function WmsClient({
                           Set hold
                         </button>
                       ) : null}
+                      {stockQtyEdit && !Boolean(b.onHold) ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          title="BF-58 structured freeze (reason code + optional restricted release)"
+                          onClick={() => {
+                            const list = WMS_INVENTORY_FREEZE_REASON_CODES.join(", ");
+                            const code =
+                              typeof window !== "undefined"
+                                ? window.prompt(`BF-58 hold reason code:\n${list}`, "QC_HOLD")
+                                : null;
+                            if (code === null) return;
+                            const upper = code.trim().toUpperCase();
+                            if (!([...WMS_INVENTORY_FREEZE_REASON_CODES] as string[]).includes(upper)) {
+                              window.alert(`Invalid code. Use one of: ${list}`);
+                              return;
+                            }
+                            const note =
+                              typeof window !== "undefined"
+                                ? window.prompt("Hold note (optional):", upper.replaceAll("_", " "))
+                                : null;
+                            if (note === null) return;
+                            const g =
+                              typeof window !== "undefined"
+                                ? window.prompt(
+                                    "Restricted release? blank = standard · 1 = quality officer · 2 = compliance",
+                                    "",
+                                  )
+                                : null;
+                            if (g === null) return;
+                            let holdReleaseGrant: string | null = null;
+                            if (g.trim() === "1") holdReleaseGrant = "org.wms.inventory.hold.release_quality";
+                            if (g.trim() === "2") holdReleaseGrant = "org.wms.inventory.hold.release_compliance";
+                            void runAction({
+                              action: "apply_inventory_freeze",
+                              balanceId: b.id,
+                              holdReasonCode: upper,
+                              holdReason: note.trim() || undefined,
+                              holdReleaseGrant: holdReleaseGrant ?? undefined,
+                            });
+                          }}
+                          className="ml-1 rounded border border-amber-700 px-2 py-0.5 text-xs font-semibold text-amber-950 disabled:opacity-40"
+                        >
+                          BF-58
+                        </button>
+                      ) : null}
                       {stockQtyEdit && b.onHold ? (
                         <button
                           type="button"
                           disabled={busy}
-                          onClick={() => void runAction({ action: "clear_balance_hold", balanceId: b.id })}
+                          onClick={() =>
+                            void runAction({ action: "release_inventory_freeze", balanceId: b.id })
+                          }
                           className="ml-1 rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
                         >
                           Clear

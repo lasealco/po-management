@@ -149,6 +149,34 @@ export const GLOBAL_PERMISSION_CATALOG = [
       "Register serials / attach to movements / set balance pointers (`register_inventory_serial`, …) without broader inventory qty controls (BF-48).",
   },
   {
+    resource: "org.wms.inventory.hold.release_quality",
+    action: "view",
+    label: "View quality hold release scope",
+    description:
+      "BF-58 — paired with edit to release balances frozen with org.wms.inventory.hold.release_quality.",
+  },
+  {
+    resource: "org.wms.inventory.hold.release_quality",
+    action: "edit",
+    label: "Release quality-scoped inventory holds",
+    description:
+      "BF-58 — `release_inventory_freeze` / `clear_balance_hold` on rows whose `holdReleaseGrant` is this resource (without full inventory edit).",
+  },
+  {
+    resource: "org.wms.inventory.hold.release_compliance",
+    action: "view",
+    label: "View compliance hold release scope",
+    description:
+      "BF-58 — paired with edit to release balances frozen with org.wms.inventory.hold.release_compliance.",
+  },
+  {
+    resource: "org.wms.inventory.hold.release_compliance",
+    action: "edit",
+    label: "Release compliance-scoped inventory holds",
+    description:
+      "BF-58 — `release_inventory_freeze` on rows whose `holdReleaseGrant` is this resource (recall / regulatory paths).",
+  },
+  {
     resource: "org.crm",
     action: "view",
     label: "View CRM",

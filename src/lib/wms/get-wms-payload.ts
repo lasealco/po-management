@@ -922,6 +922,9 @@ export async function getWmsDashboardPayload(
           .toString(),
         onHold: Boolean(b.onHold),
         holdReason: b.holdReason ?? null,
+        holdReasonCode: b.holdReasonCode ?? null,
+        holdAppliedAt: b.holdAppliedAt?.toISOString() ?? null,
+        holdReleaseGrant: b.holdReleaseGrant ?? null,
         lotBatchProfile: profileRow
           ? {
               expiryDate: profileRow.expiryDate?.toISOString().slice(0, 10) ?? null,

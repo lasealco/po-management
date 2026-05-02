@@ -93,7 +93,11 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   record_shipment_milestone: "operations",
 
   set_balance_hold: "inventory",
+  /** BF-58 — structured freeze + optional bulk scope + restricted release grant. */
+  apply_inventory_freeze: "inventory",
   clear_balance_hold: "inventory",
+  /** BF-58 — same payload as clear_balance_hold; prefer for new integrations. */
+  release_inventory_freeze: "inventory",
 
   create_soft_reservation: "inventory",
   release_soft_reservation: "inventory",

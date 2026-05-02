@@ -102,6 +102,18 @@ export type WmsBody = {
   /** Target `WmsReceiveStatus` for `set_wms_receiving_status`. */
   toStatus?: string;
   holdReason?: string | null;
+  /** BF-58 — `QC_HOLD` | `RECALL` | … on `apply_inventory_freeze`. */
+  holdReasonCode?: string | null;
+  /** BF-58 — alias for `holdReasonCode`. */
+  inventoryFreezeReasonCode?: string | null;
+  /** BF-58 — `org.wms.inventory.hold.release_quality` | `…release_compliance` or omit. */
+  holdReleaseGrant?: string | null;
+  /** BF-58 — bulk freeze: all balances for product in warehouse (optional `freezeScopeLotCode` narrows lot bucket). */
+  freezeScopeWarehouseId?: string;
+  freezeScopeProductId?: string;
+  freezeScopeLotCode?: string | null;
+  /** BF-58 — narrative alias for `holdReason`. */
+  freezeNote?: string | null;
   /** `set_zone_parent` — target zone id (BF-04). */
   zoneId?: string;
   /** `set_zone_parent` — parent zone id or `null` to clear (same warehouse). */

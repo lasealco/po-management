@@ -2584,6 +2584,7 @@ model User {
   wmsCycleCountSessionsCreated                       WmsCycleCountSession[]                       @relation("WmsCycleCountSessionCreatedBy")
   wmsStockTransfersCreated                         WmsStockTransfer[]                           @relation("WmsStockTransferCreatedBy")
   wmsInventorySoftReservationsCreated                 WmsInventorySoftReservation[]                @relation("WmsInventorySoftReservationCreatedBy")
+  inventoryBalancesHoldApplied                        InventoryBalance[]                           @relation("InventoryBalanceHoldAppliedBy")
   wmsTasksCompleted                                   WmsTask[]                                    @relation("WmsTaskCompletedBy")
   wmsWavesCreated                                     WmsWave[]
   outboundOrdersCreated                               OutboundOrder[]
@@ -4727,12 +4728,19 @@ model InventoryBalance {
   /// QC / quarantine: when true, picks and wave allocation skip this bin-product row.
   onHold       Boolean  @default(false)
   holdReason   String?  @db.VarChar(500)
+  /// BF-58 — structured freeze reason (`QC_HOLD`, `RECALL`, …). Narrative stays in `holdReason`.
+  holdReasonCode   String?   @db.VarChar(64)
+  holdAppliedAt    DateTime?
+  holdAppliedById  String?
+  /// BF-58 — when set, `release_inventory_freeze` requires this resource → edit unless actor has full `org.wms.inventory` (or legacy `org.wms`) edit.
+  holdReleaseGrant String?  @db.VarChar(120)
   updatedAt    DateTime @updatedAt
 
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   warehouse Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   bin       WarehouseBin @relation(fields: [binId], references: [id], onDelete: Cascade)
   product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  holdAppliedBy User?    @relation("InventoryBalanceHoldAppliedBy", fields: [holdAppliedById], references: [id], onDelete: SetNull)
   wmsInventorySerials WmsInventorySerial[]
   wmsInventorySoftReservations WmsInventorySoftReservation[]
   wmsCycleCountLines WmsCycleCountLine[]

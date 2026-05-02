@@ -51,6 +51,8 @@ import {
   truncateLotBatchNotes,
 } from "./lot-batch-master";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
+import { normalizeHoldReleaseGrantInput, normalizeInventoryFreezeReasonCode } from "./inventory-freeze-matrix";
+import { canActorReleaseInventoryHold } from "./inventory-hold-release";
 import {
   allocateUniqueStockTransferReferenceCode,
   parseStockTransferLineInput,
@@ -162,6 +164,33 @@ async function verifyOutboundPackScanResolved(
   });
   const mapped = mapOutboundLogisticsUnitsForPackScan(luRows);
   return verifyOutboundPackScanWithLogisticsUnits(flat, tokens, mapped);
+}
+
+async function releaseInventoryHoldForBalanceId(
+  tenantId: string,
+  actorId: string,
+  balanceId: string,
+): Promise<NextResponse | null> {
+  const bal = await prisma.inventoryBalance.findFirst({
+    where: { id: balanceId, tenantId },
+    select: { id: true, onHold: true, holdReleaseGrant: true },
+  });
+  if (!bal) return toApiErrorResponseFromStatus("Balance row not found.", 404);
+  if (!bal.onHold) return toApiErrorResponseFromStatus("Balance is not on hold.", 400);
+  const rel = await canActorReleaseInventoryHold(actorId, bal.holdReleaseGrant);
+  if (!rel.ok) return NextResponse.json({ error: rel.message }, { status: rel.status });
+  await prisma.inventoryBalance.updateMany({
+    where: { id: balanceId, tenantId },
+    data: {
+      onHold: false,
+      holdReason: null,
+      holdReasonCode: null,
+      holdAppliedAt: null,
+      holdAppliedById: null,
+      holdReleaseGrant: null,
+    },
+  });
+  return null;
 }
 
 export async function handleWmsPost(
@@ -1363,11 +1392,29 @@ export async function handleWmsPost(
           productId,
           lotCode: targetLot,
           onHandQty: task.quantity,
-          ...(applyQcHold ? { onHold: true, holdReason: "Customer return — quarantine (BF-41)" } : {}),
+          ...(applyQcHold
+            ? {
+                onHold: true,
+                holdReason: "Customer return — quarantine (BF-41)",
+                holdReasonCode: "CUSTOMER_RETURN",
+                holdAppliedAt: new Date(),
+                holdAppliedById: actorId,
+                holdReleaseGrant: null,
+              }
+            : {}),
         },
         update: {
           onHandQty: { increment: task.quantity },
-          ...(applyQcHold ? { onHold: true, holdReason: "Customer return — quarantine (BF-41)" } : {}),
+          ...(applyQcHold
+            ? {
+                onHold: true,
+                holdReason: "Customer return — quarantine (BF-41)",
+                holdReasonCode: "CUSTOMER_RETURN",
+                holdAppliedAt: new Date(),
+                holdAppliedById: actorId,
+                holdReleaseGrant: null,
+              }
+            : {}),
         },
       });
       await tx.inventoryMovement.create({
@@ -4659,6 +4706,70 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "apply_inventory_freeze") {
+    const reasonParsed = normalizeInventoryFreezeReasonCode(
+      input.holdReasonCode ?? input.inventoryFreezeReasonCode,
+    );
+    if (!reasonParsed.ok) {
+      return toApiErrorResponseFromStatus(reasonParsed.error, 400);
+    }
+    const grantParsed = normalizeHoldReleaseGrantInput(input.holdReleaseGrant);
+    if (!grantParsed.ok) {
+      return toApiErrorResponseFromStatus(grantParsed.error, 400);
+    }
+    const rawNote =
+      input.holdReason?.trim() ||
+      input.freezeNote?.trim() ||
+      reasonParsed.code.replaceAll("_", " ");
+    const note = rawNote.slice(0, 500);
+    const now = new Date();
+    const data = {
+      onHold: true,
+      holdReason: note,
+      holdReasonCode: reasonParsed.code,
+      holdAppliedAt: now,
+      holdAppliedById: actorId,
+      holdReleaseGrant: grantParsed.grant,
+    };
+    const balanceId = input.balanceId?.trim();
+    if (balanceId) {
+      const n = await prisma.inventoryBalance.updateMany({
+        where: { id: balanceId, tenantId },
+        data,
+      });
+      if (n.count === 0) return toApiErrorResponseFromStatus("Balance row not found.", 404);
+      return NextResponse.json({ ok: true, updatedCount: n.count });
+    }
+    const wh = input.freezeScopeWarehouseId?.trim();
+    const pid = input.freezeScopeProductId?.trim();
+    if (!wh || !pid) {
+      return toApiErrorResponseFromStatus(
+        "balanceId or (freezeScopeWarehouseId + freezeScopeProductId) required.",
+        400,
+      );
+    }
+    const whRow = await prisma.warehouse.findFirst({
+      where: { id: wh, tenantId },
+      select: { id: true },
+    });
+    if (!whRow) return toApiErrorResponseFromStatus("freezeScopeWarehouseId not found.", 404);
+    const prodRow = await prisma.product.findFirst({
+      where: { id: pid, tenantId },
+      select: { id: true },
+    });
+    if (!prodRow) return toApiErrorResponseFromStatus("freezeScopeProductId not found.", 404);
+    const whereBal: Prisma.InventoryBalanceWhereInput = {
+      tenantId,
+      warehouseId: wh,
+      productId: pid,
+    };
+    if (input.freezeScopeLotCode !== undefined && input.freezeScopeLotCode !== null) {
+      whereBal.lotCode = normalizeLotCode(input.freezeScopeLotCode);
+    }
+    const n = await prisma.inventoryBalance.updateMany({ where: whereBal, data });
+    return NextResponse.json({ ok: true, updatedCount: n.count });
+  }
+
   if (action === "set_balance_hold") {
     const balanceId = input.balanceId?.trim();
     if (!balanceId) {
@@ -4667,7 +4778,14 @@ export async function handleWmsPost(
     const reason = input.holdReason?.trim() || "On hold";
     const n = await prisma.inventoryBalance.updateMany({
       where: { id: balanceId, tenantId },
-      data: { onHold: true, holdReason: reason.slice(0, 500) },
+      data: {
+        onHold: true,
+        holdReason: reason.slice(0, 500),
+        holdReasonCode: "OTHER",
+        holdAppliedAt: new Date(),
+        holdAppliedById: actorId,
+        holdReleaseGrant: null,
+      },
     });
     if (n.count === 0) return toApiErrorResponseFromStatus("Balance row not found.", 404);
     return NextResponse.json({ ok: true });
@@ -4678,11 +4796,18 @@ export async function handleWmsPost(
     if (!balanceId) {
       return toApiErrorResponseFromStatus("balanceId required.", 400);
     }
-    const n = await prisma.inventoryBalance.updateMany({
-      where: { id: balanceId, tenantId },
-      data: { onHold: false, holdReason: null },
-    });
-    if (n.count === 0) return toApiErrorResponseFromStatus("Balance row not found.", 404);
+    const errRes = await releaseInventoryHoldForBalanceId(tenantId, actorId, balanceId);
+    if (errRes) return errRes;
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "release_inventory_freeze") {
+    const balanceId = input.balanceId?.trim();
+    if (!balanceId) {
+      return toApiErrorResponseFromStatus("balanceId required.", 400);
+    }
+    const errRes = await releaseInventoryHoldForBalanceId(tenantId, actorId, balanceId);
+    if (errRes) return errRes;
     return NextResponse.json({ ok: true });
   }
 
