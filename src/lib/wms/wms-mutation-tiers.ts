@@ -58,6 +58,7 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
 
   mark_outbound_packed: "operations",
   mark_outbound_shipped: "operations",
+  validate_outbound_lu_hierarchy: "operations",
   validate_outbound_pack_scan: "operations",
   upsert_outbound_logistics_unit_bf43: "operations",
   delete_outbound_logistics_unit_bf43: "operations",

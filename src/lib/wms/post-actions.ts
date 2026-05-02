@@ -115,6 +115,7 @@ import {
   truncateCycleCountNote,
   varianceRequiresReason,
 } from "./cycle-count-session";
+import { validateOutboundLuHierarchy } from "./outbound-lu-hierarchy";
 import type { WmsBody } from "./wms-body";
 import { loadWmsViewReadScope } from "./wms-read-scope";
 import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
@@ -2185,6 +2186,46 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "validate_outbound_lu_hierarchy") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    const luRows = await prisma.wmsOutboundLogisticsUnit.findMany({
+      where: { tenantId, outboundOrderId },
+      select: {
+        id: true,
+        parentUnitId: true,
+        scanCode: true,
+        outboundOrderLineId: true,
+        containedQty: true,
+      },
+    });
+    const v = validateOutboundLuHierarchy(
+      luRows.map((r) => ({
+        id: r.id,
+        parentUnitId: r.parentUnitId,
+        scanCode: r.scanCode,
+        outboundOrderLineId: r.outboundOrderLineId,
+        containedQty: r.containedQty != null ? r.containedQty.toString() : null,
+      })),
+    );
+    return NextResponse.json({
+      ok: v.ok,
+      errors: v.errors,
+      warnings: v.warnings,
+      ssccFailures: v.ssccFailures,
+      unitCount: luRows.length,
+    });
+  }
+
   if (action === "validate_outbound_pack_scan") {
     const outboundOrderId = input.outboundOrderId?.trim();
     if (!outboundOrderId) {
@@ -2407,6 +2448,37 @@ export async function handleWmsPost(
     const allPacked = order.lines.every((l) => Number(l.packedQty) >= Number(l.quantity));
     if (!allPacked) {
       return toApiErrorResponseFromStatus("All lines must be fully packed.", 400);
+    }
+
+    const enforceSscc = process.env.WMS_ENFORCE_SSCC === "1";
+    if (enforceSscc) {
+      const luRows = await prisma.wmsOutboundLogisticsUnit.findMany({
+        where: { tenantId, outboundOrderId },
+        select: {
+          id: true,
+          parentUnitId: true,
+          scanCode: true,
+          outboundOrderLineId: true,
+          containedQty: true,
+        },
+      });
+      if (luRows.length > 0) {
+        const v = validateOutboundLuHierarchy(
+          luRows.map((r) => ({
+            id: r.id,
+            parentUnitId: r.parentUnitId,
+            scanCode: r.scanCode,
+            outboundOrderLineId: r.outboundOrderLineId,
+            containedQty: r.containedQty != null ? r.containedQty.toString() : null,
+          })),
+        );
+        if (!v.ok) {
+          return toApiErrorResponseFromStatus(
+            `WMS_ENFORCE_SSCC=1: logistics unit validation failed — ${v.errors.slice(0, 6).join("; ")}`,
+            400,
+          );
+        }
+      }
     }
 
     const requireShipScan = process.env.WMS_REQUIRE_SHIP_SCAN === "1";

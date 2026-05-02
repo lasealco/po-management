@@ -983,6 +983,8 @@ export function WmsClient({
     Record<string, string | null>
   >({});
   const [luDraftByOutboundId, setLuDraftByOutboundId] = useState<Record<string, WmsLuDraftBf43>>({});
+  /** BF-57 — last hierarchy/SSCC validation message per outbound (client-only). */
+  const [bf57LuValidateMsgByOutboundId, setBf57LuValidateMsgByOutboundId] = useState<Record<string, string>>({});
   const [outboundCreateAsn, setOutboundCreateAsn] = useState("");
   const [outboundCreateRequestedShip, setOutboundCreateRequestedShip] = useState("");
   const [dockShipmentLink, setDockShipmentLink] = useState("");
@@ -6283,8 +6285,46 @@ export function WmsClient({
                   <p className="mt-0.5 text-violet-900/85">
                     Leaf rows tied to an outbound line substitute{" "}
                     <span className="font-medium">floor(containedQty)</span> scans of that line&apos;s BF-29 primary code
-                    during pack or ship verification. Parent-only rows stay structural until you attach a line and qty.
+                    during pack or ship verification. Parent-only rows stay structural until you attach a line and qty.{" "}
+                    <span className="font-medium">BF-57</span> adds{" "}
+                    <span className="font-medium">SSCC-18 check digit</span> checks (18-digit scans) and parent/cycle
+                    validation; optional deploy gate <span className="font-mono text-[10px]">WMS_ENFORCE_SSCC=1</span>{" "}
+                    on <span className="font-medium">Mark shipped</span>.
                   </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={busy || !canEdit}
+                      onClick={async () => {
+                        const ret = await runAction({
+                          action: "validate_outbound_lu_hierarchy",
+                          outboundOrderId: o.id,
+                        });
+                        if (!ret) return;
+                        const ok = ret.ok === true;
+                        const errs = Array.isArray(ret.errors) ? (ret.errors as string[]).join("; ") : "";
+                        const warns = Array.isArray(ret.warnings) ? (ret.warnings as string[]).join("; ") : "";
+                        const n = typeof ret.unitCount === "number" ? ret.unitCount : 0;
+                        setBf57LuValidateMsgByOutboundId((prev) => ({
+                          ...prev,
+                          [o.id]:
+                            n === 0
+                              ? "No logistics units to validate."
+                              : ok
+                                ? warns
+                                  ? `BF-57 OK (${n} units). Warnings: ${warns}`
+                                  : `BF-57 OK (${n} units) — hierarchy and SSCC checks passed.`
+                                : `BF-57 failed: ${errs || "validation errors"}`,
+                        }));
+                      }}
+                      className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-violet-900 disabled:opacity-40"
+                    >
+                      Validate LU hierarchy (BF-57)
+                    </button>
+                    {bf57LuValidateMsgByOutboundId[o.id] ? (
+                      <span className="text-[11px] text-violet-900/90">{bf57LuValidateMsgByOutboundId[o.id]}</span>
+                    ) : null}
+                  </div>
                   {(o.logisticsUnits ?? []).length > 0 ? (
                     <div className="mt-2 overflow-x-auto rounded border border-violet-100 bg-white">
                       <table className="min-w-full border-collapse text-[11px]">

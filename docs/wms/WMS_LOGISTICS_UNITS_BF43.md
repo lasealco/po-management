@@ -10,6 +10,7 @@
 
 - **`upsert_outbound_logistics_unit_bf43`** — `outboundOrderId`, `logisticsUnitScanCode`, optional `logisticsUnitId` (update), `logisticsUnitKind`, optional `logisticsUnitParentId`, optional `logisticsOutboundOrderLineId` + required **`logisticsContainedQty`** when the line is set. Blocks parent cycles and duplicate scan codes per order.
 - **`delete_outbound_logistics_unit_bf43`** — `outboundOrderId`, `logisticsUnitId`.
+- **`validate_outbound_lu_hierarchy`** (**BF-57**) — `outboundOrderId`; read-only SSCC-18 + hierarchy validation. Optional deploy **`WMS_ENFORCE_SSCC=1`** requires passing validation on **`mark_outbound_shipped`** when any LUs exist. See [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md).
 
 **Read model:** `GET /api/wms` includes **`logisticsUnits`** per outbound (flat list with `parentUnitId`). Operations UI lists/edits units under **BF-43 · Logistics units**.
 
