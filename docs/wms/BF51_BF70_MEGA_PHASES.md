@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **`BF-51`** … **`BF-59`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md)). **`BF-60` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
+**Status:** **`BF-51`** … **`BF-60`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md)). **`BF-61` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
 
 **Rules:**
 
@@ -27,7 +27,7 @@
 | **BF-57** | Nested LU aggregation & SSCC validation depth | Logistics units row | **BF-43** — `validateOutboundLuHierarchy`, **`validate_outbound_lu_hierarchy`**, **`WMS_ENFORCE_SSCC`** ship gate landed ([`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md)) |
 | **BF-58** | Inventory freeze matrix expansion | Holds / compliance row | Holds/quarantine patterns (**BF-41**/QA) — **`apply_inventory_freeze`**, delegated release grants landed ([`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md)) |
 | **BF-59** | Inbound ASN **pre-advise** ingestion stub | Inbound ASN row | **BF-31** tolerance — **`POST/GET /api/wms/inbound-asn-advise`**, **`WmsInboundAsnAdvise`** landed ([`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md)) |
-| **BF-60** | Mobile offline scan queue replay | Field UX row | Scan validators, idempotent POST patterns |
+| **BF-60** | Mobile offline scan queue replay | Field UX row | **`POST /api/wms/scan-events/batch`**, **`WmsScanEventBatch`** landed ([`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md)) |
 | **BF-61** | Forecast-driven replenishment hints | Replenishment row | **BF-35** rules, optional CRM demand signal |
 | **BF-62** | Kit assembly / build outbound postings | VAS / kit row | **BF-18** BOM, inventory mutations |
 | **BF-63** | Catch-weight receiving | Receiving / UOM row | **BF-01** line variance, **`Product`** UOM |
@@ -133,11 +133,11 @@
 
 ---
 
-## BF-60 — Mobile offline scan queue replay
+## BF-60 — Mobile offline scan queue replay ✅ **Minimal landed**
 
 **Objective:** Client **offline queue** of scans with server **replay + conflict** responses — minimal contract for rugged scanners.
 
-**Exit sketch (minimal slice):** **`POST /api/wms/scan-events/batch`** with client **`deviceClock`** + monotonic seq; conflict **`409`** payload schema docs.
+**Shipped:** [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md) — **`WmsScanEventBatch`**; **`POST /api/wms/scan-events/batch`** with **`clientBatchId`** + monotonic **`seq`** + per-event **`deviceClock`**; cached **`lastResponseJson`** for idempotent replay; **`409`** **`SCAN_BATCH_CONFLICT`** payload; **`GET /api/wms`** **`scanEventBatches`** + Operations JSON panel.
 
 **Out of scope:** Full PWA sync engine, CRDT inventory.
 
@@ -249,4 +249,4 @@
 
 ---
 
-_Last updated: 2026-04-30 — **BF-59** inbound ASN pre-advise (`WmsInboundAsnAdvise`, [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md)); **BF-58** inventory freeze matrix ([`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md)); **BF-57** LU hierarchy + SSCC (`validate_outbound_lu_hierarchy`, [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md)); **BF-56** batch pick waves ([`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md)); **BF-55** stock transfer orders ([`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md)); **2026-05-05** — **BF-54** dock detention ([`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)); **BF-53** labor ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **BF-52** slotting ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **BF-51** cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-60 … BF-70** draft stubs._
+_Last updated: 2026-04-29 — **BF-60** offline scan batch replay (`WmsScanEventBatch`, [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md)); **BF-59** inbound ASN pre-advise (`WmsInboundAsnAdvise`, [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md)); **BF-58** inventory freeze matrix ([`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md)); **BF-57** LU hierarchy + SSCC (`validate_outbound_lu_hierarchy`, [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md)); **BF-56** batch pick waves ([`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md)); **BF-55** stock transfer orders ([`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md)); **2026-05-05** — **BF-54** dock detention ([`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)); **BF-53** labor ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **BF-52** slotting ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **BF-51** cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-61 … BF-70** draft stubs._

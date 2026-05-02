@@ -76,9 +76,8 @@ import {
   parsePackScanTokenArray,
 } from "./pack-scan-verify";
 import {
-  mapOutboundLogisticsUnitsForPackScan,
   normalizeOutboundLogisticsUnitScanCode,
-  verifyOutboundPackScanWithLogisticsUnits,
+  verifyOutboundPackScanResolved,
 } from "./outbound-logistics-unit-scan";
 import {
   assertAllowedOutboundWebhookUrl,
@@ -150,20 +149,6 @@ async function assertOutboundLuParentNoCycle(
     });
     cur = parentRow?.parentUnitId ?? null;
   }
-}
-
-async function verifyOutboundPackScanResolved(
-  tenantId: string,
-  outboundOrderId: string,
-  flat: string[],
-  tokens: string[],
-) {
-  const luRows = await prisma.wmsOutboundLogisticsUnit.findMany({
-    where: { tenantId, outboundOrderId },
-    include: { outboundOrderLine: { include: { product: true } } },
-  });
-  const mapped = mapOutboundLogisticsUnitsForPackScan(luRows);
-  return verifyOutboundPackScanWithLogisticsUnits(flat, tokens, mapped);
 }
 
 async function releaseInventoryHoldForBalanceId(

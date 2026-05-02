@@ -83,6 +83,7 @@ model Tenant {
   wmsBillingEvents                            WmsBillingEvent[]
   wmsReceivingAccrualStagings                 WmsReceivingAccrualStaging[]
   wmsInboundAsnAdvises                       WmsInboundAsnAdvise[]
+  wmsScanEventBatches                         WmsScanEventBatch[]
   wmsBillingInvoiceRuns                       WmsBillingInvoiceRun[]
   wmsBillingCreditMemoStubs                  WmsBillingCreditMemoStub[]
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
@@ -2592,6 +2593,7 @@ model User {
   wmsDockAppointmentsCreated                          WmsDockAppointment[]
   wmsReceiptsCreated                                  WmsReceipt[]                                  @relation("WmsReceiptCreatedBy")
   wmsInboundAsnAdvisesCreated                         WmsInboundAsnAdvise[]                         @relation("WmsInboundAsnAdviseCreatedBy")
+  wmsScanEventBatchesCreated                          WmsScanEventBatch[]                          @relation("WmsScanEventBatchCreatedBy")
   wmsReceiptsClosed                                   WmsReceipt[]                                  @relation("WmsReceiptClosedBy")
   wmsWorkOrdersCreated                                WmsWorkOrder[]
   loadPlansCreated                                    LoadPlan[]
@@ -3978,6 +3980,29 @@ model WmsInboundAsnAdvise {
   @@index([tenantId, createdAt])
   @@index([shipmentId])
   @@index([purchaseOrderId])
+}
+
+/// BF-60 — idempotent offline scan batch replay (validate pack/ship scans); client `clientBatchId` dedupes replays.
+model WmsScanEventBatch {
+  id               String   @id @default(cuid())
+  tenantId         String
+  /// Client-generated UUID / idempotency key (unique per tenant).
+  clientBatchId    String   @db.VarChar(128)
+  /// Batch anchor clock from rugged device (ISO-8601 string).
+  deviceClock      String   @db.VarChar(64)
+  createdById      String
+  /// HTTP status returned on first submission (200 or 409).
+  lastStatusCode   Int
+  /// Cached JSON body for identical `POST` replays.
+  lastResponseJson Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("WmsScanEventBatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, clientBatchId])
+  @@index([tenantId, createdAt])
 }
 
 model WmsReceiptLine {

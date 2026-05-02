@@ -484,6 +484,15 @@ type WmsData = {
     createdAt: string;
     updatedAt: string;
   }>;
+  /** BF-60 — recent offline scan batch replays (`POST /api/wms/scan-events/batch`). */
+  scanEventBatches: Array<{
+    id: string;
+    clientBatchId: string;
+    deviceClock: string;
+    lastStatusCode: number;
+    createdAt: string;
+    createdBy: { id: string; name: string | null };
+  }>;
   putawayCandidates: Array<{
     shipmentItemId: string;
     shipmentId: string;
@@ -862,6 +871,9 @@ export function WmsClient({
   const [busy, setBusy] = useState(false);
   const [bf59AdviseJson, setBf59AdviseJson] = useState(
     '{\n  "externalAsnId": "ADVISE-DEMO-001",\n  "asnReference": "ASN-DEMO",\n  "lines": [{ "lineNo": 1, "productSku": "DEMO-SKU", "quantityExpected": 12 }]\n}',
+  );
+  const [bf60BatchJson, setBf60BatchJson] = useState(
+    '{\n  "clientBatchId": "00000000-0000-4000-8000-000000000060",\n  "deviceClock": "2026-04-30T12:00:00.000Z",\n  "events": [\n    {\n      "seq": 1,\n      "deviceClock": "2026-04-30T12:00:01.000Z",\n      "type": "VALIDATE_PACK_SCAN",\n      "payload": {\n        "outboundOrderId": "REPLACE_WITH_OUTBOUND_ID",\n        "packScanTokens": []\n      }\n    }\n  ]\n}',
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
@@ -1870,6 +1882,43 @@ export function WmsClient({
     const o = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
     const upd = o.updated === true ? "updated" : "created";
     window.alert(`ASN pre-advise ${upd} (id: ${String(o.id ?? "")}).`);
+  }
+
+  async function submitScanEventBatch(): Promise<void> {
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(bf60BatchJson) as Record<string, unknown>;
+    } catch {
+      window.alert("Invalid JSON — fix the payload before posting.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const res = await fetch("/api/wms/scan-events/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const parsed: unknown = await res.json();
+    if (res.status === 409) {
+      const o = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+      const c = o.conflict && typeof o.conflict === "object" ? (o.conflict as Record<string, unknown>) : {};
+      const msg = typeof c.message === "string" ? c.message : "Scan batch conflict.";
+      setError(
+        `${msg} (HTTP 409, seq ${String(o.failedAtSeq ?? "—")}, kind ${String(c.kind ?? "—")}).`,
+      );
+      setBusy(false);
+      return;
+    }
+    if (!res.ok) {
+      setError(apiClientErrorMessage(parsed, "Scan batch failed."));
+      setBusy(false);
+      return;
+    }
+    await load();
+    setBusy(false);
+    const o = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+    window.alert(`Scan batch stored (id: ${String(o.batchId ?? "")}).`);
   }
 
   if (!data) {
@@ -5985,6 +6034,58 @@ export function WmsClient({
             </p>
           </div>
         </div>
+        {canEdit ? (
+          <section className="mt-4 rounded-2xl border border-violet-100 bg-violet-50/50 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-violet-800">BF-60 · Offline scan batch</p>
+            <p className="mt-2 text-xs text-violet-950/85">
+              Replay queued <span className="font-medium">VALIDATE_PACK_SCAN</span> /{" "}
+              <span className="font-medium">VALIDATE_SHIP_SCAN</span> events with a client{" "}
+              <span className="font-medium">clientBatchId</span> (idempotent). Conflicts return{" "}
+              <span className="font-medium">409</span> with <span className="font-medium">SCAN_BATCH_CONFLICT</span>. See{" "}
+              <span className="font-medium">docs/wms/WMS_OFFLINE_SCAN_BF60.md</span>.
+            </p>
+            <textarea
+              value={bf60BatchJson}
+              onChange={(e) => setBf60BatchJson(e.target.value)}
+              rows={10}
+              className="mt-2 w-full rounded-xl border border-violet-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void submitScanEventBatch()}
+              className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              POST scan-events/batch
+            </button>
+            {(data.scanEventBatches ?? []).length > 0 ? (
+              <div className="mt-4 overflow-x-auto">
+                <p className="text-xs font-medium text-violet-950">Recent batches ({data.scanEventBatches.length})</p>
+                <table className="mt-2 min-w-full text-xs">
+                  <thead className="bg-violet-100/80 text-left text-[10px] uppercase text-violet-900">
+                    <tr>
+                      <th className="px-2 py-1">Client batch id</th>
+                      <th className="px-2 py-1">HTTP</th>
+                      <th className="px-2 py-1">Actor</th>
+                      <th className="px-2 py-1">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-violet-100">
+                    {data.scanEventBatches.map((b) => (
+                      <tr key={b.id}>
+                        <td className="px-2 py-1 font-mono">{b.clientBatchId}</td>
+                        <td className="px-2 py-1">{b.lastStatusCode}</td>
+                        <td className="px-2 py-1">{b.createdBy?.name ?? b.createdBy?.id?.slice(0, 8) ?? "—"}</td>
+                        <td className="px-2 py-1 text-zinc-600">{b.createdAt.slice(0, 19)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
         <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
             Commercial handoff

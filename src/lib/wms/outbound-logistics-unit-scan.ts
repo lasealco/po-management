@@ -2,6 +2,8 @@
  * BF-43 — outbound logistics unit (SSCC/LPN) scan normalization + BF-29 multiset substitution.
  */
 
+import { prisma } from "@/lib/prisma";
+
 import {
   normalizePackScanToken,
   primaryPackScanCode,
@@ -40,6 +42,21 @@ export function mapOutboundLogisticsUnitsForPackScan(
     containedQty: r.containedQty != null && r.containedQty !== "" ? Number(r.containedQty) : null,
     product: r.outboundOrderLine?.product ?? null,
   }));
+}
+
+/** BF-29 / BF-43 — LU-aware multiset verify for pack and ship scan gates. */
+export async function verifyOutboundPackScanResolved(
+  tenantId: string,
+  outboundOrderId: string,
+  flat: string[],
+  tokens: string[],
+): Promise<PackScanVerifyResult> {
+  const luRows = await prisma.wmsOutboundLogisticsUnit.findMany({
+    where: { tenantId, outboundOrderId },
+    include: { outboundOrderLine: { include: { product: true } } },
+  });
+  const mapped = mapOutboundLogisticsUnitsForPackScan(luRows);
+  return verifyOutboundPackScanWithLogisticsUnits(flat, tokens, mapped);
 }
 
 function lookupOutboundLogisticsUnitByScan(
