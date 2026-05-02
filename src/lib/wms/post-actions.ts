@@ -33,6 +33,11 @@ import {
   orderPickSlotsMinBinTouchesReservePickFaceCubeAware,
 } from "./carton-cube-allocation";
 import { sortReplenishmentRulesForBatch } from "./replenishment-batch";
+import {
+  buildForecastPriorityBoostByRuleId,
+  parseWeekStartDateInput,
+  utcIsoWeekMonday,
+} from "./demand-forecast-replenish";
 import { softReservedQtyByBalanceIds } from "./soft-reservation";
 import { orderPickSlotsSolverPrototype } from "./pick-wave-solver-prototype";
 import { batchPickVisitBinOrder, cloneWavePickSlotPools } from "./pick-wave-batch";
@@ -919,10 +924,66 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "upsert_wms_demand_forecast_stub") {
+    const warehouseId = input.warehouseId?.trim();
+    const productId = input.productId?.trim();
+    const forecastQty = Number(input.forecastQty);
+    if (!warehouseId || !productId || !Number.isFinite(forecastQty) || forecastQty < 0) {
+      return toApiErrorResponseFromStatus("warehouseId, productId, forecastQty (>= 0) required.", 400);
+    }
+    const wh = await prisma.warehouse.findFirst({
+      where: { id: warehouseId, tenantId },
+      select: { id: true },
+    });
+    if (!wh) return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    const prod = await prisma.product.findFirst({
+      where: { id: productId, tenantId },
+      select: { id: true },
+    });
+    if (!prod) return toApiErrorResponseFromStatus("Product not found.", 404);
+    const weekParsed =
+      input.weekStart !== undefined && String(input.weekStart).trim()
+        ? parseWeekStartDateInput(String(input.weekStart).trim())
+        : { ok: true as const, date: utcIsoWeekMonday() };
+    if (!weekParsed.ok) return toApiErrorResponseFromStatus(weekParsed.error, 400);
+    let note: string | null | undefined;
+    if (input.note !== undefined) {
+      note =
+        input.note === null || input.note === ""
+          ? null
+          : String(input.note).trim().slice(0, 500) || null;
+    }
+    await prisma.wmsDemandForecastStub.upsert({
+      where: {
+        tenantId_warehouseId_productId_weekStart: {
+          tenantId,
+          warehouseId,
+          productId,
+          weekStart: weekParsed.date,
+        },
+      },
+      create: {
+        tenantId,
+        warehouseId,
+        productId,
+        weekStart: weekParsed.date,
+        forecastQty: forecastQty.toString(),
+        note: note ?? null,
+        createdById: actorId,
+      },
+      update: {
+        forecastQty: forecastQty.toString(),
+        ...(note !== undefined ? { note } : {}),
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "create_replenishment_tasks") {
     const warehouseId = input.warehouseId?.trim();
     if (!warehouseId) return toApiErrorResponseFromStatus("warehouseId required.", 400);
-    const [rules, balances] = await Promise.all([
+    const weekStart = utcIsoWeekMonday();
+    const [rules, balances, stubRows] = await Promise.all([
       prisma.replenishmentRule.findMany({
         where: { tenantId, warehouseId, isActive: true },
       }),
@@ -930,14 +991,28 @@ export async function handleWmsPost(
         where: { tenantId, warehouseId },
         include: { bin: { select: { id: true, zoneId: true, isPickFace: true } } },
       }),
+      prisma.wmsDemandForecastStub.findMany({
+        where: { tenantId, warehouseId, weekStart },
+        select: { productId: true, forecastQty: true },
+      }),
     ]);
-    const sortedRules = sortReplenishmentRulesForBatch(rules);
-    const createdPerRule = new Map<string, number>();
+    const forecastQtyByWarehouseProduct = new Map<string, number>();
+    for (const s of stubRows) {
+      forecastQtyByWarehouseProduct.set(`${warehouseId}\t${s.productId}`, Number(s.forecastQty));
+    }
     const replenSoftMap = await softReservedQtyByBalanceIds(
       prisma,
       tenantId,
       balances.map((b) => b.id),
     );
+    const forecastBoostByRuleId = buildForecastPriorityBoostByRuleId(
+      rules,
+      balances,
+      replenSoftMap,
+      forecastQtyByWarehouseProduct,
+    );
+    const sortedRules = sortReplenishmentRulesForBatch(rules, forecastBoostByRuleId);
+    const createdPerRule = new Map<string, number>();
     let created = 0;
     await prisma.$transaction(async (tx) => {
       const stdRepl = await laborStandardMinutesSnapshot(tx, tenantId, "REPLENISH");
@@ -1015,7 +1090,7 @@ export async function handleWmsPost(
             quantity: qty.toString(),
             note: "System replenishment",
             replenishmentRuleId: rule.id,
-            replenishmentPriority: rule.priority,
+            replenishmentPriority: rule.priority + (forecastBoostByRuleId.get(rule.id) ?? 0),
             replenishmentException: rule.exceptionQueue,
             createdById: actorId,
             ...replStdField,

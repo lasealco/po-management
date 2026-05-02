@@ -9,14 +9,14 @@
 
 - **`WmsTask`** (system-created replenishments)
   - **`replenishmentRuleId`** — optional FK to the rule (`ON DELETE SET NULL`).
-  - **`replenishmentPriority`** / **`replenishmentException`** — snapshots at creation for Operations filtering without parsing `note`.
+  - **`replenishmentPriority`** / **`replenishmentException`** — snapshots at creation for Operations filtering without parsing `note` (**BF-61:** priority includes forecast boost when applicable).
 
 ## Batch behavior
 
 `create_replenishment_tasks`:
 
 1. Loads active rules for the warehouse.
-2. Sorts with **`sortReplenishmentRulesForBatch`** (`src/lib/wms/replenishment-batch.ts`): normal tier → exception tier; within tier by **descending `priority`**, then `productId`.
+2. Sorts with **`sortReplenishmentRulesForBatch`** (`src/lib/wms/replenishment-batch.ts`): normal tier → exception tier; within tier by **descending effective priority** (`priority` + optional **BF-61** forecast boost from `src/lib/wms/demand-forecast-replenish.ts`), then `productId`.
 3. For each rule, respects **`maxTasksPerRun`** (`<= 0` skips).
 4. Creates at most one replenishment task per rule per run when pick-face stock is below **`minPickQty`** (unchanged shortage logic).
 
@@ -28,7 +28,7 @@
 
 ## Tests
 
-- Vitest: `src/lib/wms/replenishment-batch.test.ts`.
+- Vitest: `src/lib/wms/replenishment-batch.test.ts`, `src/lib/wms/demand-forecast-replenish.test.ts` (BF-61 gap / boost helpers).
 
 ## References
 

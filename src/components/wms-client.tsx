@@ -209,6 +209,30 @@ type WmsData = {
     maxTasksPerRun: number | null;
     exceptionQueue: boolean;
   }>;
+  /** BF-61 — persisted weekly demand stubs. */
+  demandForecastStubs?: Array<{
+    id: string;
+    warehouse: { id: string; code: string | null; name: string };
+    product: WmsProductRef;
+    weekStart: string;
+    forecastQty: string;
+    note: string | null;
+    updatedAt: string;
+  }>;
+  /** BF-61 — pick-face vs forecast gap hints for current UTC week. */
+  forecastGapHints?: Array<{
+    replenishmentRuleId: string;
+    warehouseId: string;
+    warehouse: { id: string; code: string | null; name: string };
+    product: WmsProductRef;
+    weekStart: string;
+    forecastQty: string;
+    pickFaceEffectiveQty: string;
+    forecastGapQty: string;
+    priorityBoost: number;
+    rulePriority: number;
+    effectiveSortPriority: number;
+  }>;
   /** BF-42 — tenant receiving disposition note templates + suggested variance hints. */
   receivingDispositionTemplates?: Array<{
     id: string;
@@ -328,7 +352,7 @@ type WmsData = {
   balances: Array<{
     id: string;
     warehouse: { id: string; code: string | null; name: string };
-    bin: { id: string; code: string; name: string };
+    bin: { id: string; code: string; name: string; zoneId?: string | null; isPickFace?: boolean };
     product: WmsProductRef;
     /** Batch bucket; empty string = fungible / legacy stock. */
     lotCode: string;
@@ -951,6 +975,10 @@ export function WmsClient({
   const [replPriority, setReplPriority] = useState("");
   const [replMaxTasksPerRun, setReplMaxTasksPerRun] = useState("");
   const [replExceptionQueue, setReplExceptionQueue] = useState(false);
+  const [fcProductId, setFcProductId] = useState("");
+  const [fcWeekStart, setFcWeekStart] = useState("");
+  const [fcQty, setFcQty] = useState("");
+  const [fcNote, setFcNote] = useState("");
   const [bf42TplCode, setBf42TplCode] = useState("");
   const [bf42TplTitle, setBf42TplTitle] = useState("");
   const [bf42TplNote, setBf42TplNote] = useState("");
@@ -1496,6 +1524,18 @@ export function WmsClient({
     () =>
       (data?.replenishmentRules ?? []).filter((r) => r.warehouse.id === selectedWarehouseId),
     [data?.replenishmentRules, selectedWarehouseId],
+  );
+
+  const forecastGapHintsForWarehouse = useMemo(
+    () =>
+      (data?.forecastGapHints ?? []).filter((h) => h.warehouseId === selectedWarehouseId),
+    [data?.forecastGapHints, selectedWarehouseId],
+  );
+
+  const demandForecastStubsForWarehouse = useMemo(
+    () =>
+      (data?.demandForecastStubs ?? []).filter((s) => s.warehouse.id === selectedWarehouseId),
+    [data?.demandForecastStubs, selectedWarehouseId],
   );
 
   const outboundOrdersForWarehouse = useMemo(
@@ -3674,6 +3714,142 @@ export function WmsClient({
             direction is obvious before you complete the task.
           </p>
         </div>
+      </section>
+
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Demand forecast stub (BF-61)</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          <span className="font-medium">BF-61:</span> Weekly demand units per SKU lift automated{" "}
+          <span className="font-medium">create_replenishment_tasks</span> ordering on top of BF-35 priority (exception tier
+          unchanged). Hints compare forecast to fungible pick-face availability (soft reservations included). Saving stubs
+          requires <span className="font-medium">org.wms.operations → edit</span> or legacy full WMS edit.
+        </p>
+        <div className="mt-3 max-h-40 overflow-auto rounded border border-zinc-200">
+          <table className="min-w-full text-xs">
+            <thead className="sticky top-0 bg-zinc-100 text-left uppercase text-zinc-600">
+              <tr>
+                <th className="px-2 py-1">SKU</th>
+                <th className="px-2 py-1">Week</th>
+                <th className="px-2 py-1">Forecast</th>
+                <th className="px-2 py-1">Pick eff.</th>
+                <th className="px-2 py-1">Gap</th>
+                <th className="px-2 py-1">Boost</th>
+                <th className="px-2 py-1">Sort pri</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {forecastGapHintsForWarehouse.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-2 py-2 text-zinc-500">
+                    No active replenishment rules for this warehouse (or no data yet).
+                  </td>
+                </tr>
+              ) : (
+                forecastGapHintsForWarehouse.map((h) => (
+                  <tr key={h.replenishmentRuleId}>
+                    <td className="px-2 py-1 text-zinc-800">
+                      {h.product.productCode || h.product.sku || "—"} · {h.product.name}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-1 font-mono text-zinc-600">{h.weekStart}</td>
+                    <td className="px-2 py-1 font-mono text-zinc-700">{h.forecastQty}</td>
+                    <td className="px-2 py-1 font-mono text-zinc-700">{h.pickFaceEffectiveQty}</td>
+                    <td className="px-2 py-1 font-mono text-zinc-700">{h.forecastGapQty}</td>
+                    <td className="px-2 py-1 font-mono text-zinc-700">{h.priorityBoost}</td>
+                    <td className="px-2 py-1 font-mono text-zinc-700">{h.effectiveSortPriority}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">Saved stubs (warehouse)</h3>
+        <div className="mt-1 max-h-32 overflow-auto rounded border border-zinc-200">
+          <table className="min-w-full text-xs">
+            <thead className="sticky top-0 bg-zinc-100 text-left uppercase text-zinc-600">
+              <tr>
+                <th className="px-2 py-1">SKU</th>
+                <th className="px-2 py-1">Week</th>
+                <th className="px-2 py-1">Qty</th>
+                <th className="px-2 py-1">Updated</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {demandForecastStubsForWarehouse.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-2 py-2 text-zinc-500">
+                    No stubs for this warehouse in the current UTC week.
+                  </td>
+                </tr>
+              ) : (
+                demandForecastStubsForWarehouse.map((s) => (
+                  <tr key={s.id}>
+                    <td className="px-2 py-1 text-zinc-800">
+                      {s.product.productCode || s.product.sku || "—"} · {s.product.name}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-1 font-mono text-zinc-600">{s.weekStart}</td>
+                    <td className="px-2 py-1 font-mono">{s.forecastQty}</td>
+                    <td className="whitespace-nowrap px-2 py-1 text-zinc-600">{s.updatedAt.slice(0, 19)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-5">
+          <select
+            value={fcProductId}
+            onChange={(e) => setFcProductId(e.target.value)}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm sm:col-span-2"
+          >
+            <option value="">Product</option>
+            {productPickOptionsForWarehouse.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.productCode || p.sku || "SKU"} · {p.name}
+              </option>
+            ))}
+          </select>
+          <input
+            value={fcWeekStart}
+            onChange={(e) => setFcWeekStart(e.target.value.trim())}
+            placeholder="Week start YYYY-MM-DD (optional)"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm font-mono"
+          />
+          <input
+            value={fcQty}
+            onChange={(e) => setFcQty(e.target.value)}
+            placeholder="Forecast qty"
+            inputMode="decimal"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <ActionButton
+            disabled={
+              !canEdit ||
+              busy ||
+              !selectedWarehouseId ||
+              !fcProductId ||
+              !Number.isFinite(Number(fcQty)) ||
+              Number(fcQty) < 0
+            }
+            onClick={() =>
+              void runAction({
+                action: "upsert_wms_demand_forecast_stub",
+                warehouseId: selectedWarehouseId,
+                productId: fcProductId,
+                forecastQty: Number(fcQty),
+                ...(fcWeekStart.trim() ? { weekStart: fcWeekStart.trim() } : {}),
+                ...(fcNote.trim() ? { note: fcNote.trim() } : {}),
+              })
+            }
+          >
+            Save stub
+          </ActionButton>
+        </div>
+        <input
+          value={fcNote}
+          onChange={(e) => setFcNote(e.target.value)}
+          placeholder="Optional note (max 500 chars)"
+          className="mt-2 w-full rounded border border-zinc-300 px-3 py-2 text-sm"
+        />
       </section>
 
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">

@@ -42,4 +42,13 @@ describe("sortReplenishmentRulesForBatch", () => {
     ];
     expect(sortReplenishmentRulesForBatch(rules).map((r) => r.id)).toEqual(["b", "c", "a"]);
   });
+
+  it("BF-61 — applies forecast priority boost within tier", () => {
+    const rules = [
+      mockRule({ id: "low", productId: "p-low", priority: 100 }),
+      mockRule({ id: "high", productId: "p-high", priority: 50 }),
+    ];
+    const boost = new Map<string, number>([["high", 60]]);
+    expect(sortReplenishmentRulesForBatch(rules, boost).map((r) => r.id)).toEqual(["high", "low"]);
+  });
 });

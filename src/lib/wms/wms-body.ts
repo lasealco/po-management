@@ -95,6 +95,10 @@ export type WmsBody = {
   maxTasksPerRun?: number | null;
   /** BF-35 — exception tier (processed after normal rules). */
   exceptionQueue?: boolean;
+  /** BF-61 — `upsert_wms_demand_forecast_stub` week bucket (`YYYY-MM-DD`, normalized to UTC Monday); omit = current week. */
+  weekStart?: string;
+  /** BF-61 — `upsert_wms_demand_forecast_stub` weekly demand units (>= 0). */
+  forecastQty?: number;
   lines?: Array<{ productId: string; quantity: number }>;
   quantity?: number;
   note?: string | null;

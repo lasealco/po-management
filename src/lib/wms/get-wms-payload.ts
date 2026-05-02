@@ -5,6 +5,12 @@ import { crmAccountInScope } from "@/lib/crm-scope";
 import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { trailerChecklistFromDb } from "@/lib/wms/dock-trailer-checklist";
 import { collectDockDetentionAlerts, parseDockDetentionPolicy } from "@/lib/wms/dock-detention";
+import {
+  forecastGapQty,
+  forecastPriorityBoostFromGap,
+  pickFaceEffectiveOnHandForReplenRule,
+  utcIsoWeekMonday,
+} from "@/lib/wms/demand-forecast-replenish";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "@/lib/wms/lot-code";
 import { softReservedQtyByBalanceIds } from "@/lib/wms/soft-reservation";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
@@ -77,6 +83,8 @@ export async function getWmsDashboardPayload(
   const replenRuleWhere: Prisma.ReplenishmentRuleWhereInput = viewScope.inventoryProduct
     ? { AND: [{ tenantId, isActive: true }, { product: viewScope.inventoryProduct }] }
     : { tenantId, isActive: true };
+  const forecastWeekStart = utcIsoWeekMonday();
+
   const outboundWhere = andWhereClauses<Prisma.OutboundOrderWhereInput>(
     { tenantId, status: { in: ["DRAFT", "RELEASED", "PICKING", "PACKED"] } },
     viewScope.outboundOrder,
@@ -115,6 +123,7 @@ export async function getWmsDashboardPayload(
     recentMovementMatchedCount,
     laborStandards,
     tenantDockPolicy,
+    demandForecastStubsRaw,
   ] = await Promise.all([
     prisma.warehouse.findMany({
       where: { tenantId, isActive: true },
@@ -225,7 +234,7 @@ export async function getWmsDashboardPayload(
       orderBy: [{ warehouse: { name: "asc" } }, { bin: { code: "asc" } }],
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
-        bin: { select: { id: true, code: true, name: true } },
+        bin: { select: { id: true, code: true, name: true, zoneId: true, isPickFace: true } },
         product: { select: WMS_PRODUCT_REF_SELECT },
       },
     }),
@@ -384,6 +393,19 @@ export async function getWmsDashboardPayload(
     prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { wmsDockDetentionPolicyJson: true },
+    }),
+    prisma.wmsDemandForecastStub.findMany({
+      where: {
+        tenantId,
+        weekStart: forecastWeekStart,
+        ...(viewScope.inventoryProduct ? { product: viewScope.inventoryProduct } : {}),
+      },
+      orderBy: [{ warehouseId: "asc" }, { productId: "asc" }],
+      take: 500,
+      include: {
+        warehouse: { select: { id: true, code: true, name: true } },
+        product: { select: WMS_PRODUCT_REF_SELECT },
+      },
     }),
   ]);
 
@@ -618,6 +640,33 @@ export async function getWmsDashboardPayload(
     },
   });
 
+  const forecastStubQtyByKey = new Map<string, number>();
+  for (const s of demandForecastStubsRaw) {
+    forecastStubQtyByKey.set(`${s.warehouseId}\t${s.productId}`, Number(s.forecastQty));
+  }
+  const forecastWeekStartIso = forecastWeekStart.toISOString().slice(0, 10);
+  const forecastGapHints = rules
+    .filter((r) => r.isActive)
+    .map((r) => {
+      const forecastQty = forecastStubQtyByKey.get(`${r.warehouseId}\t${r.productId}`) ?? 0;
+      const pick = pickFaceEffectiveOnHandForReplenRule(balances, r, softByBalanceId);
+      const gap = forecastGapQty(forecastQty, pick);
+      const boost = forecastPriorityBoostFromGap(gap);
+      return {
+        replenishmentRuleId: r.id,
+        warehouseId: r.warehouseId,
+        warehouse: r.warehouse,
+        product: mapWmsProductJson(r.product),
+        weekStart: forecastWeekStartIso,
+        forecastQty: forecastQty.toFixed(3),
+        pickFaceEffectiveQty: pick.toFixed(3),
+        forecastGapQty: gap.toFixed(3),
+        priorityBoost: boost,
+        rulePriority: r.priority,
+        effectiveSortPriority: r.priority + boost,
+      };
+    });
+
   const atpAgg = new Map<
     string,
     {
@@ -848,6 +897,16 @@ export async function getWmsDashboardPayload(
       maxTasksPerRun: r.maxTasksPerRun,
       exceptionQueue: r.exceptionQueue,
     })),
+    demandForecastStubs: demandForecastStubsRaw.map((s) => ({
+      id: s.id,
+      warehouse: s.warehouse,
+      product: mapWmsProductJson(s.product),
+      weekStart: s.weekStart.toISOString().slice(0, 10),
+      forecastQty: s.forecastQty.toString(),
+      note: s.note ?? null,
+      updatedAt: s.updatedAt.toISOString(),
+    })),
+    forecastGapHints,
     receivingDispositionTemplates: receivingDispositionTemplates.map((t) => ({
       id: t.id,
       code: t.code,

@@ -107,7 +107,8 @@ export const GLOBAL_PERMISSION_CATALOG = [
     resource: "org.wms.operations",
     action: "edit",
     label: "Run WMS execution",
-    description: "Create and complete operational workflows: tasks, waves, dock, outbound ship, receiving.",
+    description:
+      "Create and complete operational workflows: tasks, waves, dock, outbound ship, receiving, BF-61 demand forecast stub upsert.",
   },
   {
     resource: "org.wms.inventory",

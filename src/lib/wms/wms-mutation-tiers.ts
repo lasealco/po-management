@@ -28,6 +28,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   revoke_wms_partner_api_key_bf45: "setup",
 
   create_replenishment_tasks: "operations",
+  /** BF-61 — weekly demand stub upsert (`WmsDemandForecastStub`). */
+  upsert_wms_demand_forecast_stub: "operations",
 
   /** BF-55 — inter-warehouse stock transfer order (STO). */
   create_wms_stock_transfer: "operations",
