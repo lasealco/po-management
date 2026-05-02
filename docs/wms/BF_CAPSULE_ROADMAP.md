@@ -1,6 +1,6 @@
 # Blueprint finish (`BF-xx`) — roadmap after BF-01
 
-**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-52`** minimal slices where noted), **draft program** **`BF-53` … `BF-70`** ([`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md)), mega-phase definitions ([`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md), [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), and [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
+**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-53`** minimal slices where noted), **draft program** **`BF-54` … `BF-70`** ([`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md)), mega-phase definitions ([`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md), [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), and [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
 **Authority:** Capsule IDs and themes match [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). **`GAP_MAP.md`** stays the repo ↔ blueprint truth.
 
@@ -56,16 +56,16 @@
 | **BF-50** | Topology graph export / twin-readiness (minimal) | **`GET /api/wms?topologyGraph=1`**, **`export_warehouse_topology_graph`**, **`warehouse-topology-graph.ts`** + Vitest + Setup download ([`WMS_TOPOLOGY_BF50.md`](./WMS_TOPOLOGY_BF50.md)); live AGV orchestration / Unity-Unreal twin backlog |
 | **BF-51** | Structured cycle counts / variance approval (minimal) | **`WmsCycleCountSession`** / **`WmsCycleCountLine`** + **`submit_cycle_count`** / **`approve_cycle_count_variance`** + **`GET /api/wms`** **`cycleCountSessions`** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); legacy **`CYCLE_COUNT`** tasks unchanged; RFID / ERP PI backlog |
 | **BF-52** | Slotting ABC / velocity recommendations (minimal) | **`GET /api/wms/slotting-recommendations`** (JSON + CSV) + Setup preview ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); robot solver + auto-relocate tasks backlog |
+| **BF-53** | Labor standards & task timing (minimal) | **`WmsLaborTaskStandard`**, **`WmsTask.standardMinutes`** / **`startedAt`**, **`set_wms_labor_task_standard`**, **`start_wms_task`**, **`laborTiming`** on home KPIs ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); LMS/WFM/payroll backlog |
 
 ---
 
-## Draft program (`BF-53` … `BF-70`)
+## Draft program (`BF-54` … `BF-70`)
 
 **Status:** **Draft IDs only** — no in-repo minimal slices yet; product may reorder/merge/split before execution. Program rollup + exit sketches: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md). Catalog rows: [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md).
 
 | ID | Theme (short) |
 |----|----------------|
-| **BF-53** | Labor standards & task timing capture |
 | **BF-54** | Yard detention & trailer clock alerts |
 | **BF-55** | Stock transfer orders & in-transit ledger |
 | **BF-56** | Batch / cluster pick waves |
@@ -90,7 +90,7 @@
 
 Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **Phase A → E**: inventory truth before execution engines; topology/yard before throwing integrations at cross-product epics.
 
-**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-52`** have **minimal slices shipped** in-repo where noted ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). **`BF-53`** … **`BF-70`** are **draft program placeholders** only ([`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
+**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-53`** have **minimal slices shipped** in-repo where noted ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). **`BF-54`** … **`BF-70`** are **draft program placeholders** only ([`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
 | Order | ID | Phase | Notes |
 |-------|-----|-------|------|
@@ -129,12 +129,13 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 33 | **BF-50** | B — Topology export | ✅ **Minimal landed** — warehouse aisle/bin graph JSON + adjacent-slot edges ([`WMS_TOPOLOGY_BF50.md`](./WMS_TOPOLOGY_BF50.md)) |
 | 34 | **BF-51** | A — Cycle count depth | ✅ **Minimal landed** — structured sessions + submit/approve variance ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)) |
 | 35 | **BF-52** | D — Slotting advisory | ✅ **Minimal landed** — `GET /api/wms/slotting-recommendations` + Setup preview ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)) |
+| 36 | **BF-53** | D — Labor / productivity | ✅ **Minimal landed** — standards table + task timer + **`laborTiming`** KPI card ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)) |
 
 **Parallelization:** historical note — **BF-04** / **BF-05** / commercial (**BF-10**) often ran in parallel when teams differed.
 
 ---
 
-## Capsule cards (`BF-02` … `BF-52`)
+## Capsule cards (`BF-02` … `BF-53`)
 
 Use one row as the **scope box** before filing GitHub issues or agent prompts.
 
@@ -145,7 +146,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-04** | Zone / aisle | [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md), [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md), [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md), [`WMS_TOPOLOGY_BF50.md`](./WMS_TOPOLOGY_BF50.md) | WMS | **Partial** — **`parentZoneId`** + `set_zone_parent` + UI + **BF-24** **`WarehouseAisle`** + bin links + **BF-50** topology JSON; live twin runtime backlog |
 | **BF-05** | Appointments / TMS | [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md), [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md), [`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md) | Integrations | **Partial** — WE-02 + BF-05 yard + **BF-17** stub + **BF-25** HMAC/idempotency; vendor certify backlog |
 | **BF-06** | Permissions | [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md), [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md), [`WMS_RBAC_BF48.md`](./WMS_RBAC_BF48.md) | **Platform + auth** | **Partial** — BF-06 tier grants + action map; **BF-16** `inventory.lot`; **BF-48** manifest + `inventory.serial`; full SQL matrix backlog |
-| **BF-07** | Dashboards | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md), [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md) | Product + WMS | **Partial** — WE-09 + BF-07 proxies/narratives + **BF-20** rate fields; delivered OTIF % / engineered labor / ABC backlog |
+| **BF-07** | Dashboards | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md), [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md) | Product + WMS | **Partial** — WE-09 + BF-07 proxies/narratives + **BF-20** rate fields + **BF-53** **`laborTiming`** on completed tasks; delivered OTIF % / full engineered labor hours / ABC backlog |
 | **BF-08** | Packing | [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md), [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md), [`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md), [`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md), [`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md) | Vendors / hardware | **Partial** — WE-06 pack/ship + BF-08 ZPL + demo SSCC; **BF-29** scan + demo carrier ZPL; **BF-39** persisted purchase + HTTP bridge; **BF-40** ASN JSON export; carrier certify backlog |
 | **BF-09** | VAS | [`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md), [`WMS_VAS_BF09.md`](./WMS_VAS_BF09.md), [`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md), [`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md), [`WMS_CUSTOMER_PORTAL_OIDC_BF46.md`](./WMS_CUSTOMER_PORTAL_OIDC_BF46.md) | Portal + commercial assumptions | **Partial** — WE-04 + BF-09 intake + **BF-18** BOM lines + **BF-26** CRM engineering sync + **BF-30** SSO-shaped bridge / CRM lock + **BF-46** OIDC; SAML / full MRP backlog |
 | **BF-10** | Commercial | [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) | **CRM + commercial** | Partial — bill-to + **`sourceCrmQuoteId`** lineage + **BF-14** SKU explosion |
@@ -187,16 +188,16 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-50** | Topology graph export | [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_TOPOLOGY_BF50.md`](./WMS_TOPOLOGY_BF50.md), [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md) | WMS + simulation vendors | **Partial** — **`GET /api/wms?topologyGraph=1`** + POST export + Setup UI + **`ADJACENT_SLOT`** heuristic edges; orchestration / CAD meshes backlog |
 | **BF-51** | Structured cycle counts | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md), [`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md) | WMS | **Partial** — sessions + submit/approve + reason codes + **`cycleCountSessions`** payload; supervisor role split / recount workflow backlog |
 | **BF-52** | Slotting recommendations | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md) | WMS | **Partial** — advisory **`GET /api/wms/slotting-recommendations`** + CSV + Setup preview; solver / auto-task backlog |
+| **BF-53** | Labor standards / timing | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md) | WMS | **Partial** — **`WmsLaborTaskStandard`**, task **`standardMinutes`** / **`startedAt`**, Setup + Operations actions + exec **`laborTiming`**; LMS/WFM backlog |
 
 ---
 
-## Capsule cards (draft `BF-53` … `BF-70`)
+## Capsule cards (draft `BF-54` … `BF-70`)
 
 Use [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) **§BF-xx** for objectives + exit sketches until a capsule ships and earns a dedicated **`WMS_*_BFxx.md`** note.
 
 | ID | `GAP_MAP` signal (when funded) | Primary docs | Shared / CRM / CT? | Status |
 |----|-------------------------------|--------------|---------------------|--------|
-| **BF-53** | Labor / productivity | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) §BF-53 | WMS | **Draft** |
 | **BF-54** | Dock / yard detention | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) §BF-54 | WMS + CT alerts | **Draft** |
 | **BF-55** | Inter-site inventory | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) §BF-55 | WMS | **Draft** |
 | **BF-56** | Pick execution (batch) | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) §BF-56 | WMS | **Draft** |
@@ -221,7 +222,7 @@ Use [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) **§BF-xx** for obj
 
 | Artifact | Location |
 |----------|-----------|
-| IDs + themes | [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) — **BF-51**/**BF-52** landed · **BF-53 … BF-70** draft rows |
+| IDs + themes | [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) — **BF-51**/**BF-52**/**BF-53** landed · **BF-54 … BF-70** draft rows |
 | **Order + dependency narrative** | This file |
 | Execution | **One capsule per milestone:** GitHub issue (label `module:wms`) or agent prompt with **`BF-xx`** in the title and goals copied from the **correct** row — **not** the BF-01 template unless the capsule **is** BF-01 |
 
@@ -229,4 +230,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-05-03 — **BF-52** slotting recommendations advisory API + Setup preview ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **2026-05-02** — **BF-51** structured cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-53** … **BF-70** draft program (`BF51_BF70_MEGA_PHASES.md` + backlog catalog); **BF-50** warehouse topology graph export ([`WMS_TOPOLOGY_BF50.md`](./WMS_TOPOLOGY_BF50.md)); **BF-49** unified operations timeline API + CT/WMS feed ([`WMS_OPERATIONS_TIMELINE_BF49.md`](./WMS_OPERATIONS_TIMELINE_BF49.md)); **BF-48** inventory field ACL + **`org.wms.inventory.serial`** minimal ([`WMS_RBAC_BF48.md`](./WMS_RBAC_BF48.md)); **BF-47** posted billing disputes + credit memo stubs minimal ([`WMS_BILLING_BF47.md`](./WMS_BILLING_BF47.md)); **BF-46** customer portal OIDC minimal ([`WMS_CUSTOMER_PORTAL_OIDC_BF46.md`](./WMS_CUSTOMER_PORTAL_OIDC_BF46.md)); **BF-45** partner API minimal ([`WMS_PARTNER_API_BF45.md`](./WMS_PARTNER_API_BF45.md)); **BF-44** outbound webhooks minimal ([`WMS_OUTBOUND_WEBHOOKS_BF44.md`](./WMS_OUTBOUND_WEBHOOKS_BF44.md)); **BF-43** outbound logistics units minimal ([`WMS_LOGISTICS_UNITS_BF43.md`](./WMS_LOGISTICS_UNITS_BF43.md)); **BF-42** QA sampling + disposition templates minimal ([`WMS_QA_SAMPLING_BF42.md`](./WMS_QA_SAMPLING_BF42.md)); **BF-41** customer returns / RMA receiving minimal ([`WMS_RETURNS_BF41.md`](./WMS_RETURNS_BF41.md)); **BF-40** outbound ASN export minimal ([`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md)); **BF-39** carrier label purchase minimal ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)); **BF-32** receiving accrual staging minimal ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance minimal ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-30** customer portal SSO minimal ([`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md)); **BF-29** packing scan + demo carrier minimal ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); **BF-28** billing dispute hold ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); **BF-27** CT map approximate bin scatter ([`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** aisle masters minimal ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ contracted pricing minimal ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **BF-21** receipt accounting minimal ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); **BF-20** KPI proxy rates; **`BF-02`–`BF-52`** Done table; **BF-11** + **BF-19** + **BF-27** CT map pins._
+_Last updated: 2026-05-04 — **BF-53** labor standards + task timing ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **2026-05-03** — **BF-52** slotting recommendations advisory API + Setup preview ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **2026-05-02** — **BF-51** structured cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-54** … **BF-70** draft program (`BF51_BF70_MEGA_PHASES.md` + backlog catalog); **BF-50** warehouse topology graph export ([`WMS_TOPOLOGY_BF50.md`](./WMS_TOPOLOGY_BF50.md)); **BF-49** unified operations timeline API + CT/WMS feed ([`WMS_OPERATIONS_TIMELINE_BF49.md`](./WMS_OPERATIONS_TIMELINE_BF49.md)); **BF-48** inventory field ACL + **`org.wms.inventory.serial`** minimal ([`WMS_RBAC_BF48.md`](./WMS_RBAC_BF48.md)); **BF-47** posted billing disputes + credit memo stubs minimal ([`WMS_BILLING_BF47.md`](./WMS_BILLING_BF47.md)); **BF-46** customer portal OIDC minimal ([`WMS_CUSTOMER_PORTAL_OIDC_BF46.md`](./WMS_CUSTOMER_PORTAL_OIDC_BF46.md)); **BF-45** partner API minimal ([`WMS_PARTNER_API_BF45.md`](./WMS_PARTNER_API_BF45.md)); **BF-44** outbound webhooks minimal ([`WMS_OUTBOUND_WEBHOOKS_BF44.md`](./WMS_OUTBOUND_WEBHOOKS_BF44.md)); **BF-43** outbound logistics units minimal ([`WMS_LOGISTICS_UNITS_BF43.md`](./WMS_LOGISTICS_UNITS_BF43.md)); **BF-42** QA sampling + disposition templates minimal ([`WMS_QA_SAMPLING_BF42.md`](./WMS_QA_SAMPLING_BF42.md)); **BF-41** customer returns / RMA receiving minimal ([`WMS_RETURNS_BF41.md`](./WMS_RETURNS_BF41.md)); **BF-40** outbound ASN export minimal ([`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md)); **BF-39** carrier label purchase minimal ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)); **BF-32** receiving accrual staging minimal ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance minimal ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-30** customer portal SSO minimal ([`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md)); **BF-29** packing scan + demo carrier minimal ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); **BF-28** billing dispute hold ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); **BF-27** CT map approximate bin scatter ([`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** aisle masters minimal ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ contracted pricing minimal ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **BF-21** receipt accounting minimal ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); **BF-20** KPI proxy rates; **`BF-02`–`BF-53`** Done table; **BF-11** + **BF-19** + **BF-27** CT map pins._

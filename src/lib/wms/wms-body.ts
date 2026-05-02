@@ -124,6 +124,10 @@ export type WmsBody = {
   cycleCountScopeNote?: string | null;
   /** BF-51 — variance reason when count ≠ expected (`SHRINK` … `OTHER`). */
   cycleCountVarianceReasonCode?: string | null;
+  /** BF-53 — `WmsTaskType` for `set_wms_labor_task_standard`. */
+  laborTaskType?: string;
+  /** BF-53 — engineered standard minutes (1–10080). */
+  laborStandardMinutes?: number;
   /** `create_dock_appointment` / `cancel_dock_appointment`. */
   dockAppointmentId?: string;
   dockCode?: string;

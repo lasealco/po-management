@@ -49,6 +49,8 @@ type Bf52SlottingPreview = {
   }>;
 };
 
+const WMS_LABOR_TASK_TYPES = ["PUTAWAY", "PICK", "REPLENISH", "CYCLE_COUNT", "VALUE_ADD"] as const;
+
 /** Matches serialized product refs from `GET /api/wms` (including BF-33 carton hints). */
 type WmsProductRef = {
   id: string;
@@ -103,6 +105,12 @@ type WmsData = {
       | "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE"
       | "MANUAL_ONLY";
     pickWaveCartonUnits: string | null;
+  }>;
+  /** BF-53 — tenant engineered standard minutes per task type (optional until configured). */
+  laborStandards?: Array<{
+    taskType: (typeof WMS_LABOR_TASK_TYPES)[number];
+    standardMinutes: number;
+    updatedAt: string;
   }>;
   zones: Array<{
     id: string;
@@ -316,6 +324,8 @@ type WmsData = {
     replenishmentRuleId?: string | null;
     replenishmentPriority?: number | null;
     replenishmentException?: boolean | null;
+    startedAt: string | null;
+    standardMinutes: number | null;
     createdAt: string;
   }>;
   waves: Array<{
@@ -819,6 +829,9 @@ export function WmsClient({
   const [slottingWindowDays, setSlottingWindowDays] = useState("30");
   const [slottingPreview, setSlottingPreview] = useState<Bf52SlottingPreview | null>(null);
   const [slottingLoadBusy, setSlottingLoadBusy] = useState(false);
+  const [laborStdTaskType, setLaborStdTaskType] = useState<string>("PICK");
+  const [laborStdMinutes, setLaborStdMinutes] = useState("12");
+  const [laborStdBusy, setLaborStdBusy] = useState(false);
 
   const [putawayShipmentItemId, setPutawayShipmentItemId] = useState("");
   const [putawayQty, setPutawayQty] = useState("");
@@ -2611,6 +2624,97 @@ export function WmsClient({
                   ) : null}
                 </div>
               )}
+            </div>
+            <div className="rounded-xl border border-sky-100 bg-sky-50/40 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Labor standards (BF-53)
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Engineered <span className="font-medium">standard minutes</span> per task type; new tasks snapshot{" "}
+                <span className="font-mono text-[11px]">standardMinutes</span>. Use{" "}
+                <span className="font-mono text-[11px]">start_wms_task</span> on Operations so{" "}
+                <span className="font-mono text-[11px]">completedAt − startedAt</span> feeds home KPIs (
+                <span className="font-medium">org.wms.setup → edit</span>).
+              </p>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <select
+                  value={laborStdTaskType}
+                  onChange={(e) => setLaborStdTaskType(e.target.value)}
+                  className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                >
+                  {WMS_LABOR_TASK_TYPES.map((x) => (
+                    <option key={x} value={x}>
+                      {x}
+                    </option>
+                  ))}
+                </select>
+                <label className="text-[11px] text-zinc-600">
+                  Minutes
+                  <input
+                    type="number"
+                    min={1}
+                    max={10080}
+                    value={laborStdMinutes}
+                    onChange={(e) => setLaborStdMinutes(e.target.value)}
+                    className="ml-1 w-24 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={laborStdBusy || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        setLaborStdBusy(true);
+                        const m = Math.floor(Number(laborStdMinutes));
+                        if (!Number.isFinite(m) || m < 1 || m > 10080) {
+                          window.alert("Minutes must be 1–10080.");
+                          return;
+                        }
+                        await runAction({
+                          action: "set_wms_labor_task_standard",
+                          laborTaskType: laborStdTaskType,
+                          laborStandardMinutes: m,
+                        });
+                      } finally {
+                        setLaborStdBusy(false);
+                      }
+                    })()
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {laborStdBusy ? "Saving…" : "Save standard"}
+                </button>
+              </div>
+              <div className="mt-3 max-h-40 overflow-auto rounded border border-zinc-200 bg-white">
+                <table className="min-w-full text-left text-xs">
+                  <thead className="sticky top-0 bg-zinc-100 text-[10px] uppercase text-zinc-600">
+                    <tr>
+                      <th className="px-2 py-1">Task type</th>
+                      <th className="px-2 py-1">Std min</th>
+                      <th className="px-2 py-1">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.laborStandards?.length ?? 0) === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-2 py-2 text-zinc-500">
+                          No standards yet — configure above so new tasks copy{" "}
+                          <span className="font-mono">standardMinutes</span>.
+                        </td>
+                      </tr>
+                    ) : (
+                      (data.laborStandards ?? []).map((r) => (
+                        <tr key={r.taskType} className="border-t border-zinc-100">
+                          <td className="px-2 py-1 font-medium text-zinc-800">{r.taskType}</td>
+                          <td className="px-2 py-1 tabular-nums">{r.standardMinutes}</td>
+                          <td className="px-2 py-1 text-zinc-600">{r.updatedAt.slice(0, 16)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -7704,6 +7808,14 @@ export function WmsClient({
                     {t.replenishmentException ? " · exception" : ""}
                   </span>
                 ) : null}
+                {t.standardMinutes != null ? (
+                  <span className="rounded bg-sky-50 px-2 py-0.5 text-[11px] text-sky-900">
+                    Std {t.standardMinutes}m
+                  </span>
+                ) : null}
+                {t.startedAt ? (
+                  <span className="text-[11px] font-medium text-emerald-800">Timer on</span>
+                ) : null}
                 <span className="text-zinc-700">{t.quantity}</span>
                 <span className="text-zinc-700">
                   {t.product?.name ?? (t.taskType === "VALUE_ADD" ? "Labor-only" : "—")}
@@ -7761,6 +7873,16 @@ export function WmsClient({
                       className="w-24 rounded border border-zinc-300 px-1 py-0.5 text-sm"
                     />
                   </label>
+                ) : null}
+                {canEdit ? (
+                  <button
+                    type="button"
+                    disabled={busy || Boolean(t.startedAt)}
+                    onClick={() => void runAction({ action: "start_wms_task", taskId: t.id })}
+                    className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    {t.startedAt ? "Started" : "Start timer"}
+                  </button>
                 ) : null}
                 {canEdit &&
                 (t.taskType === "PUTAWAY" ||

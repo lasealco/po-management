@@ -33,7 +33,7 @@ When scoped:
 - True **OTIF %** (delivered vs promised by lane/customer), **labor productivity** (hours, engineered standards), **slotting optimization** (ABC, velocity curves, cubic utilization).
 - Local-site **midnight** for dock “today” (still **UTC** in WE-09/BF-07 — see [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md)).
 
-_Last updated: 2026-05-02 — **BF-20** computed proxy rates on `fetchWmsHomeKpis` (`rates` + `rateMethodology`); **BF-07** narratives unchanged._
+_Last updated: 2026-05-04 — **BF-53** labor timing KPI extension (`laborTiming`, [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **2026-05-02** — **BF-20** computed proxy rates on `fetchWmsHomeKpis` (`rates` + `rateMethodology`); **BF-07** narratives unchanged._
 
 ---
 
@@ -50,6 +50,16 @@ _Last updated: 2026-05-02 — **BF-20** computed proxy rates on `fetchWmsHomeKpi
 
 **Payload:** `rateMethodology` mirrors these definitions as bullet strings for dashboard/API parity (`WMS_HOME_RATE_METHODOLOGY_BF20` in `wms-home-kpis.ts`).
 
-**Explicit backlog (not BF-20):** Delivered OTIF % by lane/customer, labor hours vs standards, velocity-based slotting optimization.
+**Explicit backlog (not BF-20):** Delivered OTIF % by lane/customer, labor hours vs standards (see **BF-53** for standard-minutes + optional elapsed timing only), velocity-based slotting optimization.
 
 _Last updated: 2026-05-02 — BF-20 minimal rates shipped._
+
+---
+
+## BF-53 — Labor timing on home KPIs (minimal)
+
+**Purpose:** Add a **7-day completed-task labor timing** summary when tasks have **`standardMinutes`** and **`startedAt`** / **`completedAt`** — extends **`rateMethodology`** with a BF-53 bullet (`WMS_HOME_KPI_METHODOLOGY` in `wms-home-kpis.ts`). Not payroll, engineered rates in hours, or LMS integration.
+
+**Doc:** [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md).
+
+_Last updated: 2026-05-04 — **BF-53** labor timing on `fetchWmsHomeKpis`; **BF-20** rate proxies unchanged aside from shared methodology array._

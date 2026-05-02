@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
-import { Prisma, ShipmentMilestoneCode, type WmsOutboundLogisticsUnitKind, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition, type WmsShipmentItemVarianceDisposition } from "@prisma/client";
+import { Prisma, ShipmentMilestoneCode, type WmsOutboundLogisticsUnitKind, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition, type WmsShipmentItemVarianceDisposition, type WmsTaskType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { fetchWarehouseTopologyGraph } from "@/lib/wms/warehouse-topology-graph";
@@ -50,6 +50,7 @@ import {
   truncateLotBatchNotes,
 } from "./lot-batch-master";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
+import { laborStandardMinutesSnapshot } from "./labor-standards";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
 import { buildSscc18DemoFromOutbound } from "./gs1-sscc";
@@ -245,6 +246,48 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus("Warehouse not found.", 404);
     }
     return NextResponse.json(graph);
+  }
+
+  if (action === "set_wms_labor_task_standard") {
+    const rawType = input.laborTaskType?.trim().toUpperCase();
+    const allTypes: WmsTaskType[] = ["PUTAWAY", "PICK", "REPLENISH", "CYCLE_COUNT", "VALUE_ADD"];
+    if (!rawType || !allTypes.includes(rawType as WmsTaskType)) {
+      return toApiErrorResponseFromStatus(
+        "laborTaskType must be PUTAWAY, PICK, REPLENISH, CYCLE_COUNT, or VALUE_ADD.",
+        400,
+      );
+    }
+    const taskType = rawType as WmsTaskType;
+    const minRaw = input.laborStandardMinutes;
+    const minNum = typeof minRaw === "number" ? minRaw : Number(minRaw);
+    if (!Number.isFinite(minNum) || minNum < 1 || minNum > 10_080) {
+      return toApiErrorResponseFromStatus("laborStandardMinutes must be 1–10080.", 400);
+    }
+    const standardMinutes = Math.floor(minNum);
+    await prisma.wmsLaborTaskStandard.upsert({
+      where: { tenantId_taskType: { tenantId, taskType } },
+      create: { tenantId, taskType, standardMinutes },
+      update: { standardMinutes },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "start_wms_task") {
+    const taskId = input.taskId?.trim();
+    if (!taskId) return toApiErrorResponseFromStatus("taskId required.", 400);
+    const task = await prisma.wmsTask.findFirst({
+      where: { id: taskId, tenantId, status: "OPEN" },
+      select: { id: true, startedAt: true },
+    });
+    if (!task) return toApiErrorResponseFromStatus("Open task not found.", 404);
+    if (task.startedAt) {
+      return NextResponse.json({ ok: true, alreadyStarted: true });
+    }
+    await prisma.wmsTask.update({
+      where: { id: task.id },
+      data: { startedAt: new Date() },
+    });
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "create_zone") {
@@ -870,6 +913,8 @@ export async function handleWmsPost(
     );
     let created = 0;
     await prisma.$transaction(async (tx) => {
+      const stdRepl = await laborStandardMinutesSnapshot(tx, tenantId, "REPLENISH");
+      const replStdField = stdRepl != null ? { standardMinutes: stdRepl } : {};
       for (const rule of sortedRules) {
         if (rule.maxTasksPerRun != null && rule.maxTasksPerRun <= 0) continue;
         const already = createdPerRule.get(rule.id) ?? 0;
@@ -946,6 +991,7 @@ export async function handleWmsPost(
             replenishmentPriority: rule.priority,
             replenishmentException: rule.exceptionQueue,
             createdById: actorId,
+            ...replStdField,
           },
         });
         createdPerRule.set(rule.id, already + 1);
@@ -1216,6 +1262,8 @@ export async function handleWmsPost(
     if (putawayBlock) {
       return toApiErrorResponseFromStatus(putawayBlock, 400);
     }
+    const stdPut = await laborStandardMinutesSnapshot(prisma, tenantId, "PUTAWAY");
+    const putStdField = stdPut != null ? { standardMinutes: stdPut } : {};
     await prisma.wmsTask.create({
       data: {
         tenantId,
@@ -1230,6 +1278,7 @@ export async function handleWmsPost(
         quantity: qty.toString(),
         note: input.note?.trim() || null,
         createdById: actorId,
+        ...putStdField,
       },
     });
     return NextResponse.json({ ok: true });
@@ -1360,6 +1409,8 @@ export async function handleWmsPost(
       );
     }
     await prisma.$transaction(async (tx) => {
+      const stdPickOne = await laborStandardMinutesSnapshot(tx, tenantId, "PICK");
+      const pickStdOne = stdPickOne != null ? { standardMinutes: stdPickOne } : {};
       await tx.wmsTask.create({
         data: {
           tenantId,
@@ -1373,6 +1424,7 @@ export async function handleWmsPost(
           quantity: qty.toString(),
           note: input.note?.trim() || null,
           createdById: actorId,
+          ...pickStdOne,
         },
       });
       await tx.inventoryBalance.updateMany({
@@ -1594,6 +1646,8 @@ export async function handleWmsPost(
           createdById: actorId,
         },
       });
+      const stdPickWave = await laborStandardMinutesSnapshot(tx, tenantId, "PICK");
+      const pickStdWave = stdPickWave != null ? { standardMinutes: stdPickWave } : {};
       let createdTasks = 0;
       for (const item of openLines) {
         if (!item.productId) continue;
@@ -1637,6 +1691,7 @@ export async function handleWmsPost(
               quantity: take.toString(),
               note: waveNote,
               createdById: actorId,
+              ...pickStdWave,
             },
           });
           await tx.inventoryBalance.updateMany({
@@ -4614,6 +4669,8 @@ export async function handleWmsPost(
       },
     });
     if (!row) return toApiErrorResponseFromStatus("Balance not found.", 404);
+    const stdCc = await laborStandardMinutesSnapshot(prisma, tenantId, "CYCLE_COUNT");
+    const ccStd = stdCc != null ? { standardMinutes: stdCc } : {};
     await prisma.wmsTask.create({
       data: {
         tenantId,
@@ -4626,6 +4683,7 @@ export async function handleWmsPost(
         quantity: row.onHandQty,
         note: input.note?.trim() || "Cycle count (book qty in task.quantity)",
         createdById: actorId,
+        ...ccStd,
       },
     });
     return NextResponse.json({ ok: true });
@@ -5184,6 +5242,8 @@ export async function handleWmsPost(
     const taskLotCode = hasMaterial ? normalizeLotCode(input.lotCode) : FUNGIBLE_LOT_CODE;
 
     await prisma.$transaction(async (tx) => {
+      const stdVas = await laborStandardMinutesSnapshot(tx, tenantId, "VALUE_ADD");
+      const vasStd = stdVas != null ? { standardMinutes: stdVas } : {};
       await tx.wmsTask.create({
         data: {
           tenantId,
@@ -5197,6 +5257,7 @@ export async function handleWmsPost(
           quantity: hasMaterial ? qtyNum.toString() : "0",
           note: input.note?.trim() ? input.note.trim().slice(0, 500) : null,
           createdById: actorId,
+          ...vasStd,
         },
       });
       await tx.wmsWorkOrder.update({

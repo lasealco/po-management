@@ -152,6 +152,33 @@ export async function WmsHomeOverview({
               Operations →
             </Link>
           </li>
+          <li className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Labor timing (7d, BF-53)</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">
+              {data.laborTiming.sampleCount}
+            </p>
+            <p className="mt-1 text-xs text-zinc-600">
+              DONE tasks with <span className="font-medium">startedAt</span> + <span className="font-medium">completedAt</span>{" "}
+              in the last 7 days (warehouse scope when selected). Avg actual:{" "}
+              <span className="font-medium text-zinc-800">
+                {data.laborTiming.avgActualMinutes != null ? `${data.laborTiming.avgActualMinutes} min` : "—"}
+              </span>
+              . Avg standard (snapshotted):{" "}
+              <span className="font-medium text-zinc-800">
+                {data.laborTiming.avgStandardMinutes != null ? `${data.laborTiming.avgStandardMinutes} min` : "—"}
+              </span>
+              . Efficiency vs standard:{" "}
+              <span className="font-medium text-zinc-800">
+                {data.laborTiming.efficiencyVsStandardPercent != null
+                  ? `${data.laborTiming.efficiencyVsStandardPercent}%`
+                  : "—"}
+              </span>{" "}
+              (100% = on pace; higher = faster).
+            </p>
+            <Link href="/wms/setup" className="mt-2 inline-block text-xs font-semibold text-[var(--arscmp-primary)]">
+              Setup: labor standards →
+            </Link>
+          </li>
         </ul>
 
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">

@@ -112,6 +112,7 @@ export async function getWmsDashboardPayload(
     movementRows,
     recentMovements,
     recentMovementMatchedCount,
+    laborStandards,
   ] = await Promise.all([
     prisma.warehouse.findMany({
       where: { tenantId, isActive: true },
@@ -373,6 +374,11 @@ export async function getWmsDashboardPayload(
       },
     }),
     prisma.inventoryMovement.count({ where: recentMovementScoped }),
+    prisma.wmsLaborTaskStandard.findMany({
+      where: { tenantId },
+      orderBy: { taskType: "asc" },
+      select: { taskType: true, standardMinutes: true, updatedAt: true },
+    }),
   ]);
 
   const serialTrace =
@@ -666,6 +672,11 @@ export async function getWmsDashboardPayload(
       pickAllocationStrategy: w.pickAllocationStrategy,
       pickWaveCartonUnits: w.pickWaveCartonUnits != null ? w.pickWaveCartonUnits.toString() : null,
     })),
+    laborStandards: laborStandards.map((r) => ({
+      taskType: r.taskType,
+      standardMinutes: r.standardMinutes,
+      updatedAt: r.updatedAt.toISOString(),
+    })),
     zones: zones.map((z) => ({
       id: z.id,
       code: z.code,
@@ -867,6 +878,8 @@ export async function getWmsDashboardPayload(
         replenishmentRuleId: t.replenishmentRuleId,
         replenishmentPriority: t.replenishmentPriority,
         replenishmentException: t.replenishmentException,
+        startedAt: t.startedAt?.toISOString() ?? null,
+        standardMinutes: t.standardMinutes ?? null,
         createdAt: t.createdAt.toISOString(),
       };
     }),

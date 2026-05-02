@@ -4,11 +4,11 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **`BF-51`** / **`BF-52`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)). **`BF-53` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
+**Status:** **`BF-51`** … **`BF-53`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)). **`BF-54` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
 
 **Rules:**
 
-1. **Do not** bundle BF-53 … BF-70 into one prompt unless product explicitly funds a program sprint — each ID is a separate thematic capsule.
+1. **Do not** bundle BF-54 … BF-70 into one prompt unless product explicitly funds a program sprint — each ID is a separate thematic capsule.
 2. Ship → update **[`GAP_MAP.md`](./GAP_MAP.md)** → refresh **[`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md)** → add **`docs/wms/WMS_*_BFxx.md`** (or ADR) when a capsule lands.
 3. Stay inside **`src/app/wms/**`, **`src/app/api/wms/**`, **`src/lib/wms/**`** unless the row explicitly names CRM/CT/platform/integrations — then touch shared surfaces minimally.
 
@@ -20,7 +20,7 @@
 |----|-------------------|----------------------------------------|---------------------|
 | **BF-51** | Cycle count programs & variance posting | Physical inventory / cycle count row | Stable **`InventoryBalance`** + audit (**BF-13**) — **`WmsCycleCountSession`** landed ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)) |
 | **BF-52** | Slotting ABC / velocity recommendations | Slotting / bin assignment row | Executive KPIs (**BF-07**/20), movement history — **`GET /api/wms/slotting-recommendations`** landed ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)) |
-| **BF-53** | Labor standards & task timing capture | Labor / productivity row | **`WmsTask`** or equivalent ops telemetry |
+| **BF-53** | Labor standards & task timing capture | Labor / productivity row | **`WmsTask`** + **`WmsLaborTaskStandard`** landed ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)) |
 | **BF-54** | Yard detention & trailer clock alerts | Dock / yard row | **BF-05**, **BF-38** dock appointments |
 | **BF-55** | Stock transfer orders & in-transit ledger | Inter-site inventory row | Outbound/inbound linkage, **BF-36** reservations |
 | **BF-56** | Batch / cluster pick waves | Pick execution row | Wave model (**BF-15**), pick tasks |
@@ -63,11 +63,11 @@
 
 ---
 
-## BF-53 — Labor standards & task timing capture
+## BF-53 — Labor standards & task timing capture ✅ **Minimal landed**
 
 **Objective:** **Standard times** per task type + optional actual timestamps on **`WmsTask`** (or parallel **`WmsLaborSegment`**) for engineered labor KPIs (**BF-07** depth).
 
-**Exit sketch (minimal slice):** Standard minute columns + task **`startedAt`/`completedAt`**; executive KPI proxy extension.
+**Shipped:** [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md) — **`WmsLaborTaskStandard`**; **`WmsTask.startedAt`** / **`standardMinutes`**; **`set_wms_labor_task_standard`**, **`start_wms_task`**; task creates snapshot standards; **`fetchWmsHomeKpis.laborTiming`** + **`WMS_HOME_KPI_METHODOLOGY`**; Setup + Operations + home card.
 
 **Out of scope:** Full LMS/WFM integration, payroll gross pay.
 
@@ -249,4 +249,4 @@
 
 ---
 
-_Last updated: 2026-05-03 — **BF-52** slotting recommendations advisory API + Setup preview ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **BF-51** cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-53 … BF-70** remain draft stubs._
+_Last updated: 2026-05-04 — **BF-53** labor standards + task timing ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **BF-52** slotting ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **BF-51** cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-54 … BF-70** draft stubs._

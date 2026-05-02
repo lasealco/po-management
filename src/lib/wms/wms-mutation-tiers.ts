@@ -10,6 +10,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   update_warehouse_aisle: "setup",
   /** BF-50 — JSON graph export for twin/sim vendors (same auth as setup mutations). */
   export_warehouse_topology_graph: "setup",
+  /** BF-53 — engineered minutes per `WmsTaskType`. */
+  set_wms_labor_task_standard: "setup",
   create_bin: "setup",
   update_bin_profile: "setup",
   set_product_carton_cube_hints: "setup",
@@ -24,6 +26,9 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   revoke_wms_partner_api_key_bf45: "setup",
 
   create_replenishment_tasks: "operations",
+
+  /** BF-53 — optional floor clock on OPEN tasks before complete. */
+  start_wms_task: "operations",
 
   create_outbound_order: "operations",
   set_outbound_order_asn_fields: "operations",

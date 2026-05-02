@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { WMS_DEMO_WAREHOUSE_CODE } from "@/lib/wms/demo-warehouse-code";
+import {
+  buildLaborTimingSummary,
+  type LaborTimingSummary,
+} from "@/lib/wms/labor-standards";
 
 /** Percent on-hand rows flagged hold (0–100, one decimal). */
 export function computeHoldRatePercent(balancesOnHold: number, balanceRows: number): number {
@@ -21,6 +25,12 @@ export const WMS_HOME_RATE_METHODOLOGY_BF20 = [
   "OTIF past-due share (%): past-due scheduled orders ÷ active outbound with requestedShipDate set (UTC calendar-day boundary). Omitted when the scheduled cohort is empty.",
   "Pick intensity: open PICK tasks ÷ max(1, active outbound orders). Backlog proxy, not picks/hour productivity.",
   "Replenishment share (%): open REPLENISH ÷ (open PICK + open REPLENISH). Slotting / pick-face pressure proxy (0% when both queues are empty).",
+] as const;
+
+/** BF-20 + BF-53 — methodology bullets on `GET /api/wms?homeKpis=1`. */
+export const WMS_HOME_KPI_METHODOLOGY = [
+  ...WMS_HOME_RATE_METHODOLOGY_BF20,
+  "Labor timing (BF-53): among DONE tasks completed in the last 7 days with both startedAt and completedAt set, reports average actual elapsed minutes and average engineered standard minutes (when task.standardMinutes was snapshotted at creation). Efficiency vs standard = (avg standard ÷ avg actual) × 100 — above 100% means faster than standard; requires ≥1 task with a standard snapshot for the standard average.",
 ] as const;
 
 export type WmsHomeExecutiveRates = {
@@ -121,7 +131,10 @@ export type WmsHomeKpisPayload = {
   narratives: WmsHomeExecutiveNarratives;
   /** BF-20 — derived proxy rates (methodology: `rateMethodology`). */
   rates: WmsHomeExecutiveRates;
+  /** BF-20 + BF-53 methodology bullets (OTIF/pick/replen proxies + labor timing). */
   rateMethodology: readonly string[];
+  /** BF-53 — closed tasks in last 7d with start + complete timestamps (engineered labor proxy). */
+  laborTiming: LaborTimingSummary;
 };
 
 export type FetchWmsHomeKpisOptions = {
@@ -198,6 +211,7 @@ export async function fetchWmsHomeKpis(
     movementsWeek,
     receivingPipelineShipments,
     dockAppointmentsScheduledToday,
+    laborTasksDone7d,
   ] = await Promise.all([
     prisma.warehouse.findFirst({
       where: { tenantId, code: WMS_DEMO_WAREHOUSE_CODE },
@@ -248,6 +262,19 @@ export async function fetchWmsHomeKpis(
     }),
     prisma.wmsDockAppointment.count({
       where: dockWhere,
+    }),
+    prisma.wmsTask.findMany({
+      where: {
+        ...taskWhere,
+        status: "DONE",
+        completedAt: { gte: weekAgo },
+        startedAt: { not: null },
+      },
+      select: {
+        startedAt: true,
+        completedAt: true,
+        standardMinutes: true,
+      },
     }),
   ]);
 
@@ -316,6 +343,19 @@ export async function fetchWmsHomeKpis(
     outboundActive,
   });
 
+  const laborTiming = buildLaborTimingSummary(
+    laborTasksDone7d.flatMap((t) => {
+      if (!t.startedAt || !t.completedAt) return [];
+      return [
+        {
+          startedAt: t.startedAt,
+          completedAt: t.completedAt,
+          standardMinutes: t.standardMinutes ?? null,
+        },
+      ];
+    }),
+  );
+
   return {
     asOf: asOf.toISOString(),
     scopedWarehouseId: wh,
@@ -326,6 +366,7 @@ export async function fetchWmsHomeKpis(
     executive,
     narratives,
     rates,
-    rateMethodology: [...WMS_HOME_RATE_METHODOLOGY_BF20],
+    rateMethodology: [...WMS_HOME_KPI_METHODOLOGY],
+    laborTiming,
   };
 }

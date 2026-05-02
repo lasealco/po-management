@@ -68,6 +68,7 @@ model Tenant {
   wmsInventorySoftReservations                WmsInventorySoftReservation[]
   inventoryMovements                          InventoryMovement[]
   wmsTasks                                    WmsTask[]
+  wmsLaborTaskStandards                       WmsLaborTaskStandard[]
   wmsCycleCountSessions                       WmsCycleCountSession[]
   wmsCycleCountLines                          WmsCycleCountLine[]
   wmsWaves                                    WmsWave[]
@@ -5046,6 +5047,22 @@ model WmsWave {
   @@index([tenantId, warehouseId, status])
 }
 
+/// BF-53 — tenant-level engineered standard minutes per `WmsTaskType` (new tasks snapshot `standardMinutes`).
+model WmsLaborTaskStandard {
+  id               String      @id @default(cuid())
+  tenantId         String
+  taskType         WmsTaskType
+  /// Positive whole minutes (engineering estimate).
+  standardMinutes  Int
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, taskType])
+  @@index([tenantId])
+}
+
 model WmsTask {
   id            String        @id @default(cuid())
   tenantId      String
@@ -5069,6 +5086,10 @@ model WmsTask {
   replenishmentPriority   Int?
   /// BF-35 — snapshot of `ReplenishmentRule.exceptionQueue` at creation.
   replenishmentException  Boolean?
+  /// BF-53 — optional floor clock (set via `start_wms_task`); complete handlers set `completedAt` as today.
+  startedAt     DateTime?
+  /// BF-53 — copy of `WmsLaborTaskStandard.standardMinutes` at task creation when configured.
+  standardMinutes Int?
   createdById   String
   completedById String?
   completedAt   DateTime?
