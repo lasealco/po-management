@@ -34,6 +34,7 @@ Aligned with **`src/lib/wms/wms-api-grants.ts`** (Vitest guard).
 | `/api/wms/saved-ledger-views` | GET | `org.wms` → view |
 | `/api/wms/saved-ledger-views` | POST | `org.wms` → edit **or** **`org.wms.inventory` → edit** |
 | `/api/wms/saved-ledger-views/[id]` | DELETE | `org.wms` → edit **or** **`org.wms.inventory` → edit** |
+| `/api/control-tower/timeline` | GET | **`org.controltower` → view** **or** **`org.wms` → view** (**BF-49** — merged CT audits + inventory movements + dock milestones; [`WMS_OPERATIONS_TIMELINE_BF49.md`](./WMS_OPERATIONS_TIMELINE_BF49.md)) |
 
 Implementation: **`requireApiGrant`** for view gates; **`gateWmsPostMutation`** / **`gateWmsTierMutation`** (`src/lib/wms/wms-mutation-grants.ts`) for mutations.
 

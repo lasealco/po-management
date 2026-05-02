@@ -202,6 +202,52 @@ export async function requireApiGrant(resource: string, action: string) {
   return null;
 }
 
+/** BF-49 — timeline-style feeds shared across CT + WMS; viewer needs at least one lane. */
+export async function requireAnyApiGrant(
+  pairs: readonly { resource: string; action: string }[],
+): Promise<NextResponse | null> {
+  const tenant = await getDemoTenant();
+  if (!tenant) {
+    return NextResponse.json(
+      {
+        error:
+          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
+      },
+      { status: 404 },
+    );
+  }
+
+  const email = await getDemoActorEmail();
+  const user = await prisma.user.findFirst({
+    where: { tenantId: tenant.id, email, isActive: true },
+    select: { id: true },
+  });
+
+  if (!user) {
+    return NextResponse.json(
+      {
+        error:
+          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
+      },
+      { status: 403 },
+    );
+  }
+
+  const set = await loadGlobalGrantsForUser(user.id);
+  const ok = pairs.some((p) => set.has(grantKey(p.resource, p.action)));
+  if (!ok) {
+    const need = pairs.map((p) => `${p.resource} → ${p.action}`).join(" or ");
+    return NextResponse.json(
+      {
+        error: `Forbidden: requires ${need}`,
+      },
+      { status: 403 },
+    );
+  }
+
+  return null;
+}
+
 /** Active demo user id in tenant, or null (no cookie user / inactive). */
 export async function getActorUserId(): Promise<string | null> {
   const tenant = await getDemoTenant();

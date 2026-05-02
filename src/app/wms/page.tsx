@@ -1,8 +1,9 @@
 import Link from "next/link";
 
+import { OperationalTimelineFeed } from "@/components/operational-timeline-feed";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
-import { getViewerGrantSet, viewerHas, viewerHasAnyWmsMutationEdit } from "@/lib/authz";
 import { WmsHomeOverview } from "@/components/wms-home-overview";
+import { getViewerGrantSet, viewerHas, viewerHasAnyWmsMutationEdit } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -119,6 +120,13 @@ export default async function WmsPage({
       {tenant ? (
         <WmsHomeOverview tenantId={tenant.id} warehouseId={warehouseId} warehouses={warehouses} />
       ) : null}
+
+      <div className="mt-10">
+        <OperationalTimelineFeed
+          title="Cross-module timeline"
+          subtitle="Recent Control Tower audit rows, stock ledger postings, and dock yard milestones for this tenant."
+        />
+      </div>
 
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {areas.map((a) => (

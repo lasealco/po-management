@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 import { ControlTowerDashboard } from "@/components/control-tower-dashboard";
-import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { ControlTowerDashboardWidgets } from "@/components/control-tower-dashboard-widgets";
 import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
+import { OperationalTimelineFeed } from "@/components/operational-timeline-feed";
+import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getControlTowerOverview } from "@/lib/control-tower/overview";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
@@ -59,6 +60,10 @@ export default async function ControlTowerPage() {
 
       {overview ? <ControlTowerDashboard overview={overview} /> : null}
       <ControlTowerDashboardWidgets canEdit={canEdit} />
+
+      <div className="mt-10">
+        <OperationalTimelineFeed />
+      </div>
 
       <div
         className={`mt-10 grid gap-4 sm:grid-cols-2 ${
