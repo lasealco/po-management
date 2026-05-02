@@ -116,6 +116,14 @@ export type WmsBody = {
   isActive?: boolean;
   /** Physical count when completing a cycle-count task. */
   countedQty?: number;
+  /** BF-51 — `WmsCycleCountSession.id` for structured cycle counts. */
+  cycleCountSessionId?: string;
+  /** BF-51 — `WmsCycleCountLine.id`. */
+  cycleCountLineId?: string;
+  /** BF-51 — optional zone / program label on `create_cycle_count_session`. */
+  cycleCountScopeNote?: string | null;
+  /** BF-51 — variance reason when count ≠ expected (`SHRINK` … `OTHER`). */
+  cycleCountVarianceReasonCode?: string | null;
   /** `create_dock_appointment` / `cancel_dock_appointment`. */
   dockAppointmentId?: string;
   dockCode?: string;

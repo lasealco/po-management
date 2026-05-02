@@ -24,6 +24,8 @@ import {
   type TrailerChecklistPayload,
 } from "@/lib/wms/dock-trailer-checklist";
 
+const BF51_VARIANCE_REASONS = ["SHRINK", "DAMAGE", "DATA_ENTRY", "FOUND", "OTHER"] as const;
+
 /** Matches serialized product refs from `GET /api/wms` (including BF-33 carton hints). */
 type WmsProductRef = {
   id: string;
@@ -489,6 +491,34 @@ type WmsData = {
     notes: string | null;
     updatedAt: string;
   }>;
+  /** BF-51 — structured cycle counts (`submit_cycle_count` → `approve_cycle_count_variance`). */
+  cycleCountSessions?: Array<{
+    id: string;
+    referenceCode: string;
+    status: "OPEN" | "SUBMITTED" | "CLOSED" | "CANCELLED";
+    scopeNote: string | null;
+    warehouseId: string;
+    warehouse: { id: string; code: string | null; name: string };
+    createdBy: { id: string; name: string };
+    submittedAt: string | null;
+    closedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    lines: Array<{
+      id: string;
+      inventoryBalanceId: string;
+      binId: string;
+      bin: { id: string; code: string; name: string };
+      product: WmsProductRef;
+      lotCode: string;
+      expectedQty: string;
+      countedQty: string | null;
+      varianceReasonCode: string | null;
+      varianceNote: string | null;
+      status: "PENDING_COUNT" | "MATCH_CLOSED" | "VARIANCE_PENDING" | "VARIANCE_POSTED";
+      inventoryMovementId: string | null;
+    }>;
+  }>;
   /** BF-13 — present when `traceProductId` + `traceSerialNo` query params sent on stock fetch. */
   serialTrace?:
     | null
@@ -881,6 +911,11 @@ export function WmsClient({
   const [vasTaskQty, setVasTaskQty] = useState("");
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
+  const [bf51ScopeNote, setBf51ScopeNote] = useState("");
+  const [bf51AddBalanceId, setBf51AddBalanceId] = useState("");
+  const [bf51LineDraft, setBf51LineDraft] = useState<
+    Record<string, { counted: string; reason: string; note: string }>
+  >({});
   const [bf36SoftBalanceId, setBf36SoftBalanceId] = useState("");
   const [bf36SoftQty, setBf36SoftQty] = useState("");
   const [bf36SoftTtl, setBf36SoftTtl] = useState("3600");
@@ -1333,6 +1368,14 @@ export function WmsClient({
         (b) => !selectedWarehouseId || b.warehouse.id === selectedWarehouseId,
       ),
     [data?.balances, selectedWarehouseId],
+  );
+
+  const cycleSessionsForWarehouse = useMemo(
+    () =>
+      (data?.cycleCountSessions ?? []).filter(
+        (s) => !selectedWarehouseId || s.warehouseId === selectedWarehouseId,
+      ),
+    [data?.cycleCountSessions, selectedWarehouseId],
   );
 
   const workOrdersForWarehouse = useMemo(
@@ -7133,6 +7176,254 @@ export function WmsClient({
           >
             Create cycle count task
           </button>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
+        <h2 className="mt-2 text-sm font-semibold text-zinc-900">Cycle count program (BF-51)</h2>
+        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-600">
+          Session header plus lines on bin/SKU balances (expected qty frozen when the line is added). Save counts per line,
+          then submit. Non-zero variance requires a reason code; supervisor approves to post{" "}
+          <span className="font-medium">ADJUSTMENT</span> movements.
+        </p>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="flex min-w-[12rem] flex-col gap-1 text-xs text-zinc-600">
+            Scope note (optional)
+            <input
+              value={bf51ScopeNote}
+              onChange={(e) => setBf51ScopeNote(e.target.value)}
+              placeholder="e.g. Zone A ABC audit"
+              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={!canEdit || busy || !selectedWarehouseId}
+            onClick={() =>
+              void runAction({
+                action: "create_cycle_count_session",
+                warehouseId: selectedWarehouseId,
+                cycleCountScopeNote: bf51ScopeNote.trim() || null,
+              })
+            }
+            className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            New session
+          </button>
+        </div>
+        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-zinc-100 pt-4">
+          <select
+            value={bf51AddBalanceId}
+            onChange={(e) => setBf51AddBalanceId(e.target.value)}
+            className="min-w-[14rem] rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">Balance to add to an OPEN session</option>
+            {balancesForWarehouseOps.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.bin.code} · {(b.product.productCode || b.product.sku || "SKU").slice(0, 12)} · book {b.onHandQty}
+                {b.lotCode ? ` · ${b.lotCode}` : ""}
+                {Boolean(b.onHold) ? " · HOLD" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mt-4 space-y-4">
+          {cycleSessionsForWarehouse.length === 0 ? (
+            <p className="text-xs text-zinc-500">No structured cycle count sessions for this warehouse.</p>
+          ) : (
+            cycleSessionsForWarehouse.map((sess) => {
+              const draftRow = (lnId: string, ln: (typeof sess.lines)[0]) => {
+                const cur = bf51LineDraft[lnId];
+                return {
+                  counted: cur?.counted ?? ln.countedQty ?? ln.expectedQty,
+                  reason: cur?.reason ?? ln.varianceReasonCode ?? "",
+                  note: cur?.note ?? ln.varianceNote ?? "",
+                };
+              };
+              const setDraft = (lnId: string, patch: Partial<{ counted: string; reason: string; note: string }>) => {
+                setBf51LineDraft((m) => {
+                  const base = m[lnId] ?? { counted: "", reason: "", note: "" };
+                  return { ...m, [lnId]: { ...base, ...patch } };
+                });
+              };
+              return (
+                <div key={sess.id} className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-mono text-sm font-semibold text-zinc-900">{sess.referenceCode}</p>
+                      <p className="text-[11px] text-zinc-500">
+                        {sess.status} · created {new Date(sess.createdAt).toLocaleString()} · {sess.createdBy.name}
+                      </p>
+                      {sess.scopeNote ? (
+                        <p className="mt-1 text-xs text-zinc-600">{sess.scopeNote}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {sess.status === "OPEN" ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={!canEdit || busy || !bf51AddBalanceId}
+                            onClick={() =>
+                              void runAction({
+                                action: "add_cycle_count_line",
+                                cycleCountSessionId: sess.id,
+                                balanceId: bf51AddBalanceId,
+                              })
+                            }
+                            className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                          >
+                            Add line
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!canEdit || busy || sess.lines.length === 0}
+                            onClick={() =>
+                              void runAction({
+                                action: "submit_cycle_count",
+                                cycleCountSessionId: sess.id,
+                              })
+                            }
+                            className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                          >
+                            Submit counts
+                          </button>
+                        </>
+                      ) : null}
+                      {sess.status === "SUBMITTED" ? (
+                        <button
+                          type="button"
+                          disabled={
+                            !canEdit ||
+                            busy ||
+                            !sess.lines.some((l) => l.status === "VARIANCE_PENDING")
+                          }
+                          onClick={() =>
+                            void runAction({
+                              action: "approve_cycle_count_variance",
+                              cycleCountSessionId: sess.id,
+                            })
+                          }
+                          className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                        >
+                          Approve variance
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  {sess.lines.length === 0 ? (
+                    <p className="mt-2 text-xs text-zinc-500">No lines — add balances while session is OPEN.</p>
+                  ) : (
+                    <div className="mt-3 overflow-x-auto">
+                      <table className="min-w-full border-collapse text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-zinc-200 text-zinc-500">
+                            <th className="py-1.5 pr-2 font-medium">Bin</th>
+                            <th className="py-1.5 pr-2 font-medium">SKU</th>
+                            <th className="py-1.5 pr-2 font-medium">Lot</th>
+                            <th className="py-1.5 pr-2 font-medium">Expected</th>
+                            <th className="py-1.5 pr-2 font-medium">Counted</th>
+                            <th className="py-1.5 pr-2 font-medium">Reason</th>
+                            <th className="py-1.5 pr-2 font-medium">Line status</th>
+                            <th className="py-1.5 font-medium" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sess.lines.map((ln) => {
+                            const d = draftRow(ln.id, ln);
+                            const editable = sess.status === "OPEN" && ln.status === "PENDING_COUNT";
+                            return (
+                              <tr key={ln.id} className="border-b border-zinc-100 align-top">
+                                <td className="py-2 pr-2 font-mono text-zinc-800">{ln.bin.code}</td>
+                                <td className="py-2 pr-2 text-zinc-700">
+                                  {(ln.product.productCode || ln.product.sku || ln.product.name).slice(0, 24)}
+                                </td>
+                                <td className="py-2 pr-2 font-mono text-zinc-600">{ln.lotCode || "—"}</td>
+                                <td className="py-2 pr-2">{ln.expectedQty}</td>
+                                <td className="py-2 pr-2">
+                                  {editable ? (
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      min={0}
+                                      value={d.counted}
+                                      onChange={(e) => setDraft(ln.id, { counted: e.target.value })}
+                                      className="w-24 rounded border border-zinc-300 px-1 py-0.5 text-xs"
+                                    />
+                                  ) : (
+                                    <span>{ln.countedQty ?? "—"}</span>
+                                  )}
+                                </td>
+                                <td className="py-2 pr-2">
+                                  {editable ? (
+                                    <select
+                                      value={d.reason}
+                                      onChange={(e) => setDraft(ln.id, { reason: e.target.value })}
+                                      className="max-w-[9rem] rounded border border-zinc-300 px-1 py-0.5 text-xs"
+                                    >
+                                      <option value="">—</option>
+                                      {BF51_VARIANCE_REASONS.map((r) => (
+                                        <option key={r} value={r}>
+                                          {r}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span>{ln.varianceReasonCode ?? "—"}</span>
+                                  )}
+                                </td>
+                                <td className="py-2 pr-2">
+                                  <span className="rounded bg-white px-1.5 py-0.5 text-[11px] text-zinc-700 ring-1 ring-zinc-200">
+                                    {ln.status}
+                                  </span>
+                                  {ln.inventoryMovementId ? (
+                                    <span className="ml-1 font-mono text-[10px] text-zinc-400">
+                                      mv {ln.inventoryMovementId.slice(0, 8)}…
+                                    </span>
+                                  ) : null}
+                                </td>
+                                <td className="py-2">
+                                  {editable ? (
+                                    <div className="flex flex-col gap-1">
+                                      <input
+                                        value={d.note}
+                                        onChange={(e) => setDraft(ln.id, { note: e.target.value })}
+                                        placeholder="Note"
+                                        className="w-36 rounded border border-zinc-300 px-1 py-0.5 text-[11px]"
+                                      />
+                                      <button
+                                        type="button"
+                                        disabled={!canEdit || busy}
+                                        onClick={() => {
+                                          const countedNum = Number(d.counted);
+                                          if (!Number.isFinite(countedNum) || countedNum < 0) return;
+                                          void runAction({
+                                            action: "set_cycle_count_line_count",
+                                            cycleCountLineId: ln.id,
+                                            countedQty: countedNum,
+                                            cycleCountVarianceReasonCode: d.reason.trim() || null,
+                                            varianceNote: d.note.trim() || null,
+                                          });
+                                        }}
+                                        className="rounded border border-zinc-300 bg-white px-2 py-0.5 text-[11px] font-medium disabled:opacity-40"
+                                      >
+                                        Save line
+                                      </button>
+                                    </div>
+                                  ) : null}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </section>
 

@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **Draft program IDs only** — no minimal slices shipped under **`BF-51` … `BF-70`** yet. Product may merge/split/reorder IDs before execution.
+**Status:** **`BF-51`** — **minimal slice shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)). **`BF-52` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
 
 **Rules:**
 
@@ -18,7 +18,7 @@
 
 | ID | Mega phase (short) | Primary `GAP_MAP` signal (when funded) | Typical depends on |
 |----|-------------------|----------------------------------------|---------------------|
-| **BF-51** | Cycle count programs & variance posting | Physical inventory / cycle count row | Stable **`InventoryBalance`** + audit (**BF-13**) |
+| **BF-51** | Cycle count programs & variance posting | Physical inventory / cycle count row | Stable **`InventoryBalance`** + audit (**BF-13**) — **`WmsCycleCountSession`** landed ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)) |
 | **BF-52** | Slotting ABC / velocity recommendations | Slotting / bin assignment row | Executive KPIs (**BF-07**/20), movement history |
 | **BF-53** | Labor standards & task timing capture | Labor / productivity row | **`WmsTask`** or equivalent ops telemetry |
 | **BF-54** | Yard detention & trailer clock alerts | Dock / yard row | **BF-05**, **BF-38** dock appointments |
@@ -43,13 +43,13 @@
 
 ---
 
-## BF-51 — Cycle count programs & variance posting
+## BF-51 — Cycle count programs & variance posting ✅ **Minimal landed**
 
 **Objective:** Scheduled **cycle counts** (ABC / zone-based) with blind counts, variance approval, and **`InventoryMovement`** postings — without full wall-to-wall physical inventory ERP integration.
 
-**Exit sketch (minimal slice):** Count header + lines tied to **`WarehouseBin`** / SKU; POST **`submit_cycle_count`** / **`approve_cycle_count_variance`**; Operations UI list + variance reason codes.
+**Shipped:** [`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md) — **`WmsCycleCountSession`** / **`WmsCycleCountLine`**; **`create_cycle_count_session`**, **`add_cycle_count_line`**, **`set_cycle_count_line_count`**, **`submit_cycle_count`**, **`approve_cycle_count_variance`**; **`GET /api/wms`** **`cycleCountSessions`**; Operations **Cycle count program (BF-51)** panel. Legacy **`create_cycle_count_task`** / **`complete_cycle_count_task`** unchanged (immediate adjustment).
 
-**Out of scope:** RFID drones, perpetual inventory automation across ERPs.
+**Out of scope:** RFID drones, perpetual inventory automation across ERPs, dedicated supervisor RBAC tier, recount reopen workflow.
 
 ---
 
@@ -249,4 +249,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — Initial **BF-51 … BF-70** draft rollup after **BF-50** topology export shipped._
+_Last updated: 2026-05-02 — **BF-51** structured cycle counts landed ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-52 … BF-70** remain draft stubs._

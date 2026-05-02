@@ -68,6 +68,8 @@ model Tenant {
   wmsInventorySoftReservations                WmsInventorySoftReservation[]
   inventoryMovements                          InventoryMovement[]
   wmsTasks                                    WmsTask[]
+  wmsCycleCountSessions                       WmsCycleCountSession[]
+  wmsCycleCountLines                          WmsCycleCountLine[]
   wmsWaves                                    WmsWave[]
   replenishmentRules                          ReplenishmentRule[]
   outboundOrders                              OutboundOrder[]
@@ -2574,6 +2576,7 @@ model User {
   shipmentMilestonesUpdated                           ShipmentMilestone[]
   inventoryMovementsCreated                           InventoryMovement[]
   wmsTasksCreated                                     WmsTask[]                                    @relation("WmsTaskCreatedBy")
+  wmsCycleCountSessionsCreated                       WmsCycleCountSession[]                       @relation("WmsCycleCountSessionCreatedBy")
   wmsInventorySoftReservationsCreated                 WmsInventorySoftReservation[]                @relation("WmsInventorySoftReservationCreatedBy")
   wmsTasksCompleted                                   WmsTask[]                                    @relation("WmsTaskCompletedBy")
   wmsWavesCreated                                     WmsWave[]
@@ -3367,6 +3370,7 @@ model Product {
   orderItems         PurchaseOrderItem[]
   salesOrderLines    SalesOrderLine[]
   inventoryBalances   InventoryBalance[]
+  wmsCycleCountLines  WmsCycleCountLine[]
   inventoryMovements  InventoryMovement[]
   wmsInventorySerials WmsInventorySerial[]
   wmsBillingEvents    WmsBillingEvent[]
@@ -4523,6 +4527,7 @@ model Warehouse {
   inventoryBalances  InventoryBalance[]
   inventoryMovements InventoryMovement[]
   wmsTasks           WmsTask[]
+  wmsCycleCountSessions WmsCycleCountSession[]
   wmsWaves           WmsWave[]
   replenishmentRules ReplenishmentRule[]
   outboundOrders     OutboundOrder[]
@@ -4645,6 +4650,7 @@ model WarehouseBin {
   warehouseAisle     WarehouseAisle?     @relation(fields: [warehouseAisleId], references: [id], onDelete: SetNull)
   inventoryBalances  InventoryBalance[]
   inventoryMovements InventoryMovement[]
+  wmsCycleCountLines WmsCycleCountLine[]
   wmsTasks           WmsTask[]
 
   @@unique([warehouseId, code])
@@ -4714,6 +4720,7 @@ model InventoryBalance {
   product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
   wmsInventorySerials WmsInventorySerial[]
   wmsInventorySoftReservations WmsInventorySoftReservation[]
+  wmsCycleCountLines WmsCycleCountLine[]
 
   @@unique([warehouseId, binId, productId, lotCode])
   @@index([tenantId, warehouseId])
@@ -4766,6 +4773,67 @@ model InventoryMovement {
 
   @@index([tenantId, warehouseId, createdAt])
   @@index([referenceType, referenceId])
+}
+
+enum WmsCycleCountSessionStatus {
+  OPEN
+  SUBMITTED
+  CLOSED
+  CANCELLED
+}
+
+enum WmsCycleCountLineStatus {
+  PENDING_COUNT
+  MATCH_CLOSED
+  VARIANCE_PENDING
+  VARIANCE_POSTED
+}
+
+/// BF-51 — structured cycle count (submit counts → approve variance → ADJUSTMENT postings).
+model WmsCycleCountSession {
+  id            String                     @id @default(cuid())
+  tenantId      String
+  warehouseId   String
+  referenceCode String                     @unique @db.VarChar(64)
+  status        WmsCycleCountSessionStatus @default(OPEN)
+  scopeNote     String?                    @db.VarChar(500)
+  createdById   String
+  submittedAt   DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  createdBy User           @relation("WmsCycleCountSessionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  lines     WmsCycleCountLine[]
+
+  @@index([tenantId, warehouseId, status])
+}
+
+model WmsCycleCountLine {
+  id                  String                   @id @default(cuid())
+  tenantId            String
+  sessionId           String
+  inventoryBalanceId  String
+  binId               String
+  productId           String
+  lotCode             String                   @default("") @db.VarChar(120)
+  expectedQty         Decimal                  @db.Decimal(14, 3)
+  countedQty          Decimal?                 @db.Decimal(14, 3)
+  varianceReasonCode  String?                  @db.VarChar(32)
+  varianceNote        String?                  @db.VarChar(500)
+  status              WmsCycleCountLineStatus  @default(PENDING_COUNT)
+  inventoryMovementId String?                  @unique @db.VarChar(128)
+
+  tenant   Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session  WmsCycleCountSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  balance  InventoryBalance    @relation(fields: [inventoryBalanceId], references: [id], onDelete: Restrict)
+  bin      WarehouseBin       @relation(fields: [binId], references: [id], onDelete: Restrict)
+  product  Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, inventoryBalanceId])
+  @@index([tenantId, sessionId])
 }
 
 /// BF-13 — unique physical unit id per SKU within tenant; optional current balance + movement genealogy links.

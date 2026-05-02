@@ -93,6 +93,15 @@ import {
   customerReturnPutawayBlockedReason,
 } from "./customer-return-policy";
 import { substituteReceivingDispositionNoteTemplate } from "./receiving-disposition-template";
+import {
+  allocateUniqueCycleCountReferenceCode,
+  cycleCountQtyVariance,
+  isWmsCycleCountVarianceReasonCode,
+  normalizeCycleCountVarianceReasonCode,
+  parseCycleCountQty,
+  truncateCycleCountNote,
+  varianceRequiresReason,
+} from "./cycle-count-session";
 import type { WmsBody } from "./wms-body";
 import { loadWmsViewReadScope } from "./wms-read-scope";
 import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
@@ -4673,6 +4682,246 @@ export async function handleWmsPost(
       }
     });
     return NextResponse.json({ ok: true, bookQty: book, countedQty: counted, variance });
+  }
+
+  if (action === "create_cycle_count_session") {
+    const warehouseId = input.warehouseId?.trim();
+    if (!warehouseId) {
+      return toApiErrorResponseFromStatus("warehouseId required.", 400);
+    }
+    const wh = await prisma.warehouse.findFirst({
+      where: { id: warehouseId, tenantId },
+      select: { id: true },
+    });
+    if (!wh) {
+      return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    }
+    const scopeNote = truncateCycleCountNote(input.cycleCountScopeNote ?? undefined);
+    const session = await prisma.$transaction(async (tx) => {
+      const referenceCode = await allocateUniqueCycleCountReferenceCode(tx);
+      return tx.wmsCycleCountSession.create({
+        data: {
+          tenantId,
+          warehouseId,
+          referenceCode,
+          scopeNote,
+          createdById: actorId,
+        },
+        select: { id: true, referenceCode: true },
+      });
+    });
+    return NextResponse.json({
+      ok: true,
+      cycleCountSessionId: session.id,
+      referenceCode: session.referenceCode,
+    });
+  }
+
+  if (action === "add_cycle_count_line") {
+    const sessionId = input.cycleCountSessionId?.trim();
+    const balanceId = input.balanceId?.trim();
+    if (!sessionId || !balanceId) {
+      return toApiErrorResponseFromStatus("cycleCountSessionId and balanceId required.", 400);
+    }
+    const session = await prisma.wmsCycleCountSession.findFirst({
+      where: { id: sessionId, tenantId },
+      select: { id: true, warehouseId: true, status: true },
+    });
+    if (!session || session.status !== "OPEN") {
+      return toApiErrorResponseFromStatus("Cycle count session not found or not OPEN.", 404);
+    }
+    const bal = await prisma.inventoryBalance.findFirst({
+      where: { id: balanceId, tenantId, warehouseId: session.warehouseId },
+      select: {
+        id: true,
+        binId: true,
+        productId: true,
+        lotCode: true,
+        onHandQty: true,
+      },
+    });
+    if (!bal) {
+      return toApiErrorResponseFromStatus("Balance not found for this session warehouse.", 404);
+    }
+    try {
+      const line = await prisma.wmsCycleCountLine.create({
+        data: {
+          tenantId,
+          sessionId: session.id,
+          inventoryBalanceId: bal.id,
+          binId: bal.binId,
+          productId: bal.productId,
+          lotCode: bal.lotCode,
+          expectedQty: bal.onHandQty,
+        },
+        select: { id: true },
+      });
+      return NextResponse.json({ ok: true, cycleCountLineId: line.id });
+    } catch (e: unknown) {
+      if (e && typeof e === "object" && "code" in e && (e as { code?: string }).code === "P2002") {
+        return toApiErrorResponseFromStatus("That balance is already on this cycle count.", 409);
+      }
+      throw e;
+    }
+  }
+
+  if (action === "set_cycle_count_line_count") {
+    const lineId = input.cycleCountLineId?.trim();
+    const counted = parseCycleCountQty(input.countedQty);
+    if (!lineId || counted === null) {
+      return toApiErrorResponseFromStatus("cycleCountLineId and countedQty (>=0) required.", 400);
+    }
+    const normReason = normalizeCycleCountVarianceReasonCode(input.cycleCountVarianceReasonCode ?? undefined);
+    if (normReason != null && !isWmsCycleCountVarianceReasonCode(normReason)) {
+      return toApiErrorResponseFromStatus(
+        "Invalid cycleCountVarianceReasonCode (SHRINK, DAMAGE, DATA_ENTRY, FOUND, OTHER).",
+        400,
+      );
+    }
+    const varianceNote = truncateCycleCountNote(input.varianceNote ?? input.note);
+    const line = await prisma.wmsCycleCountLine.findFirst({
+      where: { id: lineId, tenantId },
+      include: { session: { select: { status: true } } },
+    });
+    if (!line || line.session.status !== "OPEN") {
+      return toApiErrorResponseFromStatus("Line not found or session not OPEN.", 404);
+    }
+    if (line.status !== "PENDING_COUNT") {
+      return toApiErrorResponseFromStatus("Line is no longer editable.", 400);
+    }
+    await prisma.wmsCycleCountLine.update({
+      where: { id: line.id },
+      data: {
+        countedQty: counted.toString(),
+        varianceReasonCode: normReason,
+        varianceNote,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "submit_cycle_count") {
+    const sessionId = input.cycleCountSessionId?.trim();
+    if (!sessionId) {
+      return toApiErrorResponseFromStatus("cycleCountSessionId required.", 400);
+    }
+    const session = await prisma.wmsCycleCountSession.findFirst({
+      where: { id: sessionId, tenantId, status: "OPEN" },
+      include: { lines: true },
+    });
+    if (!session) {
+      return toApiErrorResponseFromStatus("Cycle count session not found or not OPEN.", 404);
+    }
+    if (session.lines.length === 0) {
+      return toApiErrorResponseFromStatus("Add at least one line before submitting.", 400);
+    }
+    for (const ln of session.lines) {
+      if (ln.countedQty == null) {
+        return toApiErrorResponseFromStatus(
+          `Line ${ln.id.slice(0, 8)}… missing countedQty — use set_cycle_count_line_count.`,
+          400,
+        );
+      }
+      const expected = Number(ln.expectedQty);
+      const counted = Number(ln.countedQty);
+      if (varianceRequiresReason(expected, counted)) {
+        const code = ln.varianceReasonCode?.trim();
+        if (!code || !isWmsCycleCountVarianceReasonCode(code)) {
+          return toApiErrorResponseFromStatus(
+            "Variance lines require cycleCountVarianceReasonCode (SHRINK, DAMAGE, DATA_ENTRY, FOUND, OTHER) via set_cycle_count_line_count.",
+            400,
+          );
+        }
+      }
+    }
+    await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      let anyVariance = false;
+      for (const ln of session.lines) {
+        const expected = Number(ln.expectedQty);
+        const counted = Number(ln.countedQty!);
+        const v = cycleCountQtyVariance(expected, counted);
+        if (v === 0) {
+          await tx.wmsCycleCountLine.update({
+            where: { id: ln.id },
+            data: { status: "MATCH_CLOSED" },
+          });
+        } else {
+          anyVariance = true;
+          await tx.wmsCycleCountLine.update({
+            where: { id: ln.id },
+            data: { status: "VARIANCE_PENDING" },
+          });
+        }
+      }
+      if (anyVariance) {
+        await tx.wmsCycleCountSession.update({
+          where: { id: session.id },
+          data: { status: "SUBMITTED", submittedAt: now },
+        });
+      } else {
+        await tx.wmsCycleCountSession.update({
+          where: { id: session.id },
+          data: { status: "CLOSED", submittedAt: now, closedAt: now },
+        });
+      }
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "approve_cycle_count_variance") {
+    const sessionId = input.cycleCountSessionId?.trim();
+    if (!sessionId) {
+      return toApiErrorResponseFromStatus("cycleCountSessionId required.", 400);
+    }
+    const session = await prisma.wmsCycleCountSession.findFirst({
+      where: { id: sessionId, tenantId, status: "SUBMITTED" },
+      include: { lines: true },
+    });
+    if (!session) {
+      return toApiErrorResponseFromStatus("Cycle count session not found or not SUBMITTED.", 404);
+    }
+    const pending = session.lines.filter((l) => l.status === "VARIANCE_PENDING");
+    if (pending.length === 0) {
+      return toApiErrorResponseFromStatus("No variance lines awaiting approval.", 400);
+    }
+    await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      for (const ln of pending) {
+        const expected = Number(ln.expectedQty);
+        const counted = Number(ln.countedQty!);
+        const variance = cycleCountQtyVariance(expected, counted);
+        if (variance === 0) continue;
+        await tx.inventoryBalance.updateMany({
+          where: { id: ln.inventoryBalanceId, tenantId },
+          data: { onHandQty: { increment: variance.toString() } },
+        });
+        const movement = await tx.inventoryMovement.create({
+          data: {
+            tenantId,
+            warehouseId: session.warehouseId,
+            binId: ln.binId,
+            productId: ln.productId,
+            movementType: "ADJUSTMENT",
+            quantity: variance.toString(),
+            referenceType: "WMS_CYCLE_COUNT_LINE",
+            referenceId: ln.id,
+            note: `BF-51 cycle count (${ln.varianceReasonCode ?? "OTHER"}): book ${expected} → counted ${counted}`,
+            createdById: actorId,
+          },
+          select: { id: true },
+        });
+        await tx.wmsCycleCountLine.update({
+          where: { id: ln.id },
+          data: { status: "VARIANCE_POSTED", inventoryMovementId: movement.id },
+        });
+      }
+      await tx.wmsCycleCountSession.update({
+        where: { id: session.id },
+        data: { status: "CLOSED", closedAt: now },
+      });
+    });
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "create_work_order") {

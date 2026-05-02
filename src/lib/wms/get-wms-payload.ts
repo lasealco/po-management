@@ -383,6 +383,28 @@ export async function getWmsDashboardPayload(
         })
       : null;
 
+  const cycleCountSessionWhere: Prisma.WmsCycleCountSessionWhereInput =
+    viewScope.inventoryProduct != null
+      ? { tenantId, lines: { some: { product: viewScope.inventoryProduct } } }
+      : { tenantId };
+
+  const cycleCountSessionsRaw = await prisma.wmsCycleCountSession.findMany({
+    where: cycleCountSessionWhere,
+    orderBy: { updatedAt: "desc" },
+    take: 48,
+    include: {
+      warehouse: { select: { id: true, code: true, name: true } },
+      createdBy: { select: { id: true, name: true } },
+      lines: {
+        orderBy: { id: "asc" },
+        include: {
+          bin: { select: { id: true, code: true, name: true } },
+          product: { select: WMS_PRODUCT_REF_SELECT },
+        },
+      },
+    },
+  });
+
   const lotBatchWhere: Prisma.WmsLotBatchWhereInput =
     viewScope.inventoryProduct != null
       ? { tenantId, product: viewScope.inventoryProduct }
@@ -1104,6 +1126,33 @@ export async function getWmsDashboardPayload(
       countryOfOrigin: lb.countryOfOrigin ?? null,
       notes: lb.notes ?? null,
       updatedAt: lb.updatedAt.toISOString(),
+    })),
+    cycleCountSessions: cycleCountSessionsRaw.map((s) => ({
+      id: s.id,
+      referenceCode: s.referenceCode,
+      status: s.status,
+      scopeNote: s.scopeNote,
+      warehouseId: s.warehouseId,
+      warehouse: s.warehouse,
+      createdBy: s.createdBy,
+      submittedAt: s.submittedAt?.toISOString() ?? null,
+      closedAt: s.closedAt?.toISOString() ?? null,
+      createdAt: s.createdAt.toISOString(),
+      updatedAt: s.updatedAt.toISOString(),
+      lines: s.lines.map((ln) => ({
+        id: ln.id,
+        inventoryBalanceId: ln.inventoryBalanceId,
+        binId: ln.binId,
+        bin: ln.bin,
+        product: mapWmsProductJson(ln.product),
+        lotCode: ln.lotCode,
+        expectedQty: ln.expectedQty.toString(),
+        countedQty: ln.countedQty?.toString() ?? null,
+        varianceReasonCode: ln.varianceReasonCode,
+        varianceNote: ln.varianceNote,
+        status: ln.status,
+        inventoryMovementId: ln.inventoryMovementId,
+      })),
     })),
     serialTrace,
   };

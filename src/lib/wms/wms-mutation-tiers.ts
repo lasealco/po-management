@@ -87,6 +87,12 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   create_cycle_count_task: "inventory",
   complete_cycle_count_task: "inventory",
 
+  create_cycle_count_session: "inventory",
+  add_cycle_count_line: "inventory",
+  set_cycle_count_line_count: "inventory",
+  submit_cycle_count: "inventory",
+  approve_cycle_count_variance: "inventory",
+
   create_work_order: "operations",
   /** BF-09 — customer-facing intake shell → same warehouse WO row as ops-created tickets. */
   request_customer_vas_work_order: "operations",
