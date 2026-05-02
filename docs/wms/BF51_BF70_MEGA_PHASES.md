@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **`BF-51`** … **`BF-55`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md)). **`BF-56` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
+**Status:** **`BF-51`** … **`BF-56`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md)). **`BF-57` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
 
 **Rules:**
 
@@ -23,7 +23,7 @@
 | **BF-53** | Labor standards & task timing capture | Labor / productivity row | **`WmsTask`** + **`WmsLaborTaskStandard`** landed ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)) |
 | **BF-54** | Yard detention & trailer clock alerts | Dock / yard row | **BF-05**, **BF-38** — **`Tenant.wmsDockDetentionPolicyJson`** + alerts landed ([`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)) |
 | **BF-55** | Stock transfer orders & in-transit ledger | Inter-site inventory row | **`WmsStockTransfer`** + **`STO_SHIP`** / **`STO_RECEIVE`** landed ([`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md)) |
-| **BF-56** | Batch / cluster pick waves | Pick execution row | Wave model (**BF-15**), pick tasks |
+| **BF-56** | Batch / cluster pick waves | Pick execution row | Wave model (**BF-15**), pick tasks — **`WmsWave.pickMode`**, **`WmsTask.batchGroupKey`** landed ([`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md)) |
 | **BF-57** | Nested LU aggregation & SSCC validation depth | Logistics units row | **BF-43** LUs, **BF-29** scan multiset |
 | **BF-58** | Inventory freeze matrix expansion | Holds / compliance row | Holds/quarantine patterns (**BF-41**/QA) |
 | **BF-59** | Inbound ASN **pre-advise** ingestion stub | Inbound ASN row | **BF-31** tolerance, carrier JSON contracts |
@@ -93,13 +93,13 @@
 
 ---
 
-## BF-56 — Batch / cluster pick waves
+## BF-56 — Batch / cluster pick waves ✅ **Minimal landed**
 
 **Objective:** **Cluster pick** waves (cart/batch) assigning multiple orders to one picker path — beyond single-order waves.
 
-**Exit sketch (minimal slice):** Wave **`pickMode=BATCH`** (or equivalent); task grouping key; Operations batch pick UI stub.
+**Shipped:** [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md) — `WmsWavePickMode`, `WmsWave.pickMode`, `WmsTask.batchGroupKey`; `create_pick_wave` + **`pickWavePickMode`** / **`pickMode`** **`BATCH`** | **`SINGLE_ORDER`**; bin visit order helper; **`GET /api/wms`** wave **`pickMode`** + task group key; Operations wave UI.
 
-**Out of scope:** AMR cluster bots, dynamic re-batch during pick.
+**Out of scope:** AMR cluster bots, dynamic re-batch during pick; solver strategies use **`SINGLE_ORDER`** only.
 
 ---
 
@@ -249,4 +249,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — **BF-55** stock transfer orders ([`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md)); **2026-05-05** — **BF-54** dock detention ([`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)); **BF-53** labor ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **BF-52** slotting ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **BF-51** cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-56 … BF-70** draft stubs._
+_Last updated: 2026-04-29 — **BF-56** batch pick waves ([`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md)); **BF-55** stock transfer orders ([`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md)); **2026-05-05** — **BF-54** dock detention ([`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)); **BF-53** labor ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **BF-52** slotting ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **BF-51** cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-57 … BF-70** draft stubs._

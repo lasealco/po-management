@@ -238,7 +238,7 @@ export async function getWmsDashboardPayload(
         product: { select: WMS_PRODUCT_REF_SELECT },
         shipment: { select: { id: true, shipmentNo: true, status: true } },
         order: { select: { id: true, orderNumber: true } },
-        wave: { select: { id: true, waveNo: true, status: true } },
+        wave: { select: { id: true, waveNo: true, status: true, pickMode: true } },
       },
     }),
     prisma.wmsWave.findMany({
@@ -957,12 +957,14 @@ export async function getWmsDashboardPayload(
         startedAt: t.startedAt?.toISOString() ?? null,
         standardMinutes: t.standardMinutes ?? null,
         createdAt: t.createdAt.toISOString(),
+        batchGroupKey: t.batchGroupKey ?? null,
       };
     }),
     waves: waves.map((w) => ({
       id: w.id,
       waveNo: w.waveNo,
       status: w.status,
+      pickMode: w.pickMode,
       warehouse: w.warehouse,
       taskCount: w.tasks.length,
       openTaskCount: w.tasks.filter((t) => t.status === "OPEN").length,

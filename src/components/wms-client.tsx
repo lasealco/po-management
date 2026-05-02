@@ -356,7 +356,7 @@ type WmsData = {
     product: WmsProductRef | null;
     shipment: { id: string; shipmentNo: string | null; status: string } | null;
     order: { id: string; orderNumber: string } | null;
-    wave: { id: string; waveNo: string; status: string } | null;
+    wave: { id: string; waveNo: string; status: string; pickMode: "SINGLE_ORDER" | "BATCH" } | null;
     note: string | null;
     referenceType: string | null;
     referenceId: string | null;
@@ -366,12 +366,14 @@ type WmsData = {
     replenishmentException?: boolean | null;
     startedAt: string | null;
     standardMinutes: number | null;
+    batchGroupKey: string | null;
     createdAt: string;
   }>;
   waves: Array<{
     id: string;
     waveNo: string;
     status: "OPEN" | "RELEASED" | "DONE" | "CANCELLED";
+    pickMode: "SINGLE_ORDER" | "BATCH";
     warehouse: { id: string; code: string | null; name: string };
     taskCount: number;
     openTaskCount: number;
@@ -841,6 +843,7 @@ export function WmsClient({
   const [error, setError] = useState<string | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
   const [pickWaveCartonCapDraft, setPickWaveCartonCapDraft] = useState("");
+  const [pickWavePickModeDraft, setPickWavePickModeDraft] = useState<"SINGLE_ORDER" | "BATCH">("SINGLE_ORDER");
   const [movementTypeFilter, setMovementTypeFilter] = useState<"" | InventoryMovementType>("");
   const [newZoneCode, setNewZoneCode] = useState("");
   const [newZoneName, setNewZoneName] = useState("");
@@ -7556,12 +7559,14 @@ export function WmsClient({
       </section>
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-zinc-900">Wave picking</h2>
+        <h2 className="text-sm font-semibold text-zinc-900">Wave picking · BF-56 batch path</h2>
         <p className="mt-1 text-xs text-zinc-600">
           Auto-build pick waves from open order demand and current available stock in the selected warehouse,
           using the warehouse&apos;s{" "}
           <span className="font-medium text-zinc-800">pick allocation strategy</span> (Warehouse setup → Pick
-          allocation policy).
+          allocation policy). <span className="font-medium text-zinc-800">Batch (BF-56)</span> walks bins in cluster
+          order and tags tasks with a <span className="font-medium text-zinc-800">batchGroupKey</span> (source bin) for
+          cart-style picking — not AMR re-batch.
         </p>
         {selectedWarehouseId &&
         data.warehouses.find((w) => w.id === selectedWarehouseId)?.pickAllocationStrategy === "MANUAL_ONLY" ? (
@@ -7570,7 +7575,20 @@ export function WmsClient({
             disabled. Use <span className="font-medium">Create pick task</span> with explicit bins instead.
           </p>
         ) : null}
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-xs text-zinc-600">
+            <span className="font-medium text-zinc-800">Pick wave mode (BF-56)</span>
+            <select
+              value={pickWavePickModeDraft}
+              onChange={(e) =>
+                setPickWavePickModeDraft(e.target.value as "SINGLE_ORDER" | "BATCH")
+              }
+              className="rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+            >
+              <option value="SINGLE_ORDER">Single-order (default)</option>
+              <option value="BATCH">Batch / cluster bin path</option>
+            </select>
+          </label>
           <button
             type="button"
             disabled={
@@ -7583,9 +7601,10 @@ export function WmsClient({
               void runAction({
                 action: "create_pick_wave",
                 warehouseId: selectedWarehouseId,
+                pickWavePickMode: pickWavePickModeDraft,
               })
             }
-            className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
             Create pick wave
           </button>
@@ -7600,6 +7619,11 @@ export function WmsClient({
                   {wave.waveNo}
                 </span>
                 <span className="text-zinc-700">{wave.status}</span>
+                {wave.pickMode === "BATCH" ? (
+                  <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                    Batch BF-56
+                  </span>
+                ) : null}
                 <span className="text-zinc-500">{wave.warehouse.code || wave.warehouse.name}</span>
                 <span className="text-zinc-500">
                   tasks {wave.taskCount} · open {wave.openTaskCount} · qty {wave.totalQty}
@@ -8232,6 +8256,16 @@ export function WmsClient({
                 ) : null}
                 {t.startedAt ? (
                   <span className="text-[11px] font-medium text-emerald-800">Timer on</span>
+                ) : null}
+                {t.wave?.pickMode === "BATCH" ? (
+                  <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-950">
+                    Batch wave
+                  </span>
+                ) : null}
+                {t.taskType === "PICK" && t.batchGroupKey && t.bin ? (
+                  <span className="text-[11px] text-zinc-500" title={`batchGroupKey=${t.batchGroupKey}`}>
+                    Cluster stop · bin {t.bin.code}
+                  </span>
                 ) : null}
                 <span className="text-zinc-700">{t.quantity}</span>
                 <span className="text-zinc-700">

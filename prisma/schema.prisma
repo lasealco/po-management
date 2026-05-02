@@ -5099,12 +5099,22 @@ enum WmsWaveStatus {
   CANCELLED
 }
 
+/// BF-56 — pick wave build mode (`create_pick_wave`).
+enum WmsWavePickMode {
+  /// One line at a time, existing greedy/FIFO ordering per outbound line.
+  SINGLE_ORDER
+  /// Cluster path: visit bins in stable sort order; allocate across lines at each stop (`batchGroupKey` on tasks).
+  BATCH
+}
+
 model WmsWave {
   id          String        @id @default(cuid())
   tenantId    String
   warehouseId String
   waveNo      String
   status      WmsWaveStatus @default(OPEN)
+  /// BF-56 — `SINGLE_ORDER` (default) vs bin-cluster `BATCH`.
+  pickMode    WmsWavePickMode @default(SINGLE_ORDER)
   note        String?
   createdById String
   releasedAt  DateTime?
@@ -5164,6 +5174,8 @@ model WmsTask {
   startedAt     DateTime?
   /// BF-53 — copy of `WmsLaborTaskStandard.standardMinutes` at task creation when configured.
   standardMinutes Int?
+  /// BF-56 — for BATCH pick waves, bins-visitation group key (typically source `binId`).
+  batchGroupKey String?       @db.VarChar(120)
   createdById   String
   completedById String?
   completedAt   DateTime?

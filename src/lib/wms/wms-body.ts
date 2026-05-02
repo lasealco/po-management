@@ -55,6 +55,10 @@ export type WmsBody = {
   productId?: string;
   taskId?: string;
   waveId?: string;
+  /** BF-56 — `create_pick_wave`: `SINGLE_ORDER` (default) or `BATCH` cluster path. */
+  pickWavePickMode?: "SINGLE_ORDER" | "BATCH";
+  /** Alias for `pickWavePickMode` (`create_pick_wave`). */
+  pickMode?: "SINGLE_ORDER" | "BATCH";
   binId?: string | null;
   sourceBinId?: string;
   targetBinId?: string;

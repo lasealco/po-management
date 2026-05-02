@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
-import { Prisma, ShipmentMilestoneCode, type WmsOutboundLogisticsUnitKind, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition, type WmsShipmentItemVarianceDisposition, type WmsTaskType } from "@prisma/client";
+import { Prisma, ShipmentMilestoneCode, type WmsOutboundLogisticsUnitKind, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition, type WmsShipmentItemVarianceDisposition, type WmsTaskType, type WmsWavePickMode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { fetchWarehouseTopologyGraph } from "@/lib/wms/warehouse-topology-graph";
@@ -35,6 +35,7 @@ import {
 import { sortReplenishmentRulesForBatch } from "./replenishment-batch";
 import { softReservedQtyByBalanceIds } from "./soft-reservation";
 import { orderPickSlotsSolverPrototype } from "./pick-wave-solver-prototype";
+import { batchPickVisitBinOrder, cloneWavePickSlotPools } from "./pick-wave-batch";
 import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
 import {
   evaluateShipmentReceiveAgainstAsnTolerance,
@@ -1502,6 +1503,22 @@ export async function handleWmsPost(
       );
     }
 
+    const rawPickMode = input.pickWavePickMode ?? input.pickMode;
+    const pickMode: WmsWavePickMode =
+      typeof rawPickMode === "string" && rawPickMode.trim().toUpperCase() === "BATCH"
+        ? "BATCH"
+        : "SINGLE_ORDER";
+    if (
+      pickMode === "BATCH" &&
+      (allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES" ||
+        allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE")
+    ) {
+      return toApiErrorResponseFromStatus(
+        "Batch pick waves are not supported with solver prototype allocation strategies. Use pickMode SINGLE_ORDER.",
+        400,
+      );
+    }
+
     const openLines = await prisma.outboundOrderLine.findMany({
       where: {
         tenantId,
@@ -1645,6 +1662,7 @@ export async function handleWmsPost(
     const waveNote = [
       `Wave allocation (${allocationStrategy})`,
       cartonCap != null ? `cartonCap=${cartonCap}` : null,
+      pickMode === "BATCH" ? `pickMode=BATCH` : null,
     ]
       .filter(Boolean)
       .join(" · ");
@@ -1655,69 +1673,127 @@ export async function handleWmsPost(
           warehouseId,
           waveNo,
           createdById: actorId,
+          pickMode,
         },
       });
       const stdPickWave = await laborStandardMinutesSnapshot(tx, tenantId, "PICK");
       const pickStdWave = stdPickWave != null ? { standardMinutes: stdPickWave } : {};
       let createdTasks = 0;
-      for (const item of openLines) {
-        if (!item.productId) continue;
-        const alreadyPicked = pickedMap.get(item.id) ?? 0;
-        let remaining = Math.max(0, Number(item.quantity) - Number(item.pickedQty) - alreadyPicked);
-        if (remaining <= 0) continue;
-        const binsRaw = byProduct.get(item.productId) ?? [];
-        const productHints = item.product;
-        let binsForProduct: WavePickSlot[];
-        if (allocationStrategy === "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE") {
-          binsForProduct = orderPickSlotsMinBinTouchesReservePickFaceCubeAware(binsRaw, remaining, productHints);
-        } else if (allocationStrategy === "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE") {
-          binsForProduct = orderPickSlotsMinBinTouchesCubeAware(binsRaw, remaining, productHints);
-        } else if (allocationStrategy === "GREEDY_RESERVE_PICK_FACE") {
-          binsForProduct = orderPickSlotsMinBinTouchesReservePickFace(binsRaw, remaining);
-        } else if (allocationStrategy === "GREEDY_MIN_BIN_TOUCHES") {
-          binsForProduct = orderPickSlotsMinBinTouches(binsRaw, remaining);
-        } else if (allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE") {
-          binsForProduct = orderPickSlotsSolverPrototype(binsRaw, remaining, "BF23_RESERVE_PICK_FACE");
-        } else if (allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES") {
-          binsForProduct = orderPickSlotsSolverPrototype(binsRaw, remaining, "BF15");
-        } else {
-          binsForProduct = binsRaw;
+      if (pickMode === "SINGLE_ORDER") {
+        for (const item of openLines) {
+          if (!item.productId) continue;
+          const alreadyPicked = pickedMap.get(item.id) ?? 0;
+          let remaining = Math.max(0, Number(item.quantity) - Number(item.pickedQty) - alreadyPicked);
+          if (remaining <= 0) continue;
+          const binsRaw = byProduct.get(item.productId) ?? [];
+          const productHints = item.product;
+          let binsForProduct: WavePickSlot[];
+          if (allocationStrategy === "GREEDY_RESERVE_PICK_FACE_CUBE_AWARE") {
+            binsForProduct = orderPickSlotsMinBinTouchesReservePickFaceCubeAware(binsRaw, remaining, productHints);
+          } else if (allocationStrategy === "GREEDY_MIN_BIN_TOUCHES_CUBE_AWARE") {
+            binsForProduct = orderPickSlotsMinBinTouchesCubeAware(binsRaw, remaining, productHints);
+          } else if (allocationStrategy === "GREEDY_RESERVE_PICK_FACE") {
+            binsForProduct = orderPickSlotsMinBinTouchesReservePickFace(binsRaw, remaining);
+          } else if (allocationStrategy === "GREEDY_MIN_BIN_TOUCHES") {
+            binsForProduct = orderPickSlotsMinBinTouches(binsRaw, remaining);
+          } else if (allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES_RESERVE_PICK_FACE") {
+            binsForProduct = orderPickSlotsSolverPrototype(binsRaw, remaining, "BF23_RESERVE_PICK_FACE");
+          } else if (allocationStrategy === "SOLVER_PROTOTYPE_MIN_BIN_TOUCHES") {
+            binsForProduct = orderPickSlotsSolverPrototype(binsRaw, remaining, "BF15");
+          } else {
+            binsForProduct = binsRaw;
+          }
+          for (const slot of binsForProduct) {
+            if (remaining <= 0) break;
+            let take = Math.min(remaining, slot.available);
+            if (cartonCap != null) take = Math.min(take, cartonCap);
+            if (take <= 0) continue;
+            await tx.wmsTask.create({
+              data: {
+                tenantId,
+                warehouseId,
+                taskType: "PICK",
+                waveId: wave.id,
+                productId: item.productId,
+                binId: slot.binId,
+                lotCode: slot.lotCode,
+                referenceType: "OUTBOUND_LINE_PICK",
+                referenceId: item.id,
+                quantity: take.toString(),
+                note: waveNote,
+                createdById: actorId,
+                ...pickStdWave,
+              },
+            });
+            await tx.inventoryBalance.updateMany({
+              where: {
+                tenantId,
+                warehouseId,
+                binId: slot.binId,
+                productId: item.productId,
+                lotCode: slot.lotCode,
+              },
+              data: { allocatedQty: { increment: take.toString() } },
+            });
+            slot.available -= take;
+            remaining -= take;
+            createdTasks += 1;
+          }
         }
-        for (const slot of binsForProduct) {
-          if (remaining <= 0) break;
-          let take = Math.min(remaining, slot.available);
-          if (cartonCap != null) take = Math.min(take, cartonCap);
-          if (take <= 0) continue;
-          await tx.wmsTask.create({
-            data: {
-              tenantId,
-              warehouseId,
-              taskType: "PICK",
-              waveId: wave.id,
-              productId: item.productId,
-              binId: slot.binId,
-              lotCode: slot.lotCode,
-              referenceType: "OUTBOUND_LINE_PICK",
-              referenceId: item.id,
-              quantity: take.toString(),
-              note: waveNote,
-              createdById: actorId,
-              ...pickStdWave,
-            },
-          });
-          await tx.inventoryBalance.updateMany({
-            where: {
-              tenantId,
-              warehouseId,
-              binId: slot.binId,
-              productId: item.productId,
-              lotCode: slot.lotCode,
-            },
-            data: { allocatedQty: { increment: take.toString() } },
-          });
-          slot.available -= take;
-          remaining -= take;
-          createdTasks += 1;
+      } else {
+        const lineRemaining = new Map<string, number>();
+        for (const item of openLines) {
+          if (!item.productId) continue;
+          const alreadyPicked = pickedMap.get(item.id) ?? 0;
+          const rem = Math.max(0, Number(item.quantity) - Number(item.pickedQty) - alreadyPicked);
+          if (rem > 0) lineRemaining.set(item.id, rem);
+        }
+        const mutablePools = cloneWavePickSlotPools(byProduct);
+        const visitBins = batchPickVisitBinOrder(mutablePools);
+        for (const binId of visitBins) {
+          for (const item of openLines) {
+            if (!item.productId) continue;
+            const rem = lineRemaining.get(item.id) ?? 0;
+            if (rem <= 0) continue;
+            const slots = mutablePools.get(item.productId);
+            if (!slots) continue;
+            const slot = slots.find((s) => s.binId === binId && s.available > 0);
+            if (!slot) continue;
+            let take = Math.min(rem, slot.available);
+            if (cartonCap != null) take = Math.min(take, cartonCap);
+            if (take <= 0) continue;
+            await tx.wmsTask.create({
+              data: {
+                tenantId,
+                warehouseId,
+                taskType: "PICK",
+                waveId: wave.id,
+                productId: item.productId,
+                binId: slot.binId,
+                lotCode: slot.lotCode,
+                referenceType: "OUTBOUND_LINE_PICK",
+                referenceId: item.id,
+                quantity: take.toString(),
+                note: waveNote,
+                batchGroupKey: binId,
+                createdById: actorId,
+                ...pickStdWave,
+              },
+            });
+            await tx.inventoryBalance.updateMany({
+              where: {
+                tenantId,
+                warehouseId,
+                binId: slot.binId,
+                productId: item.productId,
+                lotCode: slot.lotCode,
+              },
+              data: { allocatedQty: { increment: take.toString() } },
+            });
+            slot.available -= take;
+            lineRemaining.set(item.id, rem - take);
+            createdTasks += 1;
+          }
         }
       }
       return { waveId: wave.id, waveNo: wave.waveNo, createdTasks };
