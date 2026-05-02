@@ -150,6 +150,12 @@ export type WmsBody = {
   yardMilestone?: "GATE_IN" | "AT_DOCK" | "DEPARTED";
   /** ISO datetime for yard milestone (defaults to now). */
   yardOccurredAt?: string;
+  /** BF-54 — `set_wms_dock_detention_policy`: when true, clears policy (JSON null). */
+  dockDetentionPolicyClear?: boolean;
+  /** BF-54 — tenant-wide detention alerts on-read. */
+  dockDetentionEnabled?: boolean;
+  dockDetentionFreeGateToDockMinutes?: number;
+  dockDetentionFreeDockToDepartMinutes?: number;
   /** Target allocation strategy for `set_warehouse_pick_allocation_strategy`. */
   pickAllocationStrategy?:
     | "MAX_AVAILABLE_FIRST"

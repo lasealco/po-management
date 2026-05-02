@@ -58,4 +58,8 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("set_wms_labor_task_standard")).toBe("setup");
     expect(wmsMutationTierForPostAction("start_wms_task")).toBe("operations");
   });
+
+  it("maps BF-54 dock detention policy to setup tier", () => {
+    expect(wmsMutationTierForPostAction("set_wms_dock_detention_policy")).toBe("setup");
+  });
 });

@@ -33,7 +33,17 @@ When scoped:
 - True **OTIF %** (delivered vs promised by lane/customer), **labor productivity** (hours, engineered standards), **slotting optimization** (ABC, velocity curves, cubic utilization).
 - Local-site **midnight** for dock “today” (still **UTC** in WE-09/BF-07 — see [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md)).
 
-_Last updated: 2026-05-04 — **BF-53** labor timing KPI extension (`laborTiming`, [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **2026-05-02** — **BF-20** computed proxy rates on `fetchWmsHomeKpis` (`rates` + `rateMethodology`); **BF-07** narratives unchanged._
+_Last updated: 2026-05-05 — **BF-54** dock detention open-alert count on `fetchWmsHomeKpis` (`dockDetentionOpenAlerts`, [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)); **2026-05-04** — **BF-53** labor timing KPI extension (`laborTiming`, [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **2026-05-02** — **BF-20** computed proxy rates on `fetchWmsHomeKpis` (`rates` + `rateMethodology`); **BF-07** narratives unchanged._
+
+---
+
+## BF-54 — Dock detention open alerts (minimal)
+
+**Purpose:** Surface a **count of scheduled dock appointments** that currently exceed tenant yard-detention thresholds (gate→dock or dock→depart free minutes) when policy is enabled — extends shared **`rateMethodology`** / WE-09 home payload. Not carrier billing or accrual automation.
+
+**Doc:** [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md).
+
+_Last updated: 2026-05-05 — **BF-54** `dockDetentionOpenAlerts` on `fetchWmsHomeKpis`; **BF-53**/**BF-20**/**BF-07** unchanged aside from shared methodology array._
 
 ---
 
@@ -62,4 +72,4 @@ _Last updated: 2026-05-02 — BF-20 minimal rates shipped._
 
 **Doc:** [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md).
 
-_Last updated: 2026-05-04 — **BF-53** labor timing on `fetchWmsHomeKpis`; **BF-20** rate proxies unchanged aside from shared methodology array._
+_Last updated: 2026-05-05 — **BF-54** adds BF-54 methodology bullet + **`dockDetentionOpenAlerts`**; **2026-05-04** — **BF-53** labor timing on `fetchWmsHomeKpis`; **BF-20** rate proxies unchanged aside from shared methodology array._

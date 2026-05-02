@@ -112,6 +112,22 @@ type WmsData = {
     standardMinutes: number;
     updatedAt: string;
   }>;
+  /** BF-54 — tenant yard detention thresholds (`set_wms_dock_detention_policy`). */
+  dockDetentionPolicy?: {
+    enabled: boolean;
+    freeMinutesGateToDock: number;
+    freeMinutesDockToDepart: number;
+  };
+  /** BF-54 — denormalized list (same info as per-row `detentionAlert`). */
+  dockDetentionAlerts?: Array<{
+    appointmentId: string;
+    dockCode: string;
+    warehouseId: string;
+    phase: "GATE_TO_DOCK" | "DOCK_DWELL";
+    minutesOver: number;
+    limitMinutes: number;
+    phaseStartedAt: string;
+  }>;
   zones: Array<{
     id: string;
     code: string;
@@ -483,6 +499,16 @@ type WmsData = {
     shipment: { id: string; shipmentNo: string | null; orderNumber: string } | null;
     outboundNo: string | null;
     createdBy: { id: string; name: string };
+    /** BF-54 — live policy breach for this row, if any. */
+    detentionAlert: {
+      appointmentId: string;
+      dockCode: string;
+      warehouseId: string;
+      phase: "GATE_TO_DOCK" | "DOCK_DWELL";
+      minutesOver: number;
+      limitMinutes: number;
+      phaseStartedAt: string;
+    } | null;
   }>;
   workOrders: Array<{
     id: string;
@@ -832,6 +858,10 @@ export function WmsClient({
   const [laborStdTaskType, setLaborStdTaskType] = useState<string>("PICK");
   const [laborStdMinutes, setLaborStdMinutes] = useState("12");
   const [laborStdBusy, setLaborStdBusy] = useState(false);
+  const [dockDetentionEnabled, setDockDetentionEnabled] = useState(false);
+  const [dockDetentionGateMin, setDockDetentionGateMin] = useState("120");
+  const [dockDetentionDwellMin, setDockDetentionDwellMin] = useState("240");
+  const [dockDetentionBusy, setDockDetentionBusy] = useState(false);
 
   const [putawayShipmentItemId, setPutawayShipmentItemId] = useState("");
   const [putawayQty, setPutawayQty] = useState("");
@@ -1004,6 +1034,18 @@ export function WmsClient({
     }
     setWoBomDraft(next);
   }, [data]);
+
+  useEffect(() => {
+    if (!data?.dockDetentionPolicy) return;
+    const p = data.dockDetentionPolicy;
+    setDockDetentionEnabled(p.enabled);
+    setDockDetentionGateMin(String(p.freeMinutesGateToDock));
+    setDockDetentionDwellMin(String(p.freeMinutesDockToDepart));
+  }, [
+    data?.dockDetentionPolicy?.enabled,
+    data?.dockDetentionPolicy?.freeMinutesGateToDock,
+    data?.dockDetentionPolicy?.freeMinutesDockToDepart,
+  ]);
   const [ledgerSince, setLedgerSince] = useState("");
   const [ledgerUntil, setLedgerUntil] = useState("");
   const [ledgerLimit, setLedgerLimit] = useState("");
@@ -2714,6 +2756,101 @@ export function WmsClient({
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+            <div className="rounded-xl border border-amber-100 bg-amber-50/35 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Dock detention (BF-54)
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Tenant-wide thresholds on <span className="font-medium">gate → dock</span> and{" "}
+                <span className="font-medium">dock dwell</span>. Alerts are computed on read from yard timestamps (
+                <span className="font-medium">org.wms.setup → edit</span>). Retrospective breaches log{" "}
+                <span className="font-mono text-[11px]">dock_detention_breach</span> on{" "}
+                <span className="font-mono text-[11px]">CtAuditLog</span> when milestones complete a slow segment.
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-zinc-700">
+                  <input
+                    type="checkbox"
+                    checked={dockDetentionEnabled}
+                    onChange={(e) => setDockDetentionEnabled(e.target.checked)}
+                    className="rounded border-zinc-300"
+                  />
+                  Enable alerts
+                </label>
+                <label className="text-[11px] text-zinc-600">
+                  Gate→dock (min)
+                  <input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={dockDetentionGateMin}
+                    onChange={(e) => setDockDetentionGateMin(e.target.value)}
+                    className="ml-1 w-20 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label className="text-[11px] text-zinc-600">
+                  At dock (min)
+                  <input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={dockDetentionDwellMin}
+                    onChange={(e) => setDockDetentionDwellMin(e.target.value)}
+                    className="ml-1 w-20 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={dockDetentionBusy || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        setDockDetentionBusy(true);
+                        const g = Math.floor(Number(dockDetentionGateMin));
+                        const d = Math.floor(Number(dockDetentionDwellMin));
+                        if (!Number.isFinite(g) || g < 1 || !Number.isFinite(d) || d < 1) {
+                          window.alert("Thresholds must be integers ≥ 1.");
+                          return;
+                        }
+                        await runAction({
+                          action: "set_wms_dock_detention_policy",
+                          dockDetentionEnabled,
+                          dockDetentionFreeGateToDockMinutes: g,
+                          dockDetentionFreeDockToDepartMinutes: d,
+                        });
+                      } finally {
+                        setDockDetentionBusy(false);
+                      }
+                    })()
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {dockDetentionBusy ? "Saving…" : "Save policy"}
+                </button>
+                <button
+                  type="button"
+                  disabled={dockDetentionBusy || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      if (!window.confirm("Clear dock detention policy for this tenant?")) return;
+                      try {
+                        setDockDetentionBusy(true);
+                        await runAction({
+                          action: "set_wms_dock_detention_policy",
+                          dockDetentionPolicyClear: true,
+                        });
+                        setDockDetentionEnabled(false);
+                      } finally {
+                        setDockDetentionBusy(false);
+                      }
+                    })()
+                  }
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Clear
+                </button>
               </div>
             </div>
             <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
@@ -5130,6 +5267,7 @@ export function WmsClient({
                 <th className="px-2 py-1">Ref</th>
                 <th className="px-2 py-1">Carrier</th>
                 <th className="px-2 py-1">Yard</th>
+                <th className="px-2 py-1">Detention</th>
                 <th className="px-2 py-1">TMS load</th>
                 <th className="px-2 py-1">TMS booking</th>
                 <th className="px-2 py-1">Webhook</th>
@@ -5142,7 +5280,7 @@ export function WmsClient({
                 (a) => !selectedWarehouseId || a.warehouse.id === selectedWarehouseId,
               ).length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 13 : 12} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 14 : 13} className="px-2 py-3 text-zinc-500">
                     No dock appointments
                     {selectedWarehouseId ? " for this warehouse" : ""} yet.
                   </td>
@@ -5196,6 +5334,19 @@ export function WmsClient({
                         <td className="max-w-[11rem] truncate px-2 py-1 text-xs text-zinc-600">
                           {dockYardDisplayLine(a)}
                         </td>
+                        <td className="px-2 py-1 text-xs">
+                          {a.detentionAlert ? (
+                            <span
+                              className="inline-block rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-950"
+                              title={`Over ${a.detentionAlert.limitMinutes} min (${a.detentionAlert.phase})`}
+                            >
+                              {a.detentionAlert.phase === "GATE_TO_DOCK" ? "Gate→dock" : "Dwell"} +
+                              {a.detentionAlert.minutesOver}m
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                         <td className="max-w-[9rem] truncate px-2 py-1 font-mono text-[11px] text-zinc-600">
                           {a.tmsLoadId ?? "—"}
                         </td>
@@ -5230,7 +5381,7 @@ export function WmsClient({
                     const yardControls =
                       canEdit && a.status === "SCHEDULED" ? (
                         <tr key={`${a.id}-yard`} className="bg-zinc-50/90">
-                          <td colSpan={13} className="px-3 py-2">
+                          <td colSpan={canEdit ? 14 : 13} className="px-3 py-2">
                             <div className="flex flex-wrap items-end gap-3">
                               <label className="block min-w-[140px] text-[11px] font-medium text-zinc-600">
                                 Carrier name

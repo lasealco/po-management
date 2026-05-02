@@ -46,6 +46,8 @@ model Tenant {
   twitterUrl         String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+  /// BF-54 — optional yard detention thresholds: `{ "enabled": true, "freeMinutesGateToDock": 120, "freeMinutesDockToDepart": 240 }`.
+  wmsDockDetentionPolicyJson                  Json?
 
   users                                       User[]
   orgUnits                                    OrgUnit[]

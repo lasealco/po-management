@@ -4,6 +4,7 @@ import { userHasGlobalGrant } from "@/lib/authz";
 import { crmAccountInScope } from "@/lib/crm-scope";
 import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { trailerChecklistFromDb } from "@/lib/wms/dock-trailer-checklist";
+import { collectDockDetentionAlerts, parseDockDetentionPolicy } from "@/lib/wms/dock-detention";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "@/lib/wms/lot-code";
 import { softReservedQtyByBalanceIds } from "@/lib/wms/soft-reservation";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
@@ -113,6 +114,7 @@ export async function getWmsDashboardPayload(
     recentMovements,
     recentMovementMatchedCount,
     laborStandards,
+    tenantDockPolicy,
   ] = await Promise.all([
     prisma.warehouse.findMany({
       where: { tenantId, isActive: true },
@@ -379,6 +381,10 @@ export async function getWmsDashboardPayload(
       orderBy: { taskType: "asc" },
       select: { taskType: true, standardMinutes: true, updatedAt: true },
     }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { wmsDockDetentionPolicyJson: true },
+    }),
   ]);
 
   const serialTrace =
@@ -447,6 +453,26 @@ export async function getWmsDashboardPayload(
       createdBy: { select: { id: true, name: true } },
     },
   });
+
+  const dockDetentionPolicyRes = parseDockDetentionPolicy(tenantDockPolicy?.wmsDockDetentionPolicyJson);
+  const dockDetentionPolicy = dockDetentionPolicyRes.ok
+    ? dockDetentionPolicyRes.value
+    : { enabled: false, freeMinutesGateToDock: 120, freeMinutesDockToDepart: 240 };
+  const dockDetentionNow = new Date();
+  const dockDetentionAlerts = collectDockDetentionAlerts(
+    dockAppointmentsRaw.map((a) => ({
+      id: a.id,
+      warehouseId: a.warehouseId,
+      dockCode: a.dockCode,
+      status: a.status,
+      gateCheckedInAt: a.gateCheckedInAt,
+      atDockAt: a.atDockAt,
+      departedAt: a.departedAt,
+    })),
+    dockDetentionPolicy,
+    dockDetentionNow,
+  );
+  const dockDetentionAlertByApptId = new Map(dockDetentionAlerts.map((x) => [x.appointmentId, x]));
 
   const workOrdersRaw = await prisma.wmsWorkOrder.findMany({
     where: { tenantId },
@@ -677,6 +703,12 @@ export async function getWmsDashboardPayload(
       standardMinutes: r.standardMinutes,
       updatedAt: r.updatedAt.toISOString(),
     })),
+    dockDetentionPolicy: {
+      enabled: dockDetentionPolicy.enabled,
+      freeMinutesGateToDock: dockDetentionPolicy.freeMinutesGateToDock,
+      freeMinutesDockToDepart: dockDetentionPolicy.freeMinutesDockToDepart,
+    },
+    dockDetentionAlerts,
     zones: zones.map((z) => ({
       id: z.id,
       code: z.code,
@@ -1095,6 +1127,7 @@ export async function getWmsDashboardPayload(
           : null,
       outboundNo: a.outboundOrder?.outboundNo ?? null,
       createdBy: { id: a.createdBy.id, name: a.createdBy.name },
+      detentionAlert: dockDetentionAlertByApptId.get(a.id) ?? null,
     }));
     })(),
     workOrders: workOrdersRaw.map((w) => ({

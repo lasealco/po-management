@@ -4,6 +4,7 @@ import {
   buildLaborTimingSummary,
   type LaborTimingSummary,
 } from "@/lib/wms/labor-standards";
+import { collectDockDetentionAlerts, parseDockDetentionPolicy } from "@/lib/wms/dock-detention";
 
 /** Percent on-hand rows flagged hold (0–100, one decimal). */
 export function computeHoldRatePercent(balancesOnHold: number, balanceRows: number): number {
@@ -31,6 +32,7 @@ export const WMS_HOME_RATE_METHODOLOGY_BF20 = [
 export const WMS_HOME_KPI_METHODOLOGY = [
   ...WMS_HOME_RATE_METHODOLOGY_BF20,
   "Labor timing (BF-53): among DONE tasks completed in the last 7 days with both startedAt and completedAt set, reports average actual elapsed minutes and average engineered standard minutes (when task.standardMinutes was snapshotted at creation). Efficiency vs standard = (avg standard ÷ avg actual) × 100 — above 100% means faster than standard; requires ≥1 task with a standard snapshot for the standard average.",
+  "Dock detention (BF-54): when tenant policy is enabled, counts open SCHEDULED appointments where elapsed minutes from gate check-in to now (not yet at dock) exceed freeMinutesGateToDock, or from at-dock to now (not yet departed) exceed freeMinutesDockToDepart. Computed on read against Tenant.wmsDockDetentionPolicyJson — not carrier billing.",
 ] as const;
 
 export type WmsHomeExecutiveRates = {
@@ -135,6 +137,8 @@ export type WmsHomeKpisPayload = {
   rateMethodology: readonly string[];
   /** BF-53 — closed tasks in last 7d with start + complete timestamps (engineered labor proxy). */
   laborTiming: LaborTimingSummary;
+  /** BF-54 — live yard detention breaches (see `rateMethodology` / BF-54 bullet). */
+  dockDetentionOpenAlerts: number;
 };
 
 export type FetchWmsHomeKpisOptions = {
@@ -212,6 +216,8 @@ export async function fetchWmsHomeKpis(
     receivingPipelineShipments,
     dockAppointmentsScheduledToday,
     laborTasksDone7d,
+    tenantDockDetentionJson,
+    dockAppointmentsForDetention,
   ] = await Promise.all([
     prisma.warehouse.findFirst({
       where: { tenantId, code: WMS_DEMO_WAREHOUSE_CODE },
@@ -274,6 +280,27 @@ export async function fetchWmsHomeKpis(
         startedAt: true,
         completedAt: true,
         standardMinutes: true,
+      },
+    }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { wmsDockDetentionPolicyJson: true },
+    }),
+    prisma.wmsDockAppointment.findMany({
+      where: {
+        tenantId,
+        ...(wh ? { warehouseId: wh } : {}),
+        status: "SCHEDULED",
+      },
+      take: 200,
+      select: {
+        id: true,
+        warehouseId: true,
+        dockCode: true,
+        status: true,
+        gateCheckedInAt: true,
+        atDockAt: true,
+        departedAt: true,
       },
     }),
   ]);
@@ -356,6 +383,16 @@ export async function fetchWmsHomeKpis(
     }),
   );
 
+  const detentionPolicyRes = parseDockDetentionPolicy(tenantDockDetentionJson?.wmsDockDetentionPolicyJson);
+  const detentionPolicyForKpis = detentionPolicyRes.ok
+    ? detentionPolicyRes.value
+    : { enabled: false, freeMinutesGateToDock: 120, freeMinutesDockToDepart: 240 };
+  const dockDetentionOpenAlerts = collectDockDetentionAlerts(
+    dockAppointmentsForDetention,
+    detentionPolicyForKpis,
+    asOf,
+  ).length;
+
   return {
     asOf: asOf.toISOString(),
     scopedWarehouseId: wh,
@@ -368,5 +405,6 @@ export async function fetchWmsHomeKpis(
     rates,
     rateMethodology: [...WMS_HOME_KPI_METHODOLOGY],
     laborTiming,
+    dockDetentionOpenAlerts,
   };
 }

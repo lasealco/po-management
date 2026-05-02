@@ -12,6 +12,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   export_warehouse_topology_graph: "setup",
   /** BF-53 — engineered minutes per `WmsTaskType`. */
   set_wms_labor_task_standard: "setup",
+  /** BF-54 — yard detention thresholds on `Tenant.wmsDockDetentionPolicyJson`. */
+  set_wms_dock_detention_policy: "setup",
   create_bin: "setup",
   update_bin_profile: "setup",
   set_product_carton_cube_hints: "setup",

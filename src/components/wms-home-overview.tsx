@@ -179,6 +179,18 @@ export async function WmsHomeOverview({
               Setup: labor standards →
             </Link>
           </li>
+          <li className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Dock detention (BF-54)</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{data.dockDetentionOpenAlerts}</p>
+            <p className="mt-1 text-xs text-zinc-600">
+              Open <span className="font-medium">SCHEDULED</span> appointments over tenant free-time thresholds (gate→dock or
+              at-dock dwell). Policy: <span className="font-mono text-[10px]">Tenant.wmsDockDetentionPolicyJson</span>. Zero when
+              policy disabled or all trailers within limits.
+            </p>
+            <Link href="/wms/operations" className="mt-2 inline-block text-xs font-semibold text-[var(--arscmp-primary)]">
+              Dock grid →
+            </Link>
+          </li>
         </ul>
 
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">

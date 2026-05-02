@@ -51,6 +51,11 @@ import {
 } from "./lot-batch-master";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
 import { laborStandardMinutesSnapshot } from "./labor-standards";
+import {
+  collectDockDetentionAlerts,
+  detectMilestonePhaseBreach,
+  parseDockDetentionPolicy,
+} from "./dock-detention";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
 import { buildSscc18DemoFromOutbound } from "./gs1-sscc";
@@ -3959,6 +3964,44 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "set_wms_dock_detention_policy") {
+    if (input.dockDetentionPolicyClear === true) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { wmsDockDetentionPolicyJson: Prisma.JsonNull },
+      });
+      return NextResponse.json({ ok: true });
+    }
+    if (typeof input.dockDetentionEnabled !== "boolean") {
+      return toApiErrorResponseFromStatus(
+        "dockDetentionEnabled (boolean) required, or dockDetentionPolicyClear true.",
+        400,
+      );
+    }
+    const draft: Record<string, unknown> = { enabled: input.dockDetentionEnabled };
+    if (input.dockDetentionFreeGateToDockMinutes !== undefined) {
+      draft.freeMinutesGateToDock = Number(input.dockDetentionFreeGateToDockMinutes);
+    }
+    if (input.dockDetentionFreeDockToDepartMinutes !== undefined) {
+      draft.freeMinutesDockToDepart = Number(input.dockDetentionFreeDockToDepartMinutes);
+    }
+    const parsed = parseDockDetentionPolicy(draft);
+    if (!parsed.ok) {
+      return toApiErrorResponseFromStatus(parsed.error, 400);
+    }
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        wmsDockDetentionPolicyJson: {
+          enabled: parsed.value.enabled,
+          freeMinutesGateToDock: parsed.value.freeMinutesGateToDock,
+          freeMinutesDockToDepart: parsed.value.freeMinutesDockToDepart,
+        },
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "create_dock_appointment") {
     const warehouseId = input.warehouseId?.trim();
     const dockCodeRaw = input.dockCode?.trim();
@@ -4339,6 +4382,8 @@ export async function handleWmsPost(
         shipmentId: true,
         doorCode: true,
         trailerChecklistJson: true,
+        gateCheckedInAt: true,
+        atDockAt: true,
       },
     });
     if (!existingRow) {
@@ -4373,6 +4418,15 @@ export async function handleWmsPost(
           ? { atDockAt: occurredAt }
           : { departedAt: occurredAt, status: "COMPLETED" };
 
+    const tenantDetentionRow = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { wmsDockDetentionPolicyJson: true },
+    });
+    const detentionParsed = parseDockDetentionPolicy(tenantDetentionRow?.wmsDockDetentionPolicyJson);
+    const detentionPolicyForEval = detentionParsed.ok
+      ? detentionParsed.value
+      : { enabled: false, freeMinutesGateToDock: 120, freeMinutesDockToDepart: 240 };
+
     await prisma.$transaction(async (tx) => {
       await tx.wmsDockAppointment.update({
         where: { id: existingRow.id },
@@ -4389,6 +4443,36 @@ export async function handleWmsPost(
           actorUserId: actorId,
         },
       });
+
+      const breach =
+        milestone === "AT_DOCK" || milestone === "DEPARTED"
+          ? detectMilestonePhaseBreach({
+              policy: detentionPolicyForEval,
+              milestone,
+              occurredAt,
+              gateCheckedInAt: existingRow.gateCheckedInAt,
+              atDockAt: milestone === "DEPARTED" ? existingRow.atDockAt : null,
+            })
+          : null;
+      if (breach) {
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            shipmentId: existingRow.shipmentId,
+            entityType: "WMS_DOCK_APPOINTMENT",
+            entityId: existingRow.id,
+            action: "dock_detention_breach",
+            payload: {
+              phase: breach.phase,
+              actualMinutes: breach.actualMinutes,
+              limitMinutes: breach.limitMinutes,
+              milestone,
+              occurredAt: occurredAt.toISOString(),
+            },
+            actorUserId: actorId,
+          },
+        });
+      }
     });
     return NextResponse.json({ ok: true });
   }

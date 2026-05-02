@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **`BF-51`** … **`BF-53`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)). **`BF-54` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
+**Status:** **`BF-51`** … **`BF-54`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)). **`BF-55` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
 
 **Rules:**
 
@@ -21,7 +21,7 @@
 | **BF-51** | Cycle count programs & variance posting | Physical inventory / cycle count row | Stable **`InventoryBalance`** + audit (**BF-13**) — **`WmsCycleCountSession`** landed ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)) |
 | **BF-52** | Slotting ABC / velocity recommendations | Slotting / bin assignment row | Executive KPIs (**BF-07**/20), movement history — **`GET /api/wms/slotting-recommendations`** landed ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)) |
 | **BF-53** | Labor standards & task timing capture | Labor / productivity row | **`WmsTask`** + **`WmsLaborTaskStandard`** landed ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)) |
-| **BF-54** | Yard detention & trailer clock alerts | Dock / yard row | **BF-05**, **BF-38** dock appointments |
+| **BF-54** | Yard detention & trailer clock alerts | Dock / yard row | **BF-05**, **BF-38** — **`Tenant.wmsDockDetentionPolicyJson`** + alerts landed ([`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)) |
 | **BF-55** | Stock transfer orders & in-transit ledger | Inter-site inventory row | Outbound/inbound linkage, **BF-36** reservations |
 | **BF-56** | Batch / cluster pick waves | Pick execution row | Wave model (**BF-15**), pick tasks |
 | **BF-57** | Nested LU aggregation & SSCC validation depth | Logistics units row | **BF-43** LUs, **BF-29** scan multiset |
@@ -73,11 +73,11 @@
 
 ---
 
-## BF-54 — Yard detention & trailer clock alerts
+## BF-54 — Yard detention & trailer clock alerts ✅ **Minimal landed**
 
 **Objective:** **Detention timers** from **`WmsDockAppointment`** milestones (check-in → unload → release) with CT/WMS alert surfacing.
 
-**Exit sketch (minimal slice):** Detention policy JSON per tenant or dock; **`evaluate_dock_detention`** cron or on-read; timeline kinds **BF-49**.
+**Shipped:** [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md) — `Tenant.wmsDockDetentionPolicyJson`; `set_wms_dock_detention_policy`; `collectDockDetentionAlerts`; payload `dockDetentionAlerts` + row `detentionAlert`; home `dockDetentionOpenAlerts`; retrospective `dock_detention_breach` on **`AT_DOCK`** / **`DEPARTED`** when segment exceeded policy (**BF-49** `ct_audit`).
 
 **Out of scope:** Carrier billing dispute automation.
 
@@ -249,4 +249,4 @@
 
 ---
 
-_Last updated: 2026-05-04 — **BF-53** labor standards + task timing ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **BF-52** slotting ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **BF-51** cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-54 … BF-70** draft stubs._
+_Last updated: 2026-05-05 — **BF-54** dock detention policy + alerts ([`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)); **BF-53** labor ([`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **BF-52** slotting ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **BF-51** cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-55 … BF-70** draft stubs._
