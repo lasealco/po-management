@@ -285,4 +285,24 @@ export type WmsBody = {
   softReservationRefType?: string | null;
   softReservationRefId?: string | null;
   softReservationNote?: string | null;
+
+  /** BF-55 — source site for `create_wms_stock_transfer`. */
+  fromWarehouseId?: string;
+  /** BF-55 — destination site for `create_wms_stock_transfer`. */
+  toWarehouseId?: string;
+  /** BF-55 — `WmsStockTransfer.id` lifecycle actions. */
+  stockTransferId?: string;
+  /** BF-55 — `WmsStockTransferLine.id` for `set_wms_stock_transfer_line` (uses `targetBinId`). */
+  stockTransferLineId?: string;
+  /** BF-55 — optional operator note / optional alternate key for note on create. */
+  stockTransferNote?: string | null;
+  /** BF-55 — optional unique doc ref (max 64); server generates `STO-…` when omitted. */
+  stockTransferReferenceCode?: string | null;
+  /** BF-55 — lines for `create_wms_stock_transfer`. */
+  stockTransferLines?: Array<{
+    productId: string;
+    quantity: number;
+    fromBinId: string;
+    lotCode?: string | null;
+  }>;
 };

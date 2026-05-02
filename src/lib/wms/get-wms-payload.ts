@@ -675,6 +675,27 @@ export async function getWmsDashboardPayload(
     },
   });
 
+  const stockTransfersRaw = await prisma.wmsStockTransfer.findMany({
+    where: {
+      tenantId,
+      status: { in: ["DRAFT", "RELEASED", "IN_TRANSIT", "RECEIVED"] },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 60,
+    include: {
+      fromWarehouse: { select: { id: true, code: true, name: true } },
+      toWarehouse: { select: { id: true, code: true, name: true } },
+      lines: {
+        orderBy: { lineNo: "asc" },
+        include: {
+          product: { select: WMS_PRODUCT_REF_SELECT },
+          fromBin: { select: { id: true, code: true, name: true } },
+          toBin: { select: { id: true, code: true, name: true } },
+        },
+      },
+    },
+  });
+
   return {
     packShipScanPolicy,
     atpByWarehouseProduct,
@@ -709,6 +730,29 @@ export async function getWmsDashboardPayload(
       freeMinutesDockToDepart: dockDetentionPolicy.freeMinutesDockToDepart,
     },
     dockDetentionAlerts,
+    stockTransfers: stockTransfersRaw.map((st) => ({
+      id: st.id,
+      referenceCode: st.referenceCode,
+      status: st.status,
+      note: st.note,
+      releasedAt: st.releasedAt?.toISOString() ?? null,
+      shippedAt: st.shippedAt?.toISOString() ?? null,
+      receivedAt: st.receivedAt?.toISOString() ?? null,
+      updatedAt: st.updatedAt.toISOString(),
+      fromWarehouse: st.fromWarehouse,
+      toWarehouse: st.toWarehouse,
+      lines: st.lines.map((ln) => ({
+        id: ln.id,
+        lineNo: ln.lineNo,
+        product: mapWmsProductJson(ln.product),
+        lotCode: ln.lotCode,
+        quantityOrdered: ln.quantityOrdered.toString(),
+        quantityShipped: ln.quantityShipped.toString(),
+        quantityReceived: ln.quantityReceived.toString(),
+        fromBin: ln.fromBin,
+        toBin: ln.toBin,
+      })),
+    })),
     zones: zones.map((z) => ({
       id: z.id,
       code: z.code,

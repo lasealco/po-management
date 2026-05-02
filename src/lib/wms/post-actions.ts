@@ -50,6 +50,12 @@ import {
   truncateLotBatchNotes,
 } from "./lot-batch-master";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
+import {
+  allocateUniqueStockTransferReferenceCode,
+  parseStockTransferLineInput,
+  truncateStockTransferNote,
+  type ParsedStockTransferLineInput,
+} from "./stock-transfer";
 import { laborStandardMinutesSnapshot } from "./labor-standards";
 import {
   collectDockDetentionAlerts,
@@ -5862,6 +5868,334 @@ export async function handleWmsPost(
       throw e;
     }
 
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_wms_stock_transfer") {
+    const fromWarehouseId = input.fromWarehouseId?.trim();
+    const toWarehouseId = input.toWarehouseId?.trim();
+    if (!fromWarehouseId || !toWarehouseId) {
+      return toApiErrorResponseFromStatus("fromWarehouseId and toWarehouseId required.", 400);
+    }
+    if (fromWarehouseId === toWarehouseId) {
+      return toApiErrorResponseFromStatus("Stock transfer requires two different warehouses.", 400);
+    }
+    const linesRaw = input.stockTransferLines;
+    if (!Array.isArray(linesRaw) || linesRaw.length === 0) {
+      return toApiErrorResponseFromStatus("stockTransferLines required (non-empty array).", 400);
+    }
+    if (linesRaw.length > 80) {
+      return toApiErrorResponseFromStatus("Too many stock transfer lines.", 400);
+    }
+    const parsedLines: ParsedStockTransferLineInput[] = [];
+    for (let i = 0; i < linesRaw.length; i++) {
+      const p = parseStockTransferLineInput(linesRaw[i]);
+      if (!p) {
+        return toApiErrorResponseFromStatus(
+          "Each stockTransferLines row needs productId, fromBinId, positive quantity.",
+          400,
+        );
+      }
+      parsedLines.push(p);
+    }
+    const note = truncateStockTransferNote(input.note ?? input.stockTransferNote);
+    const customRefRaw = input.stockTransferReferenceCode?.trim();
+    const customRef = customRefRaw && customRefRaw.length > 0 ? customRefRaw : null;
+    if (customRef && customRef.length > 64) {
+      return toApiErrorResponseFromStatus("stockTransferReferenceCode max 64 chars.", 400);
+    }
+
+    const [fromWh, toWh] = await Promise.all([
+      prisma.warehouse.findFirst({ where: { id: fromWarehouseId, tenantId }, select: { id: true } }),
+      prisma.warehouse.findFirst({ where: { id: toWarehouseId, tenantId }, select: { id: true } }),
+    ]);
+    if (!fromWh || !toWh) return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+
+    for (let i = 0; i < parsedLines.length; i++) {
+      const ln = parsedLines[i];
+      const bin = await prisma.warehouseBin.findFirst({
+        where: { id: ln.fromBinId, tenantId, warehouseId: fromWarehouseId },
+        select: { id: true },
+      });
+      if (!bin) {
+        return toApiErrorResponseFromStatus(`Line ${i + 1}: fromBinId not in from warehouse.`, 400);
+      }
+      const bal = await prisma.inventoryBalance.findFirst({
+        where: {
+          tenantId,
+          warehouseId: fromWarehouseId,
+          binId: ln.fromBinId,
+          productId: ln.productId,
+          lotCode: ln.lotCode,
+        },
+        select: { id: true, onHandQty: true, allocatedQty: true, onHold: true },
+      });
+      if (!bal || bal.onHold) {
+        return toApiErrorResponseFromStatus(`Line ${i + 1}: no balance row or on hold.`, 400);
+      }
+      const softMap = await softReservedQtyByBalanceIds(prisma, tenantId, [bal.id]);
+      const soft = softMap.get(bal.id) ?? 0;
+      const eff = new Prisma.Decimal(bal.onHandQty).minus(bal.allocatedQty).minus(soft);
+      if (eff.lt(ln.quantity)) {
+        return toApiErrorResponseFromStatus(`Line ${i + 1}: insufficient available quantity at source bin.`, 400);
+      }
+    }
+
+    try {
+      const transfer = await prisma.$transaction(async (tx) => {
+        let referenceCode: string;
+        if (customRef) {
+          const clash = await tx.wmsStockTransfer.findUnique({
+            where: { referenceCode: customRef },
+            select: { id: true },
+          });
+          if (clash) throw new Error("__STO__:REF_CLASH");
+          referenceCode = customRef;
+        } else {
+          referenceCode = await allocateUniqueStockTransferReferenceCode(tx);
+        }
+        const header = await tx.wmsStockTransfer.create({
+          data: {
+            tenantId,
+            referenceCode,
+            fromWarehouseId,
+            toWarehouseId,
+            status: "DRAFT",
+            note,
+            createdById: actorId,
+          },
+        });
+        for (let i = 0; i < parsedLines.length; i++) {
+          const ln = parsedLines[i];
+          await tx.wmsStockTransferLine.create({
+            data: {
+              tenantId,
+              transferId: header.id,
+              lineNo: i + 1,
+              productId: ln.productId,
+              lotCode: ln.lotCode,
+              quantityOrdered: ln.quantity.toString(),
+              fromBinId: ln.fromBinId,
+            },
+          });
+        }
+        return header;
+      });
+      return NextResponse.json({ ok: true, stockTransferId: transfer.id, referenceCode: transfer.referenceCode });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg === "__STO__:REF_CLASH") {
+        return toApiErrorResponseFromStatus("stockTransferReferenceCode already in use.", 409);
+      }
+      throw e;
+    }
+  }
+
+  if (action === "release_wms_stock_transfer") {
+    const sid = input.stockTransferId?.trim();
+    if (!sid) return toApiErrorResponseFromStatus("stockTransferId required.", 400);
+    const u = await prisma.wmsStockTransfer.updateMany({
+      where: { id: sid, tenantId, status: "DRAFT" },
+      data: { status: "RELEASED", releasedAt: new Date() },
+    });
+    if (u.count === 0) return toApiErrorResponseFromStatus("Transfer not found or not DRAFT.", 400);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "cancel_wms_stock_transfer") {
+    const sid = input.stockTransferId?.trim();
+    if (!sid) return toApiErrorResponseFromStatus("stockTransferId required.", 400);
+    const u = await prisma.wmsStockTransfer.updateMany({
+      where: { id: sid, tenantId, status: { in: ["DRAFT", "RELEASED"] } },
+      data: { status: "CANCELLED" },
+    });
+    if (u.count === 0) {
+      return toApiErrorResponseFromStatus(
+        "Transfer not found or cannot cancel (not DRAFT/RELEASED, or already shipped).",
+        400,
+      );
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_wms_stock_transfer_line") {
+    const lineId = input.stockTransferLineId?.trim();
+    const targetBinId = input.targetBinId?.trim();
+    if (!lineId || !targetBinId) {
+      return toApiErrorResponseFromStatus("stockTransferLineId and targetBinId required.", 400);
+    }
+    const line = await prisma.wmsStockTransferLine.findFirst({
+      where: { id: lineId, tenantId },
+      include: { transfer: { select: { id: true, toWarehouseId: true, status: true } } },
+    });
+    if (!line) return toApiErrorResponseFromStatus("Line not found.", 404);
+    if (line.transfer.status !== "RELEASED" && line.transfer.status !== "IN_TRANSIT") {
+      return toApiErrorResponseFromStatus("Transfer must be RELEASED or IN_TRANSIT to set receive bin.", 400);
+    }
+    const bin = await prisma.warehouseBin.findFirst({
+      where: { id: targetBinId, tenantId, warehouseId: line.transfer.toWarehouseId },
+      select: { id: true },
+    });
+    if (!bin) {
+      return toApiErrorResponseFromStatus("targetBinId must be in the transfer destination warehouse.", 400);
+    }
+    await prisma.wmsStockTransferLine.update({
+      where: { id: lineId },
+      data: { toBinId: targetBinId },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "ship_wms_stock_transfer") {
+    const sid = input.stockTransferId?.trim();
+    if (!sid) return toApiErrorResponseFromStatus("stockTransferId required.", 400);
+    const tr = await prisma.wmsStockTransfer.findFirst({
+      where: { id: sid, tenantId, status: "RELEASED" },
+      include: { lines: { orderBy: { lineNo: "asc" } } },
+    });
+    if (!tr) return toApiErrorResponseFromStatus("Transfer not found or not RELEASED.", 400);
+    for (const line of tr.lines) {
+      if (new Prisma.Decimal(line.quantityShipped).gt(0)) {
+        return toApiErrorResponseFromStatus("Transfer already shipped — refresh state.", 400);
+      }
+    }
+    try {
+      await prisma.$transaction(async (tx) => {
+        const fresh = await tx.wmsStockTransfer.findFirst({
+          where: { id: sid, tenantId, status: "RELEASED" },
+          include: { lines: { orderBy: { lineNo: "asc" } } },
+        });
+        if (!fresh) throw new Error("__STO__:GONE");
+        for (const line of fresh.lines) {
+          const qtyOrd = new Prisma.Decimal(line.quantityOrdered);
+          const bal = await tx.inventoryBalance.findFirst({
+            where: {
+              tenantId,
+              warehouseId: fresh.fromWarehouseId,
+              binId: line.fromBinId,
+              productId: line.productId,
+              lotCode: line.lotCode,
+            },
+            select: { id: true, onHandQty: true, allocatedQty: true, onHold: true },
+          });
+          if (!bal || bal.onHold) throw new Error("__STO__:BAD_BAL");
+          const softMap = await softReservedQtyByBalanceIds(tx, tenantId, [bal.id]);
+          const soft = softMap.get(bal.id) ?? 0;
+          const eff = new Prisma.Decimal(bal.onHandQty).minus(bal.allocatedQty).minus(soft);
+          if (eff.lt(qtyOrd)) throw new Error("__STO__:SHORT");
+          await tx.inventoryBalance.update({
+            where: { id: bal.id },
+            data: { onHandQty: { decrement: qtyOrd.toString() } },
+          });
+          await tx.inventoryMovement.create({
+            data: {
+              tenantId,
+              warehouseId: fresh.fromWarehouseId,
+              binId: line.fromBinId,
+              productId: line.productId,
+              movementType: "STO_SHIP",
+              quantity: qtyOrd.toString(),
+              referenceType: "WMS_STOCK_TRANSFER",
+              referenceId: fresh.id,
+              note: `STO line ${line.lineNo}`,
+              createdById: actorId,
+            },
+          });
+          await tx.wmsStockTransferLine.update({
+            where: { id: line.id },
+            data: { quantityShipped: qtyOrd.toString() },
+          });
+        }
+        await tx.wmsStockTransfer.update({
+          where: { id: fresh.id },
+          data: { status: "IN_TRANSIT", shippedAt: new Date() },
+        });
+      });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg === "__STO__:GONE") return toApiErrorResponseFromStatus("Transfer state changed — retry.", 409);
+      if (msg === "__STO__:BAD_BAL") {
+        return toApiErrorResponseFromStatus("Cannot ship: balance missing or on hold.", 400);
+      }
+      if (msg === "__STO__:SHORT") {
+        return toApiErrorResponseFromStatus("Cannot ship: insufficient available quantity.", 400);
+      }
+      throw e;
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "receive_wms_stock_transfer") {
+    const sid = input.stockTransferId?.trim();
+    if (!sid) return toApiErrorResponseFromStatus("stockTransferId required.", 400);
+    const tr = await prisma.wmsStockTransfer.findFirst({
+      where: { id: sid, tenantId, status: "IN_TRANSIT" },
+      include: { lines: { orderBy: { lineNo: "asc" } } },
+    });
+    if (!tr) return toApiErrorResponseFromStatus("Transfer not found or not IN_TRANSIT.", 400);
+    for (const line of tr.lines) {
+      if (!line.toBinId) {
+        return toApiErrorResponseFromStatus(
+          `Line ${line.lineNo}: set receive bin via set_wms_stock_transfer_line first.`,
+          400,
+        );
+      }
+      const qs = new Prisma.Decimal(line.quantityShipped);
+      const qr = new Prisma.Decimal(line.quantityReceived);
+      if (qs.lte(0)) {
+        return toApiErrorResponseFromStatus(`Line ${line.lineNo}: invalid shipped quantity.`, 400);
+      }
+      if (qr.gt(0)) {
+        return toApiErrorResponseFromStatus("Transfer already received (minimal slice: single receive).", 400);
+      }
+    }
+    await prisma.$transaction(async (tx) => {
+      for (const line of tr.lines) {
+        const qty = new Prisma.Decimal(line.quantityShipped);
+        const destBinId = line.toBinId as string;
+        await tx.inventoryBalance.upsert({
+          where: {
+            warehouseId_binId_productId_lotCode: {
+              warehouseId: tr.toWarehouseId,
+              binId: destBinId,
+              productId: line.productId,
+              lotCode: line.lotCode,
+            },
+          },
+          create: {
+            tenantId,
+            warehouseId: tr.toWarehouseId,
+            binId: destBinId,
+            productId: line.productId,
+            lotCode: line.lotCode,
+            onHandQty: qty.toString(),
+          },
+          update: { onHandQty: { increment: qty.toString() } },
+        });
+        await tx.inventoryMovement.create({
+          data: {
+            tenantId,
+            warehouseId: tr.toWarehouseId,
+            binId: destBinId,
+            productId: line.productId,
+            movementType: "STO_RECEIVE",
+            quantity: qty.toString(),
+            referenceType: "WMS_STOCK_TRANSFER",
+            referenceId: tr.id,
+            note: `STO line ${line.lineNo} receive`,
+            createdById: actorId,
+          },
+        });
+        await tx.wmsStockTransferLine.update({
+          where: { id: line.id },
+          data: { quantityReceived: qty.toString() },
+        });
+      }
+      await tx.wmsStockTransfer.update({
+        where: { id: tr.id },
+        data: { status: "RECEIVED", receivedAt: new Date() },
+      });
+    });
     return NextResponse.json({ ok: true });
   }
 

@@ -62,4 +62,13 @@ describe("wmsMutationTierForPostAction", () => {
   it("maps BF-54 dock detention policy to setup tier", () => {
     expect(wmsMutationTierForPostAction("set_wms_dock_detention_policy")).toBe("setup");
   });
+
+  it("maps BF-55 stock transfer actions to operations tier", () => {
+    expect(wmsMutationTierForPostAction("create_wms_stock_transfer")).toBe("operations");
+    expect(wmsMutationTierForPostAction("release_wms_stock_transfer")).toBe("operations");
+    expect(wmsMutationTierForPostAction("cancel_wms_stock_transfer")).toBe("operations");
+    expect(wmsMutationTierForPostAction("set_wms_stock_transfer_line")).toBe("operations");
+    expect(wmsMutationTierForPostAction("ship_wms_stock_transfer")).toBe("operations");
+    expect(wmsMutationTierForPostAction("receive_wms_stock_transfer")).toBe("operations");
+  });
 });

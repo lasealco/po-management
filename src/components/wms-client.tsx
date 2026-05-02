@@ -128,6 +128,30 @@ type WmsData = {
     limitMinutes: number;
     phaseStartedAt: string;
   }>;
+  /** BF-55 — stock transfer orders (inter-warehouse). */
+  stockTransfers?: Array<{
+    id: string;
+    referenceCode: string;
+    status: "DRAFT" | "RELEASED" | "IN_TRANSIT" | "RECEIVED" | "CANCELLED";
+    note: string | null;
+    releasedAt: string | null;
+    shippedAt: string | null;
+    receivedAt: string | null;
+    updatedAt: string;
+    fromWarehouse: { id: string; code: string | null; name: string };
+    toWarehouse: { id: string; code: string | null; name: string };
+    lines: Array<{
+      id: string;
+      lineNo: number;
+      product: WmsProductRef;
+      lotCode: string;
+      quantityOrdered: string;
+      quantityShipped: string;
+      quantityReceived: string;
+      fromBin: { id: string; code: string; name: string };
+      toBin: { id: string; code: string; name: string } | null;
+    }>;
+  }>;
   zones: Array<{
     id: string;
     code: string;
@@ -460,7 +484,7 @@ type WmsData = {
   }>;
   recentMovements: Array<{
     id: string;
-    movementType: "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT";
+    movementType: InventoryMovementType;
     quantity: string;
     referenceType: string | null;
     referenceId: string | null;
@@ -669,6 +693,8 @@ const STOCK_LEDGER_MV_TYPE_PRESETS: Array<{ label: string; value: "" | Inventory
   { label: "Pick", value: "PICK" },
   { label: "Adjustment", value: "ADJUSTMENT" },
   { label: "Shipment", value: "SHIPMENT" },
+  { label: "STO ship (BF-55)", value: "STO_SHIP" },
+  { label: "STO receive (BF-55)", value: "STO_RECEIVE" },
 ];
 
 const INBOUND_MILESTONE_LOG_OPTIONS: Array<{ value: string; label: string }> = [
@@ -815,9 +841,7 @@ export function WmsClient({
   const [error, setError] = useState<string | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
   const [pickWaveCartonCapDraft, setPickWaveCartonCapDraft] = useState("");
-  const [movementTypeFilter, setMovementTypeFilter] = useState<
-    "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT"
-  >("");
+  const [movementTypeFilter, setMovementTypeFilter] = useState<"" | InventoryMovementType>("");
   const [newZoneCode, setNewZoneCode] = useState("");
   const [newZoneName, setNewZoneName] = useState("");
   const [newZoneType, setNewZoneType] = useState<
@@ -862,6 +886,12 @@ export function WmsClient({
   const [dockDetentionGateMin, setDockDetentionGateMin] = useState("120");
   const [dockDetentionDwellMin, setDockDetentionDwellMin] = useState("240");
   const [dockDetentionBusy, setDockDetentionBusy] = useState(false);
+  const [stoFromWh, setStoFromWh] = useState("");
+  const [stoToWh, setStoToWh] = useState("");
+  const [stoSourceBalanceId, setStoSourceBalanceId] = useState("");
+  const [stoQty, setStoQty] = useState("1");
+  const [stoNote, setStoNote] = useState("");
+  const [stoReceiveDraft, setStoReceiveDraft] = useState<Record<string, string>>({});
 
   const [putawayShipmentItemId, setPutawayShipmentItemId] = useState("");
   const [putawayQty, setPutawayQty] = useState("");
@@ -1459,6 +1489,17 @@ export function WmsClient({
     [data?.cycleCountSessions, selectedWarehouseId],
   );
 
+  const stockTransfersForWarehouse = useMemo(
+    () =>
+      (data?.stockTransfers ?? []).filter(
+        (t) =>
+          !selectedWarehouseId ||
+          t.fromWarehouse.id === selectedWarehouseId ||
+          t.toWarehouse.id === selectedWarehouseId,
+      ),
+    [data?.stockTransfers, selectedWarehouseId],
+  );
+
   const workOrdersForWarehouse = useMemo(
     () =>
       (data?.workOrders ?? []).filter(
@@ -1666,9 +1707,7 @@ export function WmsClient({
     const sortDir = filters.sortDir;
     if (!warehouseId) stockWarehouseDefaultApplied.current = true;
     setSelectedWarehouseId(warehouseId);
-    setMovementTypeFilter(
-      movementType as "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT",
-    );
+    setMovementTypeFilter(movementType as "" | InventoryMovementType);
     setLedgerSince(sinceIso);
     setLedgerUntil(untilIso);
     setLedgerLimit(limit);
@@ -1917,9 +1956,7 @@ export function WmsClient({
             <select
               value={movementTypeFilter}
               onChange={(e) =>
-                setMovementTypeFilter(
-                  e.target.value as "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT",
-                )
+                setMovementTypeFilter(e.target.value as "" | InventoryMovementType)
               }
               className="rounded border border-zinc-300 px-3 py-2 text-sm"
             >
@@ -1929,6 +1966,8 @@ export function WmsClient({
               <option value="PICK">PICK</option>
               <option value="ADJUSTMENT">ADJUSTMENT</option>
               <option value="SHIPMENT">SHIPMENT</option>
+              <option value="STO_SHIP">STO_SHIP (BF-55)</option>
+              <option value="STO_RECEIVE">STO_RECEIVE (BF-55)</option>
             </select>
           </label>
           <div className="w-full">
@@ -1940,11 +1979,7 @@ export function WmsClient({
                   <button
                     key={p.label}
                     type="button"
-                    onClick={() =>
-                      setMovementTypeFilter(
-                        p.value as "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT",
-                      )
-                    }
+                    onClick={() => setMovementTypeFilter(p.value)}
                     className={`rounded-full border px-3 py-1 text-xs font-medium ${
                       active
                         ? "border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] text-white"
@@ -7589,6 +7624,237 @@ export function WmsClient({
                     Complete wave
                   </button>
                 ) : null}
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
+        <h2 className="mt-2 text-sm font-semibold text-zinc-900">Stock transfer orders (BF-55)</h2>
+        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-600">
+          Inter-site moves: <span className="font-medium">DRAFT</span> → <span className="font-medium">RELEASED</span> →{" "}
+          <span className="font-medium">Ship</span> posts <span className="font-medium">STO_SHIP</span> and marks{" "}
+          <span className="font-medium">IN_TRANSIT</span>. Set a receive bin per line in the destination warehouse, then{" "}
+          <span className="font-medium">Receive</span> posts <span className="font-medium">STO_RECEIVE</span>. Rows below respect the
+          warehouse filter when set.
+        </p>
+        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-zinc-100 pt-4">
+          <label className="text-xs text-zinc-600">
+            From warehouse
+            <select
+              value={stoFromWh}
+              onChange={(e) => {
+                setStoFromWh(e.target.value);
+                setStoSourceBalanceId("");
+              }}
+              className="mt-1 block min-w-[12rem] rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select…</option>
+              {(data?.warehouses ?? []).map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.code ?? w.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-600">
+            To warehouse
+            <select
+              value={stoToWh}
+              onChange={(e) => setStoToWh(e.target.value)}
+              className="mt-1 block min-w-[12rem] rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select…</option>
+              {(data?.warehouses ?? [])
+                .filter((w) => !stoFromWh || w.id !== stoFromWh)
+                .map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.code ?? w.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-600">
+            Source balance (bin · SKU · lot)
+            <select
+              value={stoSourceBalanceId}
+              onChange={(e) => setStoSourceBalanceId(e.target.value)}
+              className="mt-1 block min-w-[18rem] rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select…</option>
+              {(data?.balances ?? [])
+                .filter((b) => !stoFromWh || b.warehouse.id === stoFromWh)
+                .map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.bin.code} · {(b.product.productCode || b.product.sku || "SKU").slice(0, 12)} · on-hand {b.onHandQty}
+                    {b.lotCode ? ` · ${b.lotCode}` : ""}
+                    {Boolean(b.onHold) ? " · HOLD" : ""}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-600">
+            Qty
+            <input
+              value={stoQty}
+              onChange={(e) => setStoQty(e.target.value)}
+              className="mt-1 block w-24 rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="text-xs text-zinc-600">
+            Note (optional)
+            <input
+              value={stoNote}
+              onChange={(e) => setStoNote(e.target.value)}
+              className="mt-1 block min-w-[12rem] rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={!canEdit || busy || !stoFromWh || !stoToWh || !stoSourceBalanceId}
+            onClick={() => {
+              const bal = data.balances.find((x) => x.id === stoSourceBalanceId);
+              if (!bal) return;
+              const q = Number(stoQty);
+              if (!Number.isFinite(q) || q <= 0) return;
+              void runAction({
+                action: "create_wms_stock_transfer",
+                fromWarehouseId: stoFromWh,
+                toWarehouseId: stoToWh,
+                stockTransferLines: [
+                  {
+                    productId: bal.product.id,
+                    fromBinId: bal.bin.id,
+                    quantity: q,
+                    lotCode: bal.lotCode || null,
+                  },
+                ],
+                stockTransferNote: stoNote.trim() || null,
+              });
+            }}
+            className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            Create STO (draft)
+          </button>
+        </div>
+        <div className="mt-6 space-y-4">
+          {stockTransfersForWarehouse.length === 0 ? (
+            <p className="text-xs text-zinc-500">No stock transfers for this warehouse filter.</p>
+          ) : (
+            stockTransfersForWarehouse.map((st) => (
+              <div key={st.id} className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-semibold text-zinc-900">{st.referenceCode}</span>
+                  <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-zinc-800">
+                    {st.status}
+                  </span>
+                  <span className="text-xs text-zinc-600">
+                    {st.fromWarehouse.code ?? st.fromWarehouse.name} → {st.toWarehouse.code ?? st.toWarehouse.name}
+                  </span>
+                </div>
+                <ul className="mt-2 space-y-1 text-xs text-zinc-700">
+                  {st.lines.map((ln) => (
+                    <li key={ln.id}>
+                      Line {ln.lineNo}: {(ln.product.productCode || ln.product.sku || "").slice(0, 16)} ord {ln.quantityOrdered}{" "}
+                      ship {ln.quantityShipped} recv {ln.quantityReceived} · from {ln.fromBin.code}
+                      {ln.toBin ? ` → to ${ln.toBin.code}` : " · receive bin unset"}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {st.status === "DRAFT" && canEdit ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void runAction({ action: "release_wms_stock_transfer", stockTransferId: st.id })}
+                        className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                      >
+                        Release
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void runAction({ action: "cancel_wms_stock_transfer", stockTransferId: st.id })}
+                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-40"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : null}
+                  {st.status === "RELEASED" && canEdit ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void runAction({ action: "ship_wms_stock_transfer", stockTransferId: st.id })}
+                        className="rounded-lg border border-emerald-700 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+                      >
+                        Ship (in transit)
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void runAction({ action: "cancel_wms_stock_transfer", stockTransferId: st.id })}
+                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-40"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : null}
+                  {st.status === "IN_TRANSIT" && canEdit ? (
+                    <>
+                      {st.lines.map((ln) => (
+                        <div key={ln.id} className="flex flex-wrap items-center gap-2 border-t border-zinc-200/80 pt-2 first:mt-2 first:border-t-0 first:pt-0">
+                          <span className="text-[11px] font-medium text-zinc-600">Line {ln.lineNo} → receive bin</span>
+                          <select
+                            value={stoReceiveDraft[ln.id] ?? ln.toBin?.id ?? ""}
+                            onChange={(e) => setStoReceiveDraft((m) => ({ ...m, [ln.id]: e.target.value }))}
+                            className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                          >
+                            <option value="">Select bin ({st.toWarehouse.code ?? st.toWarehouse.name})</option>
+                            {(data?.bins ?? [])
+                              .filter((b) => b.warehouse.id === st.toWarehouse.id)
+                              .map((b) => (
+                                <option key={b.id} value={b.id}>
+                                  {b.code}
+                                </option>
+                              ))}
+                          </select>
+                          <button
+                            type="button"
+                            disabled={busy || !(stoReceiveDraft[ln.id] ?? ln.toBin?.id)}
+                            onClick={() => {
+                              const bid = stoReceiveDraft[ln.id] ?? ln.toBin?.id;
+                              if (!bid) return;
+                              void runAction({
+                                action: "set_wms_stock_transfer_line",
+                                stockTransferLineId: ln.id,
+                                targetBinId: bid,
+                              });
+                            }}
+                            className="rounded border border-zinc-300 bg-white px-2 py-1 text-[11px] font-medium disabled:opacity-40"
+                          >
+                            Save bin
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        disabled={busy || st.lines.some((ln) => !ln.toBin)}
+                        onClick={() => void runAction({ action: "receive_wms_stock_transfer", stockTransferId: st.id })}
+                        className="mt-2 rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                      >
+                        Receive all lines
+                      </button>
+                      <p className="mt-1 w-full text-[11px] text-zinc-500">
+                        Save a destination bin for every line, then receive (single receive in minimal slice).
+                      </p>
+                    </>
+                  ) : null}
+                </div>
               </div>
             ))
           )}

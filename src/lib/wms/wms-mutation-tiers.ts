@@ -29,6 +29,14 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
 
   create_replenishment_tasks: "operations",
 
+  /** BF-55 — inter-warehouse stock transfer order (STO). */
+  create_wms_stock_transfer: "operations",
+  release_wms_stock_transfer: "operations",
+  cancel_wms_stock_transfer: "operations",
+  set_wms_stock_transfer_line: "operations",
+  ship_wms_stock_transfer: "operations",
+  receive_wms_stock_transfer: "operations",
+
   /** BF-53 — optional floor clock on OPEN tasks before complete. */
   start_wms_task: "operations",
 

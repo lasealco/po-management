@@ -33,7 +33,21 @@ When scoped:
 - True **OTIF %** (delivered vs promised by lane/customer), **labor productivity** (hours, engineered standards), **slotting optimization** (ABC, velocity curves, cubic utilization).
 - Local-site **midnight** for dock “today” (still **UTC** in WE-09/BF-07 — see [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md)).
 
-_Last updated: 2026-05-05 — **BF-54** dock detention open-alert count on `fetchWmsHomeKpis` (`dockDetentionOpenAlerts`, [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)); **2026-05-04** — **BF-53** labor timing KPI extension (`laborTiming`, [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **2026-05-02** — **BF-20** computed proxy rates on `fetchWmsHomeKpis` (`rates` + `rateMethodology`); **BF-07** narratives unchanged._
+_Last updated: 2026-04-29 — **BF-55** stock transfer in-transit count on `fetchWmsHomeKpis` (`stockTransfersInTransit`, [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md)); **2026-05-05** — **BF-54** dock detention (`dockDetentionOpenAlerts`, [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md)); **2026-05-04** — **BF-53** labor timing (`laborTiming`, [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md)); **2026-05-02** — **BF-20** rate proxies (`rates` + `rateMethodology`); **BF-07** narratives unchanged._
+
+---
+
+## BF-55 — Stock transfers in transit (minimal)
+
+**Purpose:** Surface a **count of inter-warehouse stock transfers** in **`IN_TRANSIT`** — aligns WE-09 home payload with BF-55 ship/receive ledger work. Not landed cost, dedicated in-transit balance rows, or multi-leg ocean routing.
+
+| Field | Definition |
+|-------|------------|
+| **`stockTransfersInTransit`** | Count of **`WmsStockTransfer`** with **`status = IN_TRANSIT`**, tenant-scoped; when **`wh` / `warehouseId`** is set, only transfers whose **from** or **to** warehouse matches. |
+
+**Doc:** [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md).
+
+_Methodology string:_ shared **`WMS_HOME_KPI_METHODOLOGY`** bullet in `wms-home-kpis.ts`.
 
 ---
 
@@ -43,7 +57,7 @@ _Last updated: 2026-05-05 — **BF-54** dock detention open-alert count on `fetc
 
 **Doc:** [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md).
 
-_Last updated: 2026-05-05 — **BF-54** `dockDetentionOpenAlerts` on `fetchWmsHomeKpis`; **BF-53**/**BF-20**/**BF-07** unchanged aside from shared methodology array._
+_Last updated: 2026-04-29 — **BF-55** `stockTransfersInTransit` + methodology bullet; **2026-05-05** — **BF-54** `dockDetentionOpenAlerts` on `fetchWmsHomeKpis`; **BF-53**/**BF-20**/**BF-07** unchanged aside from shared methodology array._
 
 ---
 
@@ -72,4 +86,4 @@ _Last updated: 2026-05-02 — BF-20 minimal rates shipped._
 
 **Doc:** [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md).
 
-_Last updated: 2026-05-05 — **BF-54** adds BF-54 methodology bullet + **`dockDetentionOpenAlerts`**; **2026-05-04** — **BF-53** labor timing on `fetchWmsHomeKpis`; **BF-20** rate proxies unchanged aside from shared methodology array._
+_Last updated: 2026-04-29 — **BF-55** adds STO-in-transit methodology bullet + **`stockTransfersInTransit`**; **2026-05-05** — **BF-54** adds dock-detention methodology bullet + **`dockDetentionOpenAlerts`**; **2026-05-04** — **BF-53** labor timing on `fetchWmsHomeKpis`; **BF-20** rate proxies unchanged aside from shared methodology array._

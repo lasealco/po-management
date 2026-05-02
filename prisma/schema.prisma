@@ -73,6 +73,8 @@ model Tenant {
   wmsLaborTaskStandards                       WmsLaborTaskStandard[]
   wmsCycleCountSessions                       WmsCycleCountSession[]
   wmsCycleCountLines                          WmsCycleCountLine[]
+  wmsStockTransfers                           WmsStockTransfer[]
+  wmsStockTransferLines                       WmsStockTransferLine[]
   wmsWaves                                    WmsWave[]
   replenishmentRules                          ReplenishmentRule[]
   outboundOrders                              OutboundOrder[]
@@ -2580,6 +2582,7 @@ model User {
   inventoryMovementsCreated                           InventoryMovement[]
   wmsTasksCreated                                     WmsTask[]                                    @relation("WmsTaskCreatedBy")
   wmsCycleCountSessionsCreated                       WmsCycleCountSession[]                       @relation("WmsCycleCountSessionCreatedBy")
+  wmsStockTransfersCreated                         WmsStockTransfer[]                           @relation("WmsStockTransferCreatedBy")
   wmsInventorySoftReservationsCreated                 WmsInventorySoftReservation[]                @relation("WmsInventorySoftReservationCreatedBy")
   wmsTasksCompleted                                   WmsTask[]                                    @relation("WmsTaskCompletedBy")
   wmsWavesCreated                                     WmsWave[]
@@ -3374,6 +3377,7 @@ model Product {
   salesOrderLines    SalesOrderLine[]
   inventoryBalances   InventoryBalance[]
   wmsCycleCountLines  WmsCycleCountLine[]
+  wmsStockTransferLines WmsStockTransferLine[]
   inventoryMovements  InventoryMovement[]
   wmsInventorySerials WmsInventorySerial[]
   wmsBillingEvents    WmsBillingEvent[]
@@ -4539,6 +4543,8 @@ model Warehouse {
   wmsBillingEvents               WmsBillingEvent[]
   wmsReceivingAccrualStagings    WmsReceivingAccrualStaging[]
   wmsInventorySoftReservations   WmsInventorySoftReservation[]
+  wmsStockTransfersFrom          WmsStockTransfer[]             @relation("WmsStockTransferFromWarehouse")
+  wmsStockTransfersTo            WmsStockTransfer[]             @relation("WmsStockTransferToWarehouse")
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -4655,6 +4661,8 @@ model WarehouseBin {
   inventoryMovements InventoryMovement[]
   wmsCycleCountLines WmsCycleCountLine[]
   wmsTasks           WmsTask[]
+  wmsStockTransferLinesFrom WmsStockTransferLine[] @relation("WmsStockTransferLineFromBin")
+  wmsStockTransferLinesTo   WmsStockTransferLine[] @relation("WmsStockTransferLineToBin")
 
   @@unique([warehouseId, code])
   @@index([tenantId, warehouseId])
@@ -4700,6 +4708,10 @@ enum InventoryMovementType {
   PICK
   ADJUSTMENT
   SHIPMENT
+  /// BF-55 — stock transfer order: leave source warehouse bin.
+  STO_SHIP
+  /// BF-55 — stock transfer order: receive into destination warehouse bin.
+  STO_RECEIVE
 }
 
 model InventoryBalance {
@@ -4776,6 +4788,66 @@ model InventoryMovement {
 
   @@index([tenantId, warehouseId, createdAt])
   @@index([referenceType, referenceId])
+}
+
+enum WmsStockTransferStatus {
+  DRAFT
+  RELEASED
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+/// BF-55 — inter-warehouse stock transfer order (minimal STO + in-transit state).
+model WmsStockTransfer {
+  id              String                 @id @default(cuid())
+  tenantId        String
+  referenceCode   String                 @unique @db.VarChar(64)
+  fromWarehouseId String
+  toWarehouseId   String
+  status          WmsStockTransferStatus @default(DRAFT)
+  note            String?                @db.VarChar(500)
+  createdById     String
+  releasedAt      DateTime?
+  shippedAt       DateTime?
+  receivedAt      DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fromWarehouse Warehouse              @relation("WmsStockTransferFromWarehouse", fields: [fromWarehouseId], references: [id], onDelete: Restrict)
+  toWarehouse   Warehouse              @relation("WmsStockTransferToWarehouse", fields: [toWarehouseId], references: [id], onDelete: Restrict)
+  createdBy     User                   @relation("WmsStockTransferCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  lines         WmsStockTransferLine[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, fromWarehouseId])
+  @@index([tenantId, toWarehouseId])
+}
+
+model WmsStockTransferLine {
+  id               String   @id @default(cuid())
+  tenantId         String
+  transferId       String
+  lineNo           Int
+  productId        String
+  lotCode          String   @default("") @db.VarChar(120)
+  quantityOrdered  Decimal  @db.Decimal(14, 3)
+  quantityShipped  Decimal  @default(0) @db.Decimal(14, 3)
+  quantityReceived Decimal  @default(0) @db.Decimal(14, 3)
+  fromBinId        String
+  toBinId          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transfer WmsStockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product  Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  fromBin  WarehouseBin     @relation("WmsStockTransferLineFromBin", fields: [fromBinId], references: [id], onDelete: Restrict)
+  toBin    WarehouseBin?    @relation("WmsStockTransferLineToBin", fields: [toBinId], references: [id], onDelete: SetNull)
+
+  @@unique([transferId, lineNo])
+  @@index([tenantId, transferId])
 }
 
 enum WmsCycleCountSessionStatus {

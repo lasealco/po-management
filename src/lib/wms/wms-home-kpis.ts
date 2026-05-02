@@ -33,6 +33,7 @@ export const WMS_HOME_KPI_METHODOLOGY = [
   ...WMS_HOME_RATE_METHODOLOGY_BF20,
   "Labor timing (BF-53): among DONE tasks completed in the last 7 days with both startedAt and completedAt set, reports average actual elapsed minutes and average engineered standard minutes (when task.standardMinutes was snapshotted at creation). Efficiency vs standard = (avg standard ÷ avg actual) × 100 — above 100% means faster than standard; requires ≥1 task with a standard snapshot for the standard average.",
   "Dock detention (BF-54): when tenant policy is enabled, counts open SCHEDULED appointments where elapsed minutes from gate check-in to now (not yet at dock) exceed freeMinutesGateToDock, or from at-dock to now (not yet departed) exceed freeMinutesDockToDepart. Computed on read against Tenant.wmsDockDetentionPolicyJson — not carrier billing.",
+  "Stock transfers in transit (BF-55): counts `WmsStockTransfer` rows in IN_TRANSIT for the tenant (optional warehouse scope: transfer touches selected warehouse as source or destination). STO_SHIP / STO_RECEIVE movements post to the ledger; not landed cost or multi-leg ocean transfers.",
 ] as const;
 
 export type WmsHomeExecutiveRates = {
@@ -139,6 +140,8 @@ export type WmsHomeKpisPayload = {
   laborTiming: LaborTimingSummary;
   /** BF-54 — live yard detention breaches (see `rateMethodology` / BF-54 bullet). */
   dockDetentionOpenAlerts: number;
+  /** BF-55 — open inter-warehouse transfers awaiting receipt (`IN_TRANSIT`). */
+  stockTransfersInTransit: number;
 };
 
 export type FetchWmsHomeKpisOptions = {
@@ -218,6 +221,7 @@ export async function fetchWmsHomeKpis(
     laborTasksDone7d,
     tenantDockDetentionJson,
     dockAppointmentsForDetention,
+    stockTransfersInTransitCount,
   ] = await Promise.all([
     prisma.warehouse.findFirst({
       where: { tenantId, code: WMS_DEMO_WAREHOUSE_CODE },
@@ -301,6 +305,13 @@ export async function fetchWmsHomeKpis(
         gateCheckedInAt: true,
         atDockAt: true,
         departedAt: true,
+      },
+    }),
+    prisma.wmsStockTransfer.count({
+      where: {
+        tenantId,
+        status: "IN_TRANSIT",
+        ...(wh ? { OR: [{ fromWarehouseId: wh }, { toWarehouseId: wh }] } : {}),
       },
     }),
   ]);
@@ -406,5 +417,6 @@ export async function fetchWmsHomeKpis(
     rateMethodology: [...WMS_HOME_KPI_METHODOLOGY],
     laborTiming,
     dockDetentionOpenAlerts,
+    stockTransfersInTransit: stockTransfersInTransitCount,
   };
 }

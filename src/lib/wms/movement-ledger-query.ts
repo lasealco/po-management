@@ -6,6 +6,8 @@ export const MOVEMENT_LEDGER_TYPES: InventoryMovementType[] = [
   "PICK",
   "ADJUSTMENT",
   "SHIPMENT",
+  "STO_SHIP",
+  "STO_RECEIVE",
 ];
 
 export type ParsedMovementLedgerQuery = {
