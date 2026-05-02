@@ -8,6 +8,7 @@ import { getWmsDashboardPayload } from "@/lib/wms/get-wms-payload";
 import { fetchWmsHomeKpis } from "@/lib/wms/wms-home-kpis";
 import { parseMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { handleWmsPost } from "@/lib/wms/post-actions";
+import { fetchWarehouseTopologyGraph } from "@/lib/wms/warehouse-topology-graph";
 import { gateWmsPostMutation } from "@/lib/wms/wms-mutation-grants";
 import type { WmsBody } from "@/lib/wms/wms-body";
 
@@ -31,6 +32,21 @@ export async function GET(request: Request) {
     const wh = url.searchParams.get("warehouseId") ?? url.searchParams.get("wh");
     const kpis = await fetchWmsHomeKpis(tenant.id, { warehouseId: wh || undefined });
     return NextResponse.json(kpis);
+  }
+  if (url.searchParams.get("topologyGraph") === "1") {
+    const wid = (url.searchParams.get("warehouseId") ?? url.searchParams.get("wh") ?? "").trim();
+    if (!wid) {
+      return toApiErrorResponse({
+        error: "warehouseId (or wh) query parameter required.",
+        code: "VALIDATION_ERROR",
+        status: 400,
+      });
+    }
+    const graph = await fetchWarehouseTopologyGraph({ tenantId: tenant.id, warehouseId: wid });
+    if (!graph) {
+      return toApiErrorResponse({ error: "Warehouse not found.", code: "NOT_FOUND", status: 404 });
+    }
+    return NextResponse.json(graph);
   }
   const movementLedger = parseMovementLedgerQuery(url.searchParams);
   const tracePid = url.searchParams.get("traceProductId")?.trim();

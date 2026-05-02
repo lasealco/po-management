@@ -9,6 +9,7 @@ describe("WE-08 WMS_API_ENDPOINT_ACCESS", () => {
       "api-wms-billing",
       "api-wms-saved-ledger-views",
       "api-wms-saved-ledger-views-id",
+      "api-wms-receiving-accrual-staging",
     ]);
   });
 

@@ -4,6 +4,7 @@ import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract"
 import { Prisma, ShipmentMilestoneCode, type WmsOutboundLogisticsUnitKind, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition, type WmsShipmentItemVarianceDisposition } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { fetchWarehouseTopologyGraph } from "@/lib/wms/warehouse-topology-graph";
 
 import { actorIsCustomerCrmScoped } from "@/lib/authz";
 
@@ -223,6 +224,18 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus("Warehouse not found.", 404);
     }
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "export_warehouse_topology_graph") {
+    const warehouseId = input.warehouseId?.trim();
+    if (!warehouseId) {
+      return toApiErrorResponseFromStatus("warehouseId required.", 400);
+    }
+    const graph = await fetchWarehouseTopologyGraph({ tenantId, warehouseId });
+    if (!graph) {
+      return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    }
+    return NextResponse.json(graph);
   }
 
   if (action === "create_zone") {

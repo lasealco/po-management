@@ -8,6 +8,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_zone_parent: "setup",
   create_warehouse_aisle: "setup",
   update_warehouse_aisle: "setup",
+  /** BF-50 — JSON graph export for twin/sim vendors (same auth as setup mutations). */
+  export_warehouse_topology_graph: "setup",
   create_bin: "setup",
   update_bin_profile: "setup",
   set_product_carton_cube_hints: "setup",

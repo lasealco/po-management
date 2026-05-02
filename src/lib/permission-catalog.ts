@@ -87,13 +87,15 @@ export const GLOBAL_PERMISSION_CATALOG = [
     resource: "org.wms.setup",
     action: "view",
     label: "View WMS layout & strategy",
-    description: "Read zones, bins, replenishment rules, and allocation strategy (BF-06 scope).",
+    description:
+      "Read zones, bins, replenishment rules, allocation strategy, and BF-50 topology graph export (GET /api/wms?topologyGraph=1) (BF-06 scope).",
   },
   {
     resource: "org.wms.setup",
     action: "edit",
     label: "Edit WMS layout & strategy",
-    description: "Change zones, bins, replenishment rules, and warehouse allocation strategy.",
+    description:
+      "Change zones, bins, replenishment rules, warehouse allocation strategy, and BF-50 POST export_warehouse_topology_graph (same payload as GET topology export).",
   },
   {
     resource: "org.wms.operations",

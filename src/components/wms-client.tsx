@@ -762,6 +762,7 @@ export function WmsClient({
   const [bf33OutboundCubeOrderId, setBf33OutboundCubeOrderId] = useState("");
   const [bf33EstimatedCubeCbm, setBf33EstimatedCubeCbm] = useState("");
   const [rackVizCode, setRackVizCode] = useState("");
+  const [topologyExportBusy, setTopologyExportBusy] = useState(false);
 
   const [putawayShipmentItemId, setPutawayShipmentItemId] = useState("");
   const [putawayQty, setPutawayQty] = useState("");
@@ -2541,6 +2542,49 @@ export function WmsClient({
                   ) : null}
                 </div>
               )}
+            </div>
+            <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Topology graph export (BF-50)
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                JSON nodes/edges for aisle masters and bins: <span className="font-medium">BIN_IN_AISLE</span> links plus
+                heuristic <span className="font-medium">ADJACENT_SLOT</span> (same aisle FK + rack + bay + level;
+                consecutive positions). Endpoint{" "}
+                <span className="font-mono text-[11px]">GET /api/wms?topologyGraph=1&amp;warehouseId=…</span> (
+                <span className="font-medium">org.wms → view</span>).
+              </p>
+              <button
+                type="button"
+                disabled={topologyExportBusy || !selectedWarehouseId}
+                onClick={() =>
+                  void (async () => {
+                    try {
+                      setTopologyExportBusy(true);
+                      const params = new URLSearchParams();
+                      params.set("topologyGraph", "1");
+                      params.set("warehouseId", selectedWarehouseId);
+                      const res = await fetch(`/api/wms?${params.toString()}`, { credentials: "include" });
+                      const parsed: unknown = await res.json().catch(() => null);
+                      if (!res.ok) throw new Error(apiClientErrorMessage(parsed, "Topology export failed."));
+                      const blob = new Blob([JSON.stringify(parsed, null, 2)], { type: "application/json" });
+                      const href = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = href;
+                      a.download = `warehouse-topology-${selectedWarehouseId.slice(0, 8)}.json`;
+                      a.click();
+                      URL.revokeObjectURL(href);
+                    } catch (e) {
+                      window.alert(e instanceof Error ? e.message : "Topology export failed.");
+                    } finally {
+                      setTopologyExportBusy(false);
+                    }
+                  })()
+                }
+                className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                {topologyExportBusy ? "Exporting…" : "Download topology JSON"}
+              </button>
             </div>
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">

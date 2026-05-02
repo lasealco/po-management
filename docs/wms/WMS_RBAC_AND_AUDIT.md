@@ -27,8 +27,8 @@ Aligned with **`src/lib/wms/wms-api-grants.ts`** (Vitest guard).
 
 | Surface | Method | Grant |
 |---------|--------|-------|
-| `/api/wms` | GET | `org.wms` → view |
-| `/api/wms` | POST | **`org.wms` → edit** **or** scoped **`org.wms.{setup|operations|inventory}` → edit** per `action` ([`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md)) |
+| `/api/wms` | GET | `org.wms` → view — dashboard payload; **`homeKpis=1`** subset; **`topologyGraph=1&warehouseId=`** returns **BF-50** topology JSON ([`WMS_TOPOLOGY_BF50.md`](./WMS_TOPOLOGY_BF50.md)) |
+| `/api/wms` | POST | **`org.wms` → edit** **or** scoped **`org.wms.{setup|operations|inventory}` → edit** per `action` ([`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md)); includes **`export_warehouse_topology_graph`** (**BF-50**, setup tier) |
 | `/api/wms/billing` | GET | `org.wms` → view |
 | `/api/wms/billing` | POST | `org.wms` → edit **or** **`org.wms.operations` → edit** |
 | `/api/wms/saved-ledger-views` | GET | `org.wms` → view |
@@ -36,7 +36,7 @@ Aligned with **`src/lib/wms/wms-api-grants.ts`** (Vitest guard).
 | `/api/wms/saved-ledger-views/[id]` | DELETE | `org.wms` → edit **or** **`org.wms.inventory` → edit** |
 | `/api/control-tower/timeline` | GET | **`org.controltower` → view** **or** **`org.wms` → view** (**BF-49** — merged CT audits + inventory movements + dock milestones; [`WMS_OPERATIONS_TIMELINE_BF49.md`](./WMS_OPERATIONS_TIMELINE_BF49.md)) |
 
-Implementation: **`requireApiGrant`** for view gates; **`gateWmsPostMutation`** / **`gateWmsTierMutation`** (`src/lib/wms/wms-mutation-grants.ts`) for mutations.
+Implementation: **`requireApiGrant`** for view gates; **`requireAnyApiGrant`** for **`GET /api/control-tower/timeline`** (**BF-49**); **`gateWmsPostMutation`** / **`gateWmsTierMutation`** (`src/lib/wms/wms-mutation-grants.ts`) for mutations.
 
 ## UI vs API parity
 
