@@ -249,6 +249,8 @@
 
 **Out of scope:** Live AGV orchestration, Unity/Unreal twin runtime.
 
+**Next wave (draft IDs):** **`BF-51` … `BF-70`** — program rollup + per-capsule sketches in [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md).
+
 ---
 
 ## Prompt stub (copy for any BF-31 … BF-50 issue)
