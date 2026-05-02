@@ -8,7 +8,6 @@ import { TwinEntityJsonPreview } from "@/components/supply-chain-twin/twin-entit
 import { TwinEntityNeighborsPanel } from "@/components/supply-chain-twin/twin-entity-neighbors-panel";
 import { TwinEventsExportAction } from "@/components/supply-chain-twin/twin-events-export-action";
 import { TwinFallbackState } from "@/components/supply-chain-twin/twin-fallback-state";
-import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getEntitySnapshotByIdForTenant } from "@/lib/supply-chain-twin/repo";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 
@@ -47,7 +46,6 @@ export default async function SupplyChainTwinExplorerEntityPage({
   } catch {
     return (
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <TwinSubNav />
         <section className="mt-6">
           <TwinFallbackState
             tone="error"
@@ -73,7 +71,6 @@ export default async function SupplyChainTwinExplorerEntityPage({
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
-      <TwinSubNav />
 
       <div className="mb-6">
         <Link

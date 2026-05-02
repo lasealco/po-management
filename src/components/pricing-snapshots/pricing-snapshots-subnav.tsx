@@ -9,7 +9,7 @@ import {
   subNavActiveClass,
 } from "@/lib/subnav-active-class";
 
-const items = [
+export const PRICING_SNAPSHOTS_NAV_ITEMS = [
   {
     href: "/pricing-snapshots",
     label: "Library",
@@ -27,7 +27,7 @@ export function PricingSnapshotsSubNav() {
         <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
           Snapshots
         </span>
-        {items.map(({ href, label, match }) => {
+        {PRICING_SNAPSHOTS_NAV_ITEMS.map(({ href, label, match }) => {
           const active = match(pathname);
           return (
             <Link

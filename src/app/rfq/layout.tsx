@@ -1,17 +1,24 @@
-import { Suspense } from "react";
-
-import { RfqSubNav } from "@/components/rfq/rfq-subnav";
+import { RatesModuleSidebar } from "@/components/rates-audit/rates-module-sidebar";
+import { ModuleWorkspaceShell } from "@/components/shell/module-sidebar-primitives";
+import { getViewerGrantSet } from "@/lib/authz";
+import { resolveNavState } from "@/lib/nav-visibility";
 
 import { RfqGate } from "./rfq-gate";
 
-export default function RfqLayout({ children }: { children: React.ReactNode }) {
+export default async function RfqLayout({ children }: { children: React.ReactNode }) {
+  const access = await getViewerGrantSet();
+  const { linkVisibility, setupIncomplete } = await resolveNavState(access);
+
   return (
     <RfqGate>
       <div className="min-h-screen bg-zinc-50">
-        <Suspense fallback={<div className="h-10 border-b border-zinc-200 bg-white" />}>
-          <RfqSubNav />
-        </Suspense>
-        {children}
+        <ModuleWorkspaceShell
+          sidebar={
+            <RatesModuleSidebar variant="rfq" linkVisibility={linkVisibility} setupIncomplete={setupIncomplete} />
+          }
+        >
+          {children}
+        </ModuleWorkspaceShell>
       </div>
     </RfqGate>
   );

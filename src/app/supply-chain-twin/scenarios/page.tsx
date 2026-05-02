@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { TwinScenariosDraftsPanel } from "@/components/supply-chain-twin/twin-scenarios-drafts-panel";
-import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { requireTwinPageAccess } from "../_lib/require-twin-page-access";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +19,6 @@ export default async function SupplyChainTwinScenariosPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
-      <TwinSubNav />
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>

@@ -1,7 +1,16 @@
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
-import { TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
+import { TARIFF_CONTRACTS_DIRECTORY_PATH, TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 export const RATES_AUDIT_NAV_LABEL = "Rates & Audit";
+
+/** Active state for Rates & Audit sidebar links (matches legacy strip behavior). */
+export function ratesAuditNavLinkActive(pathname: string, href: string): boolean {
+  if (href === TARIFF_CONTRACTS_DIRECTORY_PATH) return pathname.startsWith(TARIFFS_MODULE_BASE_PATH);
+  if (href === "/pricing-snapshots") return pathname.startsWith("/pricing-snapshots");
+  if (href === "/invoice-audit") return pathname.startsWith("/invoice-audit");
+  if (href === "/rfq/requests") return pathname.startsWith("/rfq");
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export const ratesAuditSubNavItems: Array<{
   key: keyof Pick<AppNavLinkVisibility, "tariffs" | "pricingSnapshots" | "invoiceAudit" | "rfq">;

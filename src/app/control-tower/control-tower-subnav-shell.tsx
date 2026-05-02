@@ -1,4 +1,4 @@
-import { ControlTowerSubNav } from "@/components/control-tower-subnav";
+import { ControlTowerModuleSidebar } from "@/components/control-tower-module-sidebar";
 import { getActorUserId } from "@/lib/authz";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 
@@ -10,5 +10,5 @@ export async function ControlTowerSubNavShell() {
   const actorId = await getActorUserId();
   const includeDigestNav =
     actorId !== null ? (await getControlTowerPortalContext(actorId)).isRestrictedView : false;
-  return <ControlTowerSubNav includeDigestNav={includeDigestNav} />;
+  return <ControlTowerModuleSidebar includeDigestNav={includeDigestNav} />;
 }

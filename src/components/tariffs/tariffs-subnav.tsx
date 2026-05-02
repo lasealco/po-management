@@ -25,7 +25,11 @@ function isTariffsOverviewPath(pathname: string): boolean {
   return pathname === TARIFFS_MODULE_BASE_PATH || pathname === `${TARIFFS_MODULE_BASE_PATH}/`;
 }
 
-const items: { href: string; label: string; isActive: (pathname: string) => boolean }[] = [
+export const TARIFF_WORKBENCH_NAV_ITEMS: {
+  href: string;
+  label: string;
+  isActive: (pathname: string) => boolean;
+}[] = [
   {
     href: TARIFFS_MODULE_BASE_PATH,
     label: "Overview",
@@ -82,7 +86,7 @@ export function TariffsSubNav() {
         <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
           Tariffs
         </span>
-        {items.map(({ href, label, isActive }) => {
+        {TARIFF_WORKBENCH_NAV_ITEMS.map(({ href, label, isActive }) => {
           const active = isActive(pathname);
           return (
             <Link

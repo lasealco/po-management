@@ -9,7 +9,7 @@ import {
   subNavActiveClass,
 } from "@/lib/subnav-active-class";
 
-const items = [
+export const RFQ_WORKBENCH_NAV_ITEMS = [
   {
     href: "/rfq/requests",
     label: "Requests",
@@ -36,7 +36,7 @@ export function RfqSubNav() {
         <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
           RFQ
         </span>
-        {items.map(({ href, label, match }) => {
+        {RFQ_WORKBENCH_NAV_ITEMS.map(({ href, label, match }) => {
           const active = match(pathname);
           return (
             <Link

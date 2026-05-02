@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { AccessDenied } from "@/components/access-denied";
 import { AssistantSidebar } from "@/components/assistant/assistant-sidebar";
+import { ModuleWorkspaceShell } from "@/components/shell/module-sidebar-primitives";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
@@ -56,16 +57,17 @@ export default async function AssistantLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      <ModuleWorkspaceShell
+        sidebar={
           <Suspense
             fallback={<div className="h-72 w-full shrink-0 animate-pulse rounded-2xl bg-zinc-100 lg:w-56" aria-hidden />}
           >
             <AssistantSidebar className="w-full lg:w-56 lg:shrink-0" />
           </Suspense>
-          <main className="min-w-0 flex-1">{children}</main>
-        </div>
-      </div>
+        }
+      >
+        {children}
+      </ModuleWorkspaceShell>
     </div>
   );
 }

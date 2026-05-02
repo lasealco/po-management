@@ -7,7 +7,6 @@ import { TwinEntityJsonPreview } from "@/components/supply-chain-twin/twin-entit
 import { TwinFallbackState } from "@/components/supply-chain-twin/twin-fallback-state";
 import { TwinScenarioHistoryTimeline } from "@/components/supply-chain-twin/twin-scenario-history-timeline";
 import { TwinScenarioTitleInlineEditor } from "@/components/supply-chain-twin/twin-scenario-title-inline-editor";
-import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import {
   getScenarioDraftByIdForTenant,
@@ -49,7 +48,6 @@ export default async function SupplyChainTwinScenarioDraftPage({
   } catch {
     return (
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <TwinSubNav />
         <section className="mt-6">
           <TwinFallbackState
             tone="error"
@@ -77,7 +75,6 @@ export default async function SupplyChainTwinScenarioDraftPage({
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
-      <TwinSubNav />
 
       <div className="mb-6">
         <Link

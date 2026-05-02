@@ -1,17 +1,28 @@
-import { Suspense } from "react";
-
-import { PricingSnapshotsSubNav } from "@/components/pricing-snapshots/pricing-snapshots-subnav";
+import { RatesModuleSidebar } from "@/components/rates-audit/rates-module-sidebar";
+import { ModuleWorkspaceShell } from "@/components/shell/module-sidebar-primitives";
+import { getViewerGrantSet } from "@/lib/authz";
+import { resolveNavState } from "@/lib/nav-visibility";
 
 import { PricingSnapshotsGate } from "./pricing-snapshots-gate";
 
-export default function PricingSnapshotsLayout({ children }: { children: React.ReactNode }) {
+export default async function PricingSnapshotsLayout({ children }: { children: React.ReactNode }) {
+  const access = await getViewerGrantSet();
+  const { linkVisibility, setupIncomplete } = await resolveNavState(access);
+
   return (
     <PricingSnapshotsGate>
       <div className="min-h-screen bg-zinc-50">
-        <Suspense fallback={<div className="h-10 border-b border-zinc-200 bg-white" />}>
-          <PricingSnapshotsSubNav />
-        </Suspense>
-        {children}
+        <ModuleWorkspaceShell
+          sidebar={
+            <RatesModuleSidebar
+              variant="pricing-snapshots"
+              linkVisibility={linkVisibility}
+              setupIncomplete={setupIncomplete}
+            />
+          }
+        >
+          {children}
+        </ModuleWorkspaceShell>
       </div>
     </PricingSnapshotsGate>
   );

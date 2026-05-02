@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import { TwinScenariosComparePanel } from "@/components/supply-chain-twin/twin-scenarios-compare-panel";
 import { parseTwinScenarioDraftQueryValue } from "@/components/supply-chain-twin/twin-scenario-draft-id";
-import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { requireTwinPageAccess } from "../../_lib/require-twin-page-access";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +27,6 @@ export default async function SupplyChainTwinScenariosComparePage(props: {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
-      <TwinSubNav />
 
       <div className="mb-6">
         <Link

@@ -31,7 +31,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const access = await getViewerGrantSet();
-  const { poSubNavVisibility, linkVisibility, setupIncomplete } = await resolveNavState(access);
+  const { linkVisibility, setupIncomplete } = await resolveNavState(access);
   const actorId = access?.user?.id ?? null;
   const isSupplierPortalUser =
     actorId !== null && (await actorIsSupplierPortalRestricted(actorId));
@@ -78,7 +78,6 @@ export default async function RootLayout({
         <RootChrome
           linkVisibility={linkVisibility}
           setupIncomplete={setupIncomplete}
-          poSubNavVisibility={poSubNavVisibility}
           commandGrants={commandGrants}
         >
           {children}

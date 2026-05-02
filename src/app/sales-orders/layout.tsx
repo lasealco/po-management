@@ -1,4 +1,5 @@
-import { SalesOrdersSubNav } from "@/components/sales-orders-subnav";
+import { ModuleWorkspaceShell } from "@/components/shell/module-sidebar-primitives";
+import { SalesOrdersModuleSidebar } from "@/components/sales-orders-module-sidebar";
 import { getViewerGrantSet } from "@/lib/authz";
 import { resolveNavState } from "@/lib/nav-visibility";
 
@@ -7,9 +8,12 @@ export default async function SalesOrdersLayout({ children }: { children: React.
   const { linkVisibility } = await resolveNavState(access);
 
   return (
-    <>
-      {linkVisibility?.salesOrders ? <SalesOrdersSubNav /> : null}
-      {children}
-    </>
+    <div className="min-h-screen bg-zinc-50">
+      {linkVisibility?.salesOrders ? (
+        <ModuleWorkspaceShell sidebar={<SalesOrdersModuleSidebar />}>{children}</ModuleWorkspaceShell>
+      ) : (
+        children
+      )}
+    </div>
   );
 }

@@ -9,7 +9,7 @@ import {
   subNavActiveClass,
 } from "@/lib/subnav-active-class";
 
-const items = [
+export const INVOICE_AUDIT_NAV_ITEMS = [
   {
     href: "/invoice-audit",
     label: "Intakes",
@@ -51,7 +51,7 @@ export function InvoiceAuditSubNav() {
         <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
           Invoice audit
         </span>
-        {items.map(({ href, label, match }) => {
+        {INVOICE_AUDIT_NAV_ITEMS.map(({ href, label, match }) => {
           const active = match(pathname);
           return (
             <Link

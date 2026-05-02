@@ -1,17 +1,28 @@
-import { Suspense } from "react";
-
-import { InvoiceAuditSubNav } from "@/components/invoice-audit/invoice-audit-subnav";
+import { RatesModuleSidebar } from "@/components/rates-audit/rates-module-sidebar";
+import { ModuleWorkspaceShell } from "@/components/shell/module-sidebar-primitives";
+import { getViewerGrantSet } from "@/lib/authz";
+import { resolveNavState } from "@/lib/nav-visibility";
 
 import { InvoiceAuditGate } from "./invoice-audit-gate";
 
-export default function InvoiceAuditLayout({ children }: { children: React.ReactNode }) {
+export default async function InvoiceAuditLayout({ children }: { children: React.ReactNode }) {
+  const access = await getViewerGrantSet();
+  const { linkVisibility, setupIncomplete } = await resolveNavState(access);
+
   return (
     <InvoiceAuditGate>
       <div className="min-h-screen bg-zinc-50">
-        <Suspense fallback={<div className="h-10 border-b border-zinc-200 bg-white" />}>
-          <InvoiceAuditSubNav />
-        </Suspense>
-        {children}
+        <ModuleWorkspaceShell
+          sidebar={
+            <RatesModuleSidebar
+              variant="invoice-audit"
+              linkVisibility={linkVisibility}
+              setupIncomplete={setupIncomplete}
+            />
+          }
+        >
+          {children}
+        </ModuleWorkspaceShell>
       </div>
     </InvoiceAuditGate>
   );

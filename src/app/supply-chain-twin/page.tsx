@@ -5,7 +5,6 @@ import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { TwinCatalogMetricsStrip } from "@/components/supply-chain-twin/twin-catalog-metrics-strip";
 import { TwinReadinessBanner } from "@/components/supply-chain-twin/twin-readiness-banner";
 import { TwinRiskSignalsCallout } from "@/components/supply-chain-twin/twin-risk-signals-callout";
-import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import { requireTwinPageAccess } from "./_lib/require-twin-page-access";
 
@@ -40,8 +39,6 @@ export default async function SupplyChainTwinHomePage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
-      <TwinSubNav />
-
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Module preview</p>
       <div className="mt-3">
         <PageTitleWithHint title="Supply Chain Twin" titleClassName="text-3xl font-semibold tracking-tight text-zinc-900" />

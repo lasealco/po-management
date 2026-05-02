@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { loadTwinAssistantSnapshot } from "@/app/api/supply-chain-twin/assistant/route";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { requireTwinPageAccess } from "../_lib/require-twin-page-access";
@@ -25,7 +24,6 @@ export default async function SupplyChainTwinAssistantPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
-      <TwinSubNav />
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Supply Chain Twin</p>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900">Twin Assistant</h1>
       <p className="mt-3 max-w-3xl text-sm text-zinc-600">
