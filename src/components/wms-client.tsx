@@ -26,6 +26,29 @@ import {
 
 const BF51_VARIANCE_REASONS = ["SHRINK", "DAMAGE", "DATA_ENTRY", "FOUND", "OTHER"] as const;
 
+/** BF-52 — `GET /api/wms/slotting-recommendations` JSON shape (preview panel). */
+type Bf52SlottingPreview = {
+  methodology: string;
+  windowDays: number;
+  summary: {
+    balancesScanned: number;
+    recommendationCount: number;
+    pickFaceBins: number;
+    bulkCandidateBins: number;
+    productsWithPicks: number;
+  };
+  warnings: string[];
+  recommendations: Array<{
+    priorityScore: number;
+    reasonCode: string;
+    abcClass: string;
+    productPickVolume: number;
+    product: { productCode: string | null; sku: string | null; name: string };
+    currentBin: { code: string; isPickFace: boolean; storageType: string };
+    suggestedBin: { code: string; isPickFace: boolean; storageType: string } | null;
+  }>;
+};
+
 /** Matches serialized product refs from `GET /api/wms` (including BF-33 carton hints). */
 type WmsProductRef = {
   id: string;
@@ -793,6 +816,9 @@ export function WmsClient({
   const [bf33EstimatedCubeCbm, setBf33EstimatedCubeCbm] = useState("");
   const [rackVizCode, setRackVizCode] = useState("");
   const [topologyExportBusy, setTopologyExportBusy] = useState(false);
+  const [slottingWindowDays, setSlottingWindowDays] = useState("30");
+  const [slottingPreview, setSlottingPreview] = useState<Bf52SlottingPreview | null>(null);
+  const [slottingLoadBusy, setSlottingLoadBusy] = useState(false);
 
   const [putawayShipmentItemId, setPutawayShipmentItemId] = useState("");
   const [putawayQty, setPutawayQty] = useState("");
@@ -2628,6 +2654,173 @@ export function WmsClient({
               >
                 {topologyExportBusy ? "Exporting…" : "Download topology JSON"}
               </button>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Slotting recommendations (BF-52)
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Advisory ABC from outbound <span className="font-medium">PICK</span> volumes +{" "}
+                <span className="font-medium">WarehouseBin.isPickFace</span>. Read-only{" "}
+                <span className="font-mono text-[11px]">GET /api/wms/slotting-recommendations</span> — JSON or{" "}
+                <span className="font-mono text-[11px]">format=csv</span> (<span className="font-medium">org.wms → view</span>).
+              </p>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <label className="block text-[11px] text-zinc-600">
+                  Window (days)
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={slottingWindowDays}
+                    onChange={(e) => setSlottingWindowDays(e.target.value)}
+                    className="ml-1 w-20 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={slottingLoadBusy || !selectedWarehouseId}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        setSlottingLoadBusy(true);
+                        const days = Math.min(365, Math.max(1, Math.floor(Number(slottingWindowDays) || 30)));
+                        const params = new URLSearchParams();
+                        params.set("warehouseId", selectedWarehouseId);
+                        params.set("days", String(days));
+                        const res = await fetch(`/api/wms/slotting-recommendations?${params.toString()}`, {
+                          credentials: "include",
+                        });
+                        const parsed: unknown = await res.json().catch(() => null);
+                        if (!res.ok) throw new Error(apiClientErrorMessage(parsed, "Slotting recommendations failed."));
+                        setSlottingPreview(parsed as Bf52SlottingPreview);
+                      } catch (e) {
+                        window.alert(e instanceof Error ? e.message : "Slotting recommendations failed.");
+                      } finally {
+                        setSlottingLoadBusy(false);
+                      }
+                    })()
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {slottingLoadBusy ? "Loading…" : "Load preview"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedWarehouseId}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        const days = Math.min(365, Math.max(1, Math.floor(Number(slottingWindowDays) || 30)));
+                        const params = new URLSearchParams();
+                        params.set("warehouseId", selectedWarehouseId);
+                        params.set("days", String(days));
+                        const res = await fetch(`/api/wms/slotting-recommendations?${params.toString()}`, {
+                          credentials: "include",
+                        });
+                        const parsed: unknown = await res.json().catch(() => null);
+                        if (!res.ok) throw new Error(apiClientErrorMessage(parsed, "Slotting JSON export failed."));
+                        const blob = new Blob([JSON.stringify(parsed, null, 2)], { type: "application/json" });
+                        const href = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = href;
+                        a.download = `slotting-recommendations-${selectedWarehouseId.slice(0, 8)}.json`;
+                        a.click();
+                        URL.revokeObjectURL(href);
+                      } catch (e) {
+                        window.alert(e instanceof Error ? e.message : "Slotting JSON export failed.");
+                      }
+                    })()
+                  }
+                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                >
+                  Download JSON
+                </button>
+                <a
+                  href={
+                    selectedWarehouseId
+                      ? (() => {
+                          const days = Math.min(365, Math.max(1, Math.floor(Number(slottingWindowDays) || 30)));
+                          const p = new URLSearchParams();
+                          p.set("warehouseId", selectedWarehouseId);
+                          p.set("days", String(days));
+                          p.set("format", "csv");
+                          return `/api/wms/slotting-recommendations?${p.toString()}`;
+                        })()
+                      : "#"
+                  }
+                  onClick={(e) => {
+                    if (!selectedWarehouseId) e.preventDefault();
+                  }}
+                  className={`inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-semibold text-zinc-800 ${
+                    selectedWarehouseId ? "" : "pointer-events-none opacity-40"
+                  }`}
+                >
+                  Download CSV
+                </a>
+              </div>
+              {slottingPreview ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-[11px] leading-snug text-zinc-600">{slottingPreview.methodology}</p>
+                  <p className="text-[11px] text-zinc-600">
+                    Scanned {slottingPreview.summary.balancesScanned} balance rows ·{" "}
+                    {slottingPreview.summary.recommendationCount} recommendations · pick-face bins{" "}
+                    {slottingPreview.summary.pickFaceBins} · bulk candidates {slottingPreview.summary.bulkCandidateBins} · SKUs
+                    with picks {slottingPreview.summary.productsWithPicks}
+                  </p>
+                  {slottingPreview.warnings.length > 0 ? (
+                    <ul className="list-inside list-disc text-[11px] text-amber-900">
+                      {slottingPreview.warnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <div className="max-h-64 overflow-auto rounded border border-zinc-200 bg-white">
+                    <table className="min-w-full text-left text-xs">
+                      <thead className="sticky top-0 bg-zinc-100 text-[10px] uppercase text-zinc-600">
+                        <tr>
+                          <th className="px-2 py-1">Pri</th>
+                          <th className="px-2 py-1">Reason</th>
+                          <th className="px-2 py-1">ABC</th>
+                          <th className="px-2 py-1">Pick vol</th>
+                          <th className="px-2 py-1">SKU</th>
+                          <th className="px-2 py-1">From</th>
+                          <th className="px-2 py-1">To</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {slottingPreview.recommendations.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-2 py-2 text-zinc-500">
+                              No actionable rows — inventory already matches coarse pick-face / bulk hints, or no PICK history in the
+                              window.
+                            </td>
+                          </tr>
+                        ) : (
+                          slottingPreview.recommendations.slice(0, 40).map((r, idx) => (
+                            <tr key={`${r.product.productCode ?? r.product.sku ?? "p"}-${r.currentBin.code}-${idx}`}>
+                              <td className="whitespace-nowrap px-2 py-1 font-mono">{r.priorityScore}</td>
+                              <td className="px-2 py-1 text-zinc-700">{r.reasonCode}</td>
+                              <td className="px-2 py-1">{r.abcClass}</td>
+                              <td className="whitespace-nowrap px-2 py-1 font-mono">{r.productPickVolume}</td>
+                              <td className="px-2 py-1 text-zinc-800">
+                                {r.product.productCode || r.product.sku || "—"} · {r.product.name}
+                              </td>
+                              <td className="px-2 py-1 text-zinc-600">
+                                {r.currentBin.code}
+                                {r.currentBin.isPickFace ? " · PF" : ""}
+                              </td>
+                              <td className="px-2 py-1 text-zinc-600">
+                                {r.suggestedBin ? r.suggestedBin.code : "—"}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
             </div>
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">

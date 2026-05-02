@@ -4,11 +4,11 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **`BF-51`** — **minimal slice shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)). **`BF-52` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
+**Status:** **`BF-51`** / **`BF-52`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)). **`BF-53` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
 
 **Rules:**
 
-1. **Do not** bundle BF-51 … BF-70 into one prompt unless product explicitly funds a program sprint — each ID is a separate thematic capsule.
+1. **Do not** bundle BF-53 … BF-70 into one prompt unless product explicitly funds a program sprint — each ID is a separate thematic capsule.
 2. Ship → update **[`GAP_MAP.md`](./GAP_MAP.md)** → refresh **[`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md)** → add **`docs/wms/WMS_*_BFxx.md`** (or ADR) when a capsule lands.
 3. Stay inside **`src/app/wms/**`, **`src/app/api/wms/**`, **`src/lib/wms/**`** unless the row explicitly names CRM/CT/platform/integrations — then touch shared surfaces minimally.
 
@@ -19,7 +19,7 @@
 | ID | Mega phase (short) | Primary `GAP_MAP` signal (when funded) | Typical depends on |
 |----|-------------------|----------------------------------------|---------------------|
 | **BF-51** | Cycle count programs & variance posting | Physical inventory / cycle count row | Stable **`InventoryBalance`** + audit (**BF-13**) — **`WmsCycleCountSession`** landed ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)) |
-| **BF-52** | Slotting ABC / velocity recommendations | Slotting / bin assignment row | Executive KPIs (**BF-07**/20), movement history |
+| **BF-52** | Slotting ABC / velocity recommendations | Slotting / bin assignment row | Executive KPIs (**BF-07**/20), movement history — **`GET /api/wms/slotting-recommendations`** landed ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)) |
 | **BF-53** | Labor standards & task timing capture | Labor / productivity row | **`WmsTask`** or equivalent ops telemetry |
 | **BF-54** | Yard detention & trailer clock alerts | Dock / yard row | **BF-05**, **BF-38** dock appointments |
 | **BF-55** | Stock transfer orders & in-transit ledger | Inter-site inventory row | Outbound/inbound linkage, **BF-36** reservations |
@@ -53,13 +53,13 @@
 
 ---
 
-## BF-52 — Slotting ABC / velocity recommendations
+## BF-52 — Slotting ABC / velocity recommendations ✅ **Minimal landed**
 
 **Objective:** Export **recommended bin moves** from velocity/ABC class + pick-face rules — advisory first, optional task creation later.
 
-**Exit sketch (minimal slice):** Read-only **`GET /api/wms/slotting-recommendations`** (JSON + CSV); inputs from movement aggregates + **`WarehouseBin`** attrs; Setup preview panel.
+**Shipped:** [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md) — **`GET /api/wms/slotting-recommendations`** (`warehouseId`, `days`, JSON or **`format=csv`**); `slotting-recommendations.ts` ABC from **`PICK`** aggregates + **`InventoryBalance`** / **`WarehouseBin.isPickFace`** heuristics; **Setup** preview + exports.
 
-**Out of scope:** Automated robot slotting, solver-unified replenishment (**BF-35** merge only if product insists).
+**Out of scope:** Automated robot slotting, solver-unified replenishment (**BF-35** merge only if product insists), auto-created relocation tasks.
 
 ---
 
@@ -249,4 +249,4 @@
 
 ---
 
-_Last updated: 2026-05-02 — **BF-51** structured cycle counts landed ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-52 … BF-70** remain draft stubs._
+_Last updated: 2026-05-03 — **BF-52** slotting recommendations advisory API + Setup preview ([`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md)); **BF-51** cycle counts ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md)); **BF-53 … BF-70** remain draft stubs._
