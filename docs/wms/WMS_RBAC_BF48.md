@@ -34,4 +34,4 @@
 
 ## Out of scope
 
-External PDP / ABAC, blueprint **`wms_role_permission_matrix`** as SQL.
+Dedicated SQL **`wms_role_permission_matrix`**, full ABAC, blueprint PDP beyond **BF-70** HTTP hook ([`WMS_EXTERNAL_PDP_BF70.md`](./WMS_EXTERNAL_PDP_BF70.md)).

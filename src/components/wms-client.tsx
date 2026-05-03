@@ -288,6 +288,13 @@ type WmsData = {
   };
   /** BF-69 — methodology string for movement / product CO₂e hint fields (indicative only). */
   movementCo2eHintMeta?: { schemaVersion: string; methodology: string };
+  /** BF-70 — external HTTP PDP hook status (URL is not exposed). */
+  externalPdpBf70?: {
+    schemaVersion: string;
+    enabled: boolean;
+    timeoutMs: number;
+    failOpen: boolean;
+  };
   /** BF-36 — ATP aggregates per warehouse × SKU (soft reservations reduce ATP). */
   atpByWarehouseProduct?: Array<{
     warehouseId: string;
@@ -2358,6 +2365,29 @@ export function WmsClient({
 
       {section === "setup" ? (
         <>
+          {data.externalPdpBf70?.enabled ? (
+            <section className="mb-4 rounded-2xl border border-violet-200 bg-violet-50/70 p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-900">BF-70 — External PDP</p>
+              <p className="mt-2 text-xs text-violet-950/90">
+                Server <span className="font-mono">POST /api/wms</span> calls your policy endpoint after RBAC tier
+                gates. Schema <span className="font-mono">{data.externalPdpBf70.schemaVersion}</span> · timeout{" "}
+                <span className="font-mono">{data.externalPdpBf70.timeoutMs}ms</span>
+                {data.externalPdpBf70.failOpen ? (
+                  <>
+                    {" "}
+                    · <span className="font-medium">fail-open</span> on PDP errors (
+                    <span className="font-mono">WMS_EXTERNAL_PDP_FAIL_OPEN</span>)
+                  </>
+                ) : (
+                  <>
+                    {" "}
+                    · <span className="font-medium">fail-closed</span> on PDP errors
+                  </>
+                )}
+                . See <span className="font-medium">docs/wms/WMS_EXTERNAL_PDP_BF70.md</span>.
+              </p>
+            </section>
+          ) : null}
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Pick allocation policy</h2>
         <p className="mt-1 text-xs text-zinc-600">

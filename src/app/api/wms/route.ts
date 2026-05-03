@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
-
+import { toApiErrorResponse, toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -9,6 +8,7 @@ import { fetchWmsHomeKpis } from "@/lib/wms/wms-home-kpis";
 import { parseMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { handleWmsPost } from "@/lib/wms/post-actions";
 import { fetchWarehouseTopologyGraph } from "@/lib/wms/warehouse-topology-graph";
+import { evaluateExternalWmsPolicy } from "@/lib/wms/external-pdp-bf70";
 import { gateWmsPostMutation } from "@/lib/wms/wms-mutation-grants";
 import type { WmsBody } from "@/lib/wms/wms-body";
 
@@ -73,5 +73,18 @@ export async function POST(request: Request) {
   const input = (body && typeof body === "object" ? body : {}) as WmsBody;
   const gateMut = await gateWmsPostMutation(actorId, input.action);
   if (gateMut) return gateMut;
+  const actionRaw = String(input.action ?? "").trim();
+  const pdp = await evaluateExternalWmsPolicy({
+    tenantId: tenant.id,
+    actorUserId: actorId,
+    action: actionRaw,
+    body: input as unknown as Record<string, unknown>,
+  });
+  if (!pdp.ok) {
+    return toApiErrorResponseFromStatus(pdp.message, pdp.httpStatus, {
+      externalPdpBf70: true,
+      schemaVersion: "bf70.v1",
+    });
+  }
   return handleWmsPost(tenant.id, actorId, input);
 }

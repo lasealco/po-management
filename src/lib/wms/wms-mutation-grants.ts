@@ -26,6 +26,7 @@ export async function gateWmsTierMutation(actorId: string, tier: WmsMutationTier
 /**
  * After `org.wms` → view is satisfied: gate POST body `action` against tier map + grants.
  * Unknown actions require legacy `org.wms` → edit only (handler may still reject as unsupported).
+ * After this returns null, **BF-70** may call `evaluateExternalWmsPolicy` when `WMS_EXTERNAL_PDP_URL` is set (`src/app/api/wms/route.ts`).
  */
 export async function gateWmsPostMutation(actorId: string, action: string | undefined): Promise<NextResponse | null> {
   const raw = action?.trim();

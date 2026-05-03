@@ -22,6 +22,7 @@ import {
   CO2E_HINT_METHODOLOGY,
   CO2E_HINT_SCHEMA_VERSION,
 } from "@/lib/wms/carbon-intensity-bf69";
+import { externalPdpBf70DashboardMeta } from "@/lib/wms/external-pdp-bf70";
 import { prisma } from "@/lib/prisma";
 
 const WMS_PRODUCT_REF_SELECT = {
@@ -829,6 +830,7 @@ export async function getWmsDashboardPayload(
       schemaVersion: CO2E_HINT_SCHEMA_VERSION,
       methodology: CO2E_HINT_METHODOLOGY,
     },
+    externalPdpBf70: externalPdpBf70DashboardMeta(),
     atpByWarehouseProduct,
     softReservations: softReservationRows.map((r) => ({
       id: r.id,
