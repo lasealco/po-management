@@ -18,6 +18,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   update_bin_profile: "setup",
   set_product_carton_cube_hints: "setup",
   set_product_catch_weight_bf63: "setup",
+  /** BF-69 — optional product g·(kg·km)⁻¹ planning factor for CO₂e narratives. */
+  set_product_wms_co2e_factor_bf69: "setup",
   set_replenishment_rule: "setup",
   create_wms_receiving_disposition_template: "setup",
   update_wms_receiving_disposition_template: "setup",
@@ -91,6 +93,7 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   attach_inventory_serial_to_movement: "inventory",
   /** BF-64 — cold-chain custody segment on ledger movement. */
   set_inventory_movement_custody_segment_bf64: "inventory",
+  set_inventory_movement_co2e_hint_bf69: "inventory",
 
   create_dock_appointment: "operations",
   cancel_dock_appointment: "operations",

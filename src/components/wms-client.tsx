@@ -66,6 +66,8 @@ type WmsProductRef = {
   cartonUnitsPerMasterCarton: string | null;
   isCatchWeight: boolean;
   catchWeightLabelHint: string | null;
+  /** BF-69 — grams CO₂e per kg·km planning factor (nullable). */
+  wmsCo2eFactorGramsPerKgKm?: string | null;
 };
 
 type WmsOutboundLuKindUi = "PALLET" | "CASE" | "INNER_PACK" | "EACH" | "UNKNOWN";
@@ -284,6 +286,8 @@ type WmsData = {
     packScanRequired: boolean;
     shipScanRequired: boolean;
   };
+  /** BF-69 — methodology string for movement / product CO₂e hint fields (indicative only). */
+  movementCo2eHintMeta?: { schemaVersion: string; methodology: string };
   /** BF-36 — ATP aggregates per warehouse × SKU (soft reservations reduce ATP). */
   atpByWarehouseProduct?: Array<{
     warehouseId: string;
@@ -571,6 +575,8 @@ type WmsData = {
     referenceId: string | null;
     note: string | null;
     custodySegmentJson: unknown | null;
+    co2eEstimateGrams?: string | null;
+    co2eStubJson?: unknown | null;
     createdAt: string;
     warehouse: { id: string; code: string | null; name: string };
     bin: { id: string; code: string; name: string } | null;
@@ -819,12 +825,16 @@ function downloadMovementLedgerCsv(
     "referenceId",
     "note",
     "custodySegmentJson",
+    "co2eEstimateGrams",
+    "co2eStubJson",
     "createdBy",
   ];
   const lines = [header.join(",")];
   for (const m of rows) {
     const custody =
       m.custodySegmentJson != null ? JSON.stringify(m.custodySegmentJson) : "";
+    const co2eStub =
+      m.co2eStubJson != null ? JSON.stringify(m.co2eStubJson) : "";
     lines.push(
       [
         esc(m.createdAt),
@@ -839,6 +849,8 @@ function downloadMovementLedgerCsv(
         esc(m.referenceId ?? ""),
         esc(m.note ?? ""),
         esc(custody),
+        esc(m.co2eEstimateGrams ?? ""),
+        esc(co2eStub),
         esc(m.createdBy.name),
       ].join(","),
     );
@@ -980,6 +992,11 @@ export function WmsClient({
   const [bf63CatchProductId, setBf63CatchProductId] = useState("");
   const [bf63IsCatchWeight, setBf63IsCatchWeight] = useState(false);
   const [bf63LabelHint, setBf63LabelHint] = useState("");
+  const [bf69Co2eProductId, setBf69Co2eProductId] = useState("");
+  const [bf69Co2eFactorStr, setBf69Co2eFactorStr] = useState("");
+  const [bf69MovementId, setBf69MovementId] = useState("");
+  const [bf69Co2eGrams, setBf69Co2eGrams] = useState("");
+  const [bf69StubJson, setBf69StubJson] = useState("");
   const [rackVizCode, setRackVizCode] = useState("");
   const [topologyExportBusy, setTopologyExportBusy] = useState(false);
   const [slottingWindowDays, setSlottingWindowDays] = useState("30");
@@ -2710,6 +2727,89 @@ export function WmsClient({
               >
                 Save catch-weight profile
               </ActionButton>
+            </div>
+          </div>
+          <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-emerald-900">
+              BF-69 — Product CO₂e planning factor
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-950/85">
+              Optional grams CO₂e per kg·km on the SKU for sustainability handoffs —{" "}
+              <span className="font-medium">indicative only</span>, not audited carbon accounting.
+            </p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <label className="block sm:col-span-2">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Product</span>
+                <select
+                  disabled={!canEdit || busy}
+                  value={bf69Co2eProductId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setBf69Co2eProductId(id);
+                    const p = productPickOptionsForWarehouse.find((x) => x.id === id);
+                    setBf69Co2eFactorStr(p?.wmsCo2eFactorGramsPerKgKm?.trim() ?? "");
+                  }}
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Select product…</option>
+                  {productPickOptionsForWarehouse.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.sku || p.productCode || p.id.slice(0, 8)} · {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">
+                  g CO₂e per kg·km (blank = no change on save; use Clear to remove)
+                </span>
+                <input
+                  value={bf69Co2eFactorStr}
+                  onChange={(e) => setBf69Co2eFactorStr(e.target.value)}
+                  inputMode="decimal"
+                  disabled={!canEdit || busy || !bf69Co2eProductId}
+                  placeholder="e.g. 35"
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={
+                  !canEdit ||
+                  busy ||
+                  !bf69Co2eProductId ||
+                  !bf69Co2eFactorStr.trim() ||
+                  !Number.isFinite(Number(bf69Co2eFactorStr.trim())) ||
+                  Number(bf69Co2eFactorStr.trim()) < 0
+                }
+                onClick={() =>
+                  void runAction({
+                    action: "set_product_wms_co2e_factor_bf69",
+                    productId: bf69Co2eProductId,
+                    wmsCo2eFactorGramsPerKgKm: Number(bf69Co2eFactorStr.trim()),
+                  })
+                }
+                className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+              >
+                Save factor
+              </button>
+              <button
+                type="button"
+                disabled={!canEdit || busy || !bf69Co2eProductId}
+                onClick={() => {
+                  setBf69Co2eFactorStr("");
+                  void runAction({
+                    action: "set_product_wms_co2e_factor_bf69",
+                    productId: bf69Co2eProductId,
+                    wmsCo2eFactorGramsPerKgKm: null,
+                  });
+                }}
+                className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-medium text-emerald-950 disabled:opacity-40"
+              >
+                Clear factor
+              </button>
             </div>
           </div>
           </>
@@ -10311,6 +10411,12 @@ export function WmsClient({
             <p className="mt-1 text-xs text-zinc-500">
               Active filters: {ledgerFilterCount > 0 ? ledgerFilterCount : "none"} · Sort: {movementSort}
             </p>
+            {data.movementCo2eHintMeta ? (
+              <p className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50/60 px-2 py-1.5 text-[11px] text-emerald-950/90">
+                <span className="font-semibold">{data.movementCo2eHintMeta.schemaVersion}</span> —{" "}
+                {data.movementCo2eHintMeta.methodology}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-xs text-zinc-600">
@@ -10450,6 +10556,128 @@ export function WmsClient({
             </div>
           </div>
         ) : null}
+        {canEdit ? (
+          <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+            <h3 className="text-xs font-semibold text-emerald-950">BF-69 — Movement CO₂e hint</h3>
+            <p className="mt-1 max-w-3xl text-[11px] text-emerald-950/85">
+              Optional grams CO₂e per ledger row plus a small stub (mode / distance / note). Leave a field empty on
+              Apply to leave that attribute unchanged; use the clear buttons to remove stored values.
+            </p>
+            <label className="mt-2 block max-w-xl text-[11px] font-medium text-zinc-700">
+              Movement id
+              <input
+                value={bf69MovementId}
+                onChange={(e) => setBf69MovementId(e.target.value)}
+                disabled={busy}
+                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1 font-mono text-[11px]"
+                placeholder="InventoryMovement.id"
+              />
+            </label>
+            <label className="mt-2 block max-w-sm text-[11px] font-medium text-zinc-700">
+              CO₂e estimate (grams)
+              <input
+                value={bf69Co2eGrams}
+                onChange={(e) => setBf69Co2eGrams(e.target.value)}
+                disabled={busy}
+                inputMode="decimal"
+                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1 font-mono text-[11px]"
+                placeholder="e.g. 1280"
+              />
+            </label>
+            <textarea
+              value={bf69StubJson}
+              onChange={(e) => setBf69StubJson(e.target.value)}
+              disabled={busy}
+              rows={2}
+              className="mt-2 w-full max-w-2xl rounded-lg border border-emerald-200 bg-white px-2 py-1.5 font-mono text-[11px]"
+              placeholder='{"transportModeStub":"ROAD","distanceKm":120}'
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy || !bf69MovementId.trim()}
+                onClick={() => {
+                  const mid = bf69MovementId.trim();
+                  const g = bf69Co2eGrams.trim();
+                  const st = bf69StubJson.trim();
+                  if (!g && !st) {
+                    window.alert("Enter grams and/or stub JSON, or use a clear action.");
+                    return;
+                  }
+                  const body: Record<string, unknown> = {
+                    action: "set_inventory_movement_co2e_hint_bf69",
+                    inventoryMovementId: mid,
+                  };
+                  if (g) {
+                    const n = Number(g);
+                    if (!Number.isFinite(n) || n < 0) {
+                      window.alert("CO₂e grams must be a non-negative number.");
+                      return;
+                    }
+                    body.co2eEstimateGrams = n;
+                  }
+                  if (st) {
+                    let parsed: unknown;
+                    try {
+                      parsed = JSON.parse(st) as unknown;
+                    } catch {
+                      window.alert("Invalid stub JSON.");
+                      return;
+                    }
+                    body.co2eStubJson = parsed;
+                  }
+                  void runAction(body);
+                }}
+                className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+              >
+                Apply CO₂e patch
+              </button>
+              <button
+                type="button"
+                disabled={busy || !bf69MovementId.trim()}
+                onClick={() =>
+                  void runAction({
+                    action: "set_inventory_movement_co2e_hint_bf69",
+                    inventoryMovementId: bf69MovementId.trim(),
+                    co2eEstimateGrams: null,
+                  })
+                }
+                className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-medium text-emerald-950 disabled:opacity-40"
+              >
+                Clear grams only
+              </button>
+              <button
+                type="button"
+                disabled={busy || !bf69MovementId.trim()}
+                onClick={() =>
+                  void runAction({
+                    action: "set_inventory_movement_co2e_hint_bf69",
+                    inventoryMovementId: bf69MovementId.trim(),
+                    co2eStubJson: null,
+                  })
+                }
+                className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-medium text-emerald-950 disabled:opacity-40"
+              >
+                Clear stub only
+              </button>
+              <button
+                type="button"
+                disabled={busy || !bf69MovementId.trim()}
+                onClick={() =>
+                  void runAction({
+                    action: "set_inventory_movement_co2e_hint_bf69",
+                    inventoryMovementId: bf69MovementId.trim(),
+                    co2eEstimateGrams: null,
+                    co2eStubJson: null,
+                  })
+                }
+                className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-medium text-emerald-950 disabled:opacity-40"
+              >
+                Clear all CO₂e
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
@@ -10462,13 +10690,14 @@ export function WmsClient({
                 <th className="px-2 py-1">Bin</th>
                 <th className="px-2 py-1">Ref</th>
                 <th className="px-2 py-1">Custody</th>
+                <th className="px-2 py-1">CO₂e (g)</th>
                 <th className="px-2 py-1">By</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {movementsShown.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={10} className="px-2 py-3 text-zinc-500">
                     {ledgerEmptyNoMatch
                       ? "No movements match these filters. Reset filters or broaden date range."
                       : "No movements yet in this view."}
@@ -10507,6 +10736,33 @@ export function WmsClient({
                           }}
                         >
                           Edit
+                        </button>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-2 py-1 text-xs text-zinc-600">
+                      {m.co2eEstimateGrams != null || m.co2eStubJson != null ? (
+                        <button
+                          type="button"
+                          className="rounded-full bg-emerald-50 px-1.5 py-0.5 font-medium text-emerald-950 hover:bg-emerald-100"
+                          title={
+                            [
+                              m.co2eEstimateGrams != null ? `${m.co2eEstimateGrams} g` : "",
+                              m.co2eStubJson != null ? JSON.stringify(m.co2eStubJson).slice(0, 400) : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" · ") || ""
+                          }
+                          onClick={() => {
+                            setBf69MovementId(m.id);
+                            setBf69Co2eGrams(m.co2eEstimateGrams ?? "");
+                            setBf69StubJson(
+                              m.co2eStubJson != null ? JSON.stringify(m.co2eStubJson, null, 0) : "",
+                            );
+                          }}
+                        >
+                          {m.co2eEstimateGrams != null ? m.co2eEstimateGrams : "stub"}
                         </button>
                       ) : (
                         "—"

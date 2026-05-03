@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **`BF-51`** … **`BF-68`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md), [`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md), [`WMS_COLD_CHAIN_BF64.md`](./WMS_COLD_CHAIN_BF64.md), [`WMS_DAMAGE_CLAIM_BF65.md`](./WMS_DAMAGE_CLAIM_BF65.md), [`WMS_VOICE_PICK_BF66.md`](./WMS_VOICE_PICK_BF66.md), [`WMS_MULTI_PARCEL_MANIFEST_BF67.md`](./WMS_MULTI_PARCEL_MANIFEST_BF67.md), [`WMS_CUSTOMS_FILING_BF68.md`](./WMS_CUSTOMS_FILING_BF68.md)). **`BF-69` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
+**Status:** **`BF-51`** … **`BF-69`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md), [`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md), [`WMS_COLD_CHAIN_BF64.md`](./WMS_COLD_CHAIN_BF64.md), [`WMS_DAMAGE_CLAIM_BF65.md`](./WMS_DAMAGE_CLAIM_BF65.md), [`WMS_VOICE_PICK_BF66.md`](./WMS_VOICE_PICK_BF66.md), [`WMS_MULTI_PARCEL_MANIFEST_BF67.md`](./WMS_MULTI_PARCEL_MANIFEST_BF67.md), [`WMS_CUSTOMS_FILING_BF68.md`](./WMS_CUSTOMS_FILING_BF68.md), [`WMS_CARBON_INTENSITY_BF69.md`](./WMS_CARBON_INTENSITY_BF69.md)). **`BF-70`** remains a **draft program ID** — merge/split/reorder before execution.
 
 **Rules:**
 
@@ -36,7 +36,7 @@
 | **BF-66** | Voice-picking task protocol (vendor-neutral JSON) | Pick execution row | Pick tasks, **BF-56** batch picks — [`WMS_VOICE_PICK_BF66.md`](./WMS_VOICE_PICK_BF66.md) |
 | **BF-67** | Multi-parcel outbound manifests | Packing / carrier row | **BF-39** labels, **BF-43** cartons — **`manifestParcelIds`** + **`GET /api/wms/outbound-manifest-export`** landed ([`WMS_MULTI_PARCEL_MANIFEST_BF67.md`](./WMS_MULTI_PARCEL_MANIFEST_BF67.md)) |
 | **BF-68** | Customs filing export JSON handoff | Trade compliance row | Outbound ship data, **BF-40** ASN lineage — **`GET /api/wms/customs-filing-export`** landed ([`WMS_CUSTOMS_FILING_BF68.md`](./WMS_CUSTOMS_FILING_BF68.md)) |
-| **BF-69** | Carbon intensity hints on movements | Sustainability reporting row | Movement distances/modes (stub attrs) |
+| **BF-69** | Carbon intensity hints on movements | Sustainability reporting row | Movement distances/modes (stub attrs) — **[`WMS_CARBON_INTENSITY_BF69.md`](./WMS_CARBON_INTENSITY_BF69.md)** ✅ |
 | **BF-70** | External PDP authorization hooks | Permissions row | **BF-06** tiers, **BF-48** field ACL evaluator hooks |
 
 **Suggested dependency-aware sequence (not mandatory):** inventory accuracy (**BF-51**) before slotting (**BF-52**); dock depth (**BF-54**) after yard TMS maturity; transfers (**BF-55**) after ledger + optional **BF-36**; batch pick (**BF-56**) after wave task model; **BF-59** after **BF-31**; **BF-70** after **BF-48** manifest coverage.
@@ -237,11 +237,13 @@
 
 ---
 
-## BF-69 — Carbon intensity hints on movements
+## BF-69 — Carbon intensity hints on movements ✅ **Minimal landed**
 
 **Objective:** Optional **CO₂e estimate** fields on movements from mode/distance stubs — aligns with assistant sustainability narratives.
 
 **Exit sketch (minimal slice):** **`movement.co2eEstimateGrams`** nullable + methodology string on **`GET /api/wms`** executive payload extension.
+
+**Shipped:** [`WMS_CARBON_INTENSITY_BF69.md`](./WMS_CARBON_INTENSITY_BF69.md) — **`InventoryMovement.co2eEstimateGrams`** / **`co2eStubJson`**; **`Product.wmsCo2eFactorGramsPerKgKm`**; **`set_inventory_movement_co2e_hint_bf69`** / **`set_product_wms_co2e_factor_bf69`**; **`movementCo2eHintMeta`** on **`GET /api/wms`**; Vitest **`carbon-intensity-bf69.test.ts`**.
 
 **Out of scope:** Third-party GLEC-certified audits.
 
@@ -263,4 +265,4 @@
 
 ---
 
-_Last updated: 2026-04-30 — **BF-68** customs filing handoff JSON ([`WMS_CUSTOMS_FILING_BF68.md`](./WMS_CUSTOMS_FILING_BF68.md)); **BF-67** multi-parcel manifest ([`WMS_MULTI_PARCEL_MANIFEST_BF67.md`](./WMS_MULTI_PARCEL_MANIFEST_BF67.md)). **BF-69 … BF-70** draft stubs._
+_Last updated: 2026-04-30 — **BF-69** carbon intensity hints ([`WMS_CARBON_INTENSITY_BF69.md`](./WMS_CARBON_INTENSITY_BF69.md)). **BF-70** draft stub._

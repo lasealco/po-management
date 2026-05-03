@@ -47,6 +47,11 @@ import {
   generateDockGrnReference,
 } from "./asn-receipt-tolerance";
 import { evaluateCatchWeightAgainstTolerance } from "./catch-weight-receipt";
+import {
+  parseCo2eEstimateGramsForPatch,
+  parseCo2eStubJsonForPatch,
+  parseProductWmsCo2eFactorGramsPerKgKmForPatch,
+} from "./carbon-intensity-bf69";
 import { custodySegmentIndicatesBreach, parseCustodySegmentJsonForPatch } from "./custody-segment-bf64";
 import {
   DAMAGE_CARRIER_CLAIM_REF_MAX,
@@ -881,6 +886,46 @@ export async function handleWmsPost(
     await prisma.product.updateMany({
       where: { id: productId, tenantId },
       data,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_product_wms_co2e_factor_bf69") {
+    const productId = input.productId?.trim();
+    if (!productId) {
+      return toApiErrorResponseFromStatus("productId required.", 400);
+    }
+    if (input.wmsCo2eFactorGramsPerKgKm === undefined) {
+      return toApiErrorResponseFromStatus(
+        "wmsCo2eFactorGramsPerKgKm required — send a non-negative number or null to clear.",
+        400,
+      );
+    }
+    const row = await prisma.product.findFirst({
+      where: { id: productId, tenantId },
+      select: { id: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Product not found.", 404);
+    }
+    const parsed = parseProductWmsCo2eFactorGramsPerKgKmForPatch(input.wmsCo2eFactorGramsPerKgKm);
+    if (!parsed.ok) {
+      return toApiErrorResponseFromStatus(parsed.message, 400);
+    }
+    let factor: Prisma.Decimal | null;
+    if (parsed.mode === "clear") {
+      factor = null;
+    } else if (parsed.mode === "set") {
+      factor = parsed.value;
+    } else {
+      return toApiErrorResponseFromStatus(
+        "wmsCo2eFactorGramsPerKgKm required — send a non-negative number or null to clear.",
+        400,
+      );
+    }
+    await prisma.product.updateMany({
+      where: { id: productId, tenantId },
+      data: { wmsCo2eFactorGramsPerKgKm: factor },
     });
     return NextResponse.json({ ok: true });
   }
@@ -4342,6 +4387,58 @@ export async function handleWmsPost(
           },
         });
       }
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_inventory_movement_co2e_hint_bf69") {
+    const movementId = input.inventoryMovementId?.trim();
+    if (!movementId) {
+      return toApiErrorResponseFromStatus("inventoryMovementId required.", 400);
+    }
+    const gramsPatch = parseCo2eEstimateGramsForPatch(input.co2eEstimateGrams);
+    const stubPatch = parseCo2eStubJsonForPatch(input.co2eStubJson);
+    if (!gramsPatch.ok) {
+      return toApiErrorResponseFromStatus(gramsPatch.message, 400);
+    }
+    if (!stubPatch.ok) {
+      return toApiErrorResponseFromStatus(stubPatch.message, 400);
+    }
+    if (gramsPatch.mode === "omit" && stubPatch.mode === "omit") {
+      return toApiErrorResponseFromStatus(
+        "Send co2eEstimateGrams and/or co2eStubJson (each may be null to clear that field).",
+        400,
+      );
+    }
+
+    const row = await prisma.inventoryMovement.findFirst({
+      where: { id: movementId, tenantId },
+      select: { id: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Inventory movement not found.", 404);
+    }
+
+    const data: Prisma.InventoryMovementUpdateInput = {};
+    if (gramsPatch.mode === "clear") {
+      data.co2eEstimateGrams = null;
+    } else if (gramsPatch.mode === "set") {
+      data.co2eEstimateGrams = gramsPatch.value;
+    }
+    if (stubPatch.mode === "clear") {
+      data.co2eStubJson = Prisma.DbNull;
+    } else if (stubPatch.mode === "set") {
+      data.co2eStubJson = stubPatch.value;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return toApiErrorResponseFromStatus("No CO₂e fields to update.", 400);
+    }
+
+    await prisma.inventoryMovement.update({
+      where: { id: row.id },
+      data,
     });
 
     return NextResponse.json({ ok: true });

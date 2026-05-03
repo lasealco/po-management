@@ -255,6 +255,12 @@ export type WmsBody = {
   blockCloseIfOutsideCatchWeight?: boolean;
   /** BF-64 — cold-chain custody JSON on `set_shipment_inbound_fields` / `set_inventory_movement_custody_segment_bf64`; `null` clears. */
   custodySegmentJson?: unknown | null;
+  /** BF-69 — grams CO₂e estimate on `set_inventory_movement_co2e_hint_bf69`; `null` clears that field when included in the request. */
+  co2eEstimateGrams?: number | string | null;
+  /** BF-69 — transport/distance stub object on `set_inventory_movement_co2e_hint_bf69`; `null` clears. */
+  co2eStubJson?: unknown | null;
+  /** BF-69 — `set_product_wms_co2e_factor_bf69`: g CO₂e per kg·km planning factor; `null` clears. */
+  wmsCo2eFactorGramsPerKgKm?: number | string | null;
   /** BF-65 — `create_wms_damage_report_bf65` — RECEIVING uses `shipmentId`; PACKING uses `outboundOrderId`. */
   damageReportContext?: "RECEIVING" | "PACKING";
   /** BF-65 — defaults DRAFT. */
@@ -274,7 +280,7 @@ export type WmsBody = {
   inventorySerialId?: string;
   /** BF-13 — raw serial token with `productId` when `inventorySerialId` omitted. */
   inventorySerialNo?: string;
-  /** BF-13 — `InventoryMovement.id` for `attach_inventory_serial_to_movement`; BF-64 — `set_inventory_movement_custody_segment_bf64`. */
+  /** BF-13 — `InventoryMovement.id` for `attach_inventory_serial_to_movement`; BF-64 — `set_inventory_movement_custody_segment_bf64`; BF-69 — `set_inventory_movement_co2e_hint_bf69`. */
   inventoryMovementId?: string;
   /** BF-13 — `InventoryBalance.id` for `set_inventory_serial_balance`; `null` clears pointer. */
   serialBalanceId?: string | null;

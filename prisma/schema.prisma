@@ -3373,6 +3373,9 @@ model Product {
   /// BF-63 — optional hint for scale / label workflows (informational; not legal-for-trade certification).
   catchWeightLabelHint String? @db.VarChar(256)
 
+  /// BF-69 — optional planning factor (grams CO₂e per kg·km) for sustainability handoffs; not GLEC-certified.
+  wmsCo2eFactorGramsPerKgKm Decimal? @db.Decimal(18, 6)
+
   supplierOfficeId String?
   supplierOffice   SupplierOffice? @relation(fields: [supplierOfficeId], references: [id], onDelete: SetNull)
 
@@ -4933,6 +4936,10 @@ model InventoryMovement {
   note          String?
   /// BF-64 — optional cold-chain / custody segment (probe temps, breach flag); see `docs/wms/WMS_COLD_CHAIN_BF64.md`.
   custodySegmentJson Json?
+  /// BF-69 — optional indicative CO₂e for this movement (grams); see `docs/wms/WMS_CARBON_INTENSITY_BF69.md`.
+  co2eEstimateGrams Decimal? @db.Decimal(18, 4)
+  /// BF-69 — optional transport/distance stubs supporting the estimate (plain JSON object).
+  co2eStubJson Json?
   createdById   String
   createdAt     DateTime              @default(now())
 

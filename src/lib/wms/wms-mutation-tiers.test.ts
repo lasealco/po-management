@@ -59,6 +59,11 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("set_inventory_movement_custody_segment_bf64")).toBe("inventory");
   });
 
+  it("maps BF-69 carbon hint mutations to setup + inventory tiers", () => {
+    expect(wmsMutationTierForPostAction("set_product_wms_co2e_factor_bf69")).toBe("setup");
+    expect(wmsMutationTierForPostAction("set_inventory_movement_co2e_hint_bf69")).toBe("inventory");
+  });
+
   it("maps BF-65 damage report create to operations tier", () => {
     expect(wmsMutationTierForPostAction("create_wms_damage_report_bf65")).toBe("operations");
   });

@@ -18,6 +18,10 @@ import { allowedNextWmsReceiveStatuses } from "@/lib/wms/wms-receive-status";
 import { loadInventorySerialTrace, type SerialTraceQueryInput } from "@/lib/wms/inventory-serial-trace";
 import { buildOutboundPackScanPlan } from "@/lib/wms/pack-scan-verify";
 import { manifestParcelIdsFromDbJson } from "@/lib/wms/outbound-manifest-bf67";
+import {
+  CO2E_HINT_METHODOLOGY,
+  CO2E_HINT_SCHEMA_VERSION,
+} from "@/lib/wms/carbon-intensity-bf69";
 import { prisma } from "@/lib/prisma";
 
 const WMS_PRODUCT_REF_SELECT = {
@@ -31,6 +35,7 @@ const WMS_PRODUCT_REF_SELECT = {
   cartonUnitsPerMasterCarton: true,
   isCatchWeight: true,
   catchWeightLabelHint: true,
+  wmsCo2eFactorGramsPerKgKm: true,
 } satisfies Prisma.ProductSelect;
 
 function mapWmsProductJson(p: {
@@ -44,6 +49,7 @@ function mapWmsProductJson(p: {
   cartonUnitsPerMasterCarton: Prisma.Decimal | null;
   isCatchWeight: boolean;
   catchWeightLabelHint: string | null;
+  wmsCo2eFactorGramsPerKgKm: Prisma.Decimal | null;
 }) {
   return {
     id: p.id,
@@ -57,6 +63,8 @@ function mapWmsProductJson(p: {
       p.cartonUnitsPerMasterCarton != null ? p.cartonUnitsPerMasterCarton.toString() : null,
     isCatchWeight: p.isCatchWeight,
     catchWeightLabelHint: p.catchWeightLabelHint,
+    wmsCo2eFactorGramsPerKgKm:
+      p.wmsCo2eFactorGramsPerKgKm != null ? p.wmsCo2eFactorGramsPerKgKm.toString() : null,
   };
 }
 
@@ -817,6 +825,10 @@ export async function getWmsDashboardPayload(
 
   return {
     packShipScanPolicy,
+    movementCo2eHintMeta: {
+      schemaVersion: CO2E_HINT_SCHEMA_VERSION,
+      methodology: CO2E_HINT_METHODOLOGY,
+    },
     atpByWarehouseProduct,
     softReservations: softReservationRows.map((r) => ({
       id: r.id,
@@ -1287,6 +1299,8 @@ export async function getWmsDashboardPayload(
       referenceId: m.referenceId,
       note: m.note,
       custodySegmentJson: m.custodySegmentJson ?? null,
+      co2eEstimateGrams: m.co2eEstimateGrams != null ? m.co2eEstimateGrams.toString() : null,
+      co2eStubJson: m.co2eStubJson ?? null,
       createdAt: m.createdAt.toISOString(),
       warehouse: m.warehouse,
       bin: m.bin,
