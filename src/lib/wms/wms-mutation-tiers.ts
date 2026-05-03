@@ -122,6 +122,9 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_work_order_commercial_estimate: "operations",
   create_value_add_task: "operations",
   complete_value_add_task: "operations",
+  /** BF-62 — kit assembly task from WO BOM + bin/lot picks. */
+  create_kit_build_task: "operations",
+  complete_kit_build_task: "operations",
   replace_work_order_bom_lines: "operations",
   consume_work_order_bom_line: "operations",
   /** BF-26 — attach CPQ line whose engineering BOM syncs into WMS. */

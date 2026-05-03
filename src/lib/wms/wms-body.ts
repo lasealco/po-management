@@ -264,6 +264,17 @@ export type WmsBody = {
     lineNote?: string | null;
   }>;
 
+  /** BF-62 — `create_kit_build_task`: finished good SKU posted on complete. */
+  kitOutputProductId?: string;
+  /** BF-62 — destination bin in the work-order warehouse. */
+  kitOutputBinId?: string;
+  /** BF-62 — number of kit outputs this task produces. */
+  kitBuildQuantity?: number;
+  /** BF-62 — BOM `plannedQty` aggregates represent this many output units (default 1). */
+  bomRepresentsOutputUnits?: number;
+  /** BF-62 — one pick per BOM line with positive scaled consumption (`bomLineId`, component `binId`, optional `lotCode`). */
+  kitBuildLines?: Array<{ bomLineId: string; binId: string; lotCode?: string | null }>;
+
   /** BF-33 — master carton dimensions / units for cube-aware greedy waves (`set_product_carton_cube_hints`). */
   cartonLengthMm?: number | null;
   cartonWidthMm?: number | null;

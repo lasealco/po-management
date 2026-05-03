@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **`BF-51`** … **`BF-61`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md)). **`BF-62` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
+**Status:** **`BF-51`** … **`BF-62`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md)). **`BF-63` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
 
 **Rules:**
 
@@ -29,7 +29,7 @@
 | **BF-59** | Inbound ASN **pre-advise** ingestion stub | Inbound ASN row | **BF-31** tolerance — **`POST/GET /api/wms/inbound-asn-advise`**, **`WmsInboundAsnAdvise`** landed ([`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md)) |
 | **BF-60** | Mobile offline scan queue replay | Field UX row | **`POST /api/wms/scan-events/batch`**, **`WmsScanEventBatch`** landed ([`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md)) |
 | **BF-61** | Forecast-driven replenishment hints | Replenishment row | **BF-35** rules — **`WmsDemandForecastStub`** landed ([`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md)) |
-| **BF-62** | Kit assembly / build outbound postings | VAS / kit row | **BF-18** BOM, inventory mutations |
+| **BF-62** | Kit assembly / build outbound postings | VAS / kit row | **BF-18** BOM, inventory mutations — **`KIT_BUILD`** tasks landed ([`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md)) |
 | **BF-63** | Catch-weight receiving | Receiving / UOM row | **BF-01** line variance, **`Product`** UOM |
 | **BF-64** | Cold-chain custody segments on movements | Compliance row | Movement ledger, optional **`Shipment`** flags |
 | **BF-65** | Damage workflow & carrier claim export stub | Claims row | Receiving (**BF-41**/dispositions), attachments metadata |
@@ -158,6 +158,8 @@
 **Objective:** **Kit BOM explosion** into assembly **consumption + output** inventory movements (reverse direction of pick) for finished kits.
 
 **Exit sketch (minimal slice):** **`create_kit_build_task`** consuming **`WmsWorkOrderBomLine`**-like kit rows; output SKU qty to bin.
+
+**Shipped:** [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md) — **`WmsTaskType.KIT_BUILD`**; **`create_kit_build_task`** / **`complete_kit_build_task`**; structured task **`note`**; component **`ADJUSTMENT`** + output posting; Operations **Step 3** UI + open-task handling.
 
 **Out of scope:** Full discrete MES routing.
 

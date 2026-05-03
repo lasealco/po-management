@@ -106,6 +106,12 @@ import {
 } from "./engineering-bom-sync";
 import { parseConsumeWorkOrderBomQuantity, parseReplaceWorkOrderBomLinesPayload } from "./work-order-bom";
 import { nextWorkOrderNo } from "./work-order-no";
+import {
+  computeKitBuildLineDeltas,
+  parseKitBuildTaskNote,
+  serializeKitBuildTaskPayload,
+  validateKitBuildLinePicks,
+} from "./kit-build";
 
 import {
   customerReturnApplyQuarantineHold,
@@ -282,7 +288,7 @@ export async function handleWmsPost(
 
   if (action === "set_wms_labor_task_standard") {
     const rawType = input.laborTaskType?.trim().toUpperCase();
-    const allTypes: WmsTaskType[] = ["PUTAWAY", "PICK", "REPLENISH", "CYCLE_COUNT", "VALUE_ADD"];
+    const allTypes: WmsTaskType[] = ["PUTAWAY", "PICK", "REPLENISH", "CYCLE_COUNT", "VALUE_ADD", "KIT_BUILD"];
     if (!rawType || !allTypes.includes(rawType as WmsTaskType)) {
       return toApiErrorResponseFromStatus(
         "laborTaskType must be PUTAWAY, PICK, REPLENISH, CYCLE_COUNT, or VALUE_ADD.",
@@ -5805,6 +5811,357 @@ export async function handleWmsPost(
             consumedQty: hasMaterials ? qty : 0,
             movementType: hasMaterials ? "ADJUSTMENT" : null,
           },
+          actorUserId: actorId,
+        },
+      });
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_kit_build_task") {
+    const workOrderId = input.workOrderId?.trim();
+    const kitOutputProductId = input.kitOutputProductId?.trim();
+    const kitOutputBinId = input.kitOutputBinId?.trim();
+    const kitQty = Number(input.kitBuildQuantity);
+    const bomRepRaw = input.bomRepresentsOutputUnits;
+    const bomRep = bomRepRaw === undefined || bomRepRaw === null ? 1 : Number(bomRepRaw);
+
+    if (!workOrderId || !kitOutputProductId || !kitOutputBinId) {
+      return toApiErrorResponseFromStatus(
+        "workOrderId, kitOutputProductId, and kitOutputBinId required.",
+        400,
+      );
+    }
+    if (!Number.isFinite(kitQty) || kitQty <= 0) {
+      return toApiErrorResponseFromStatus("kitBuildQuantity must be > 0.", 400);
+    }
+    if (!Number.isInteger(bomRep) || bomRep < 1) {
+      return toApiErrorResponseFromStatus("bomRepresentsOutputUnits must be a positive integer.", 400);
+    }
+
+    const linesRaw = input.kitBuildLines;
+    if (!Array.isArray(linesRaw) || linesRaw.length === 0) {
+      return toApiErrorResponseFromStatus("kitBuildLines required (non-empty array).", 400);
+    }
+
+    const wo = await prisma.wmsWorkOrder.findFirst({
+      where: {
+        id: workOrderId,
+        tenantId,
+        status: { in: ["OPEN", "IN_PROGRESS"] },
+      },
+      select: {
+        id: true,
+        warehouseId: true,
+        bomLines: {
+          orderBy: { lineNo: "asc" },
+          select: { id: true, componentProductId: true, plannedQty: true, consumedQty: true },
+        },
+      },
+    });
+    if (!wo) {
+      return toApiErrorResponseFromStatus("Work order not found or not open.", 404);
+    }
+    if (wo.bomLines.length === 0) {
+      return toApiErrorResponseFromStatus("Work order has no BOM lines.", 400);
+    }
+
+    const kitBuildLinesParsed: Array<{ bomLineId: string; binId: string; lotCode: string }> = [];
+    for (let i = 0; i < linesRaw.length; i++) {
+      const row = linesRaw[i];
+      if (!row || typeof row !== "object") {
+        return toApiErrorResponseFromStatus(`kitBuildLines[${i}] must be an object.`, 400);
+      }
+      const o = row as Record<string, unknown>;
+      const bomLineId = typeof o.bomLineId === "string" ? o.bomLineId.trim() : "";
+      const binId = typeof o.binId === "string" ? o.binId.trim() : "";
+      if (!bomLineId || !binId) {
+        return toApiErrorResponseFromStatus(`kitBuildLines[${i}] needs bomLineId and binId.`, 400);
+      }
+      const lotCode = o.lotCode !== undefined && o.lotCode !== null ? normalizeLotCode(String(o.lotCode)) : FUNGIBLE_LOT_CODE;
+      kitBuildLinesParsed.push({ bomLineId, binId, lotCode });
+    }
+
+    const bomLineById = new Map(wo.bomLines.map((l) => [l.id, l]));
+    for (const p of kitBuildLinesParsed) {
+      if (!bomLineById.has(p.bomLineId)) {
+        return toApiErrorResponseFromStatus("kitBuildLines references unknown bomLineId.", 400);
+      }
+    }
+
+    const deltaRes = computeKitBuildLineDeltas(wo.bomLines, kitQty, bomRep);
+    if (!deltaRes.ok) return toApiErrorResponseFromStatus(deltaRes.message, 400);
+    const pickVal = validateKitBuildLinePicks(deltaRes.deltas, kitBuildLinesParsed);
+    if (!pickVal.ok) return toApiErrorResponseFromStatus(pickVal.message, 400);
+
+    const outProd = await prisma.product.findFirst({
+      where: { id: kitOutputProductId, tenantId },
+      select: { id: true },
+    });
+    if (!outProd) return toApiErrorResponseFromStatus("kitOutputProductId not found.", 404);
+
+    const outBin = await prisma.warehouseBin.findFirst({
+      where: { id: kitOutputBinId, tenantId, warehouseId: wo.warehouseId },
+      select: { id: true },
+    });
+    if (!outBin) return toApiErrorResponseFromStatus("kitOutputBinId not found in work order warehouse.", 404);
+
+    for (const p of kitBuildLinesParsed) {
+      const line = bomLineById.get(p.bomLineId)!;
+      const delta = deltaRes.deltas.get(p.bomLineId)!;
+      if (delta.lte(0)) continue;
+
+      const bin = await prisma.warehouseBin.findFirst({
+        where: { id: p.binId, tenantId, warehouseId: wo.warehouseId },
+        select: { id: true },
+      });
+      if (!bin) return toApiErrorResponseFromStatus("Component bin not in work order warehouse.", 404);
+
+      const bal = await prisma.inventoryBalance.findFirst({
+        where: {
+          tenantId,
+          warehouseId: wo.warehouseId,
+          binId: p.binId,
+          productId: line.componentProductId,
+          lotCode: p.lotCode,
+        },
+        select: { onHandQty: true, onHold: true },
+      });
+      if (!bal || bal.onHold) {
+        return toApiErrorResponseFromStatus(
+          "Component balance missing, wrong product/lot, or on hold.",
+          400,
+        );
+      }
+      if (new Prisma.Decimal(bal.onHandQty).lt(delta)) {
+        return toApiErrorResponseFromStatus("Insufficient component stock for kit build.", 400);
+      }
+    }
+
+    const note = serializeKitBuildTaskPayload({
+      v: 1,
+      bomRepresentsOutputUnits: bomRep,
+      lines: kitBuildLinesParsed,
+    });
+
+    await prisma.$transaction(async (tx) => {
+      const stdKb = await laborStandardMinutesSnapshot(tx, tenantId, "KIT_BUILD");
+      const kbStd = stdKb != null ? { standardMinutes: stdKb } : {};
+      await tx.wmsTask.create({
+        data: {
+          tenantId,
+          warehouseId: wo.warehouseId,
+          taskType: "KIT_BUILD",
+          referenceType: "WMS_WORK_ORDER",
+          referenceId: wo.id,
+          productId: kitOutputProductId,
+          binId: kitOutputBinId,
+          lotCode: FUNGIBLE_LOT_CODE,
+          quantity: kitQty.toString(),
+          note,
+          createdById: actorId,
+          ...kbStd,
+        },
+      });
+      await tx.wmsWorkOrder.update({
+        where: { id: wo.id },
+        data: { status: "IN_PROGRESS" },
+      });
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "complete_kit_build_task") {
+    const taskId = input.taskId?.trim();
+    if (!taskId) return toApiErrorResponseFromStatus("taskId required.", 400);
+
+    const task = await prisma.wmsTask.findFirst({
+      where: { id: taskId, tenantId, status: "OPEN", taskType: "KIT_BUILD" },
+      select: {
+        id: true,
+        warehouseId: true,
+        productId: true,
+        binId: true,
+        quantity: true,
+        referenceType: true,
+        referenceId: true,
+        note: true,
+      },
+    });
+    if (!task || task.referenceType !== "WMS_WORK_ORDER" || !task.referenceId) {
+      return toApiErrorResponseFromStatus("KIT_BUILD task not found.", 404);
+    }
+    const kitOutProductId = task.productId;
+    const kitOutBinId = task.binId;
+    if (!kitOutProductId || !kitOutBinId) {
+      return toApiErrorResponseFromStatus("KIT_BUILD task missing output product or bin.", 400);
+    }
+
+    const kitQty = Number(task.quantity);
+    if (!Number.isFinite(kitQty) || kitQty <= 0) {
+      return toApiErrorResponseFromStatus("Invalid kit task quantity.", 400);
+    }
+
+    const payload = parseKitBuildTaskNote(task.note);
+    if (!payload) {
+      return toApiErrorResponseFromStatus("KIT_BUILD task is missing structured note payload.", 400);
+    }
+
+    const woId = task.referenceId;
+    const wo = await prisma.wmsWorkOrder.findFirst({
+      where: { id: woId, tenantId, status: { in: ["OPEN", "IN_PROGRESS"] } },
+      select: {
+        id: true,
+        warehouseId: true,
+        bomLines: {
+          orderBy: { lineNo: "asc" },
+          select: { id: true, componentProductId: true, plannedQty: true, consumedQty: true },
+        },
+      },
+    });
+    if (!wo || wo.warehouseId !== task.warehouseId) {
+      return toApiErrorResponseFromStatus("Work order not found or closed.", 404);
+    }
+
+    const deltaRes = computeKitBuildLineDeltas(wo.bomLines, kitQty, payload.bomRepresentsOutputUnits);
+    if (!deltaRes.ok) return toApiErrorResponseFromStatus(deltaRes.message, 400);
+    const pickVal = validateKitBuildLinePicks(deltaRes.deltas, payload.lines);
+    if (!pickVal.ok) return toApiErrorResponseFromStatus(pickVal.message, 400);
+
+    const bomLineById = new Map(wo.bomLines.map((l) => [l.id, l]));
+    const pickByLine = new Map(payload.lines.map((l) => [l.bomLineId, l]));
+
+    for (const line of wo.bomLines) {
+      const delta = deltaRes.deltas.get(line.id)!;
+      if (delta.lte(0)) continue;
+      const p = pickByLine.get(line.id)!;
+      const bal = await prisma.inventoryBalance.findFirst({
+        where: {
+          tenantId,
+          warehouseId: wo.warehouseId,
+          binId: p.binId,
+          productId: line.componentProductId,
+          lotCode: p.lotCode,
+        },
+        select: { onHandQty: true, onHold: true },
+      });
+      if (!bal || bal.onHold || new Prisma.Decimal(bal.onHandQty).lt(delta)) {
+        return toApiErrorResponseFromStatus("Insufficient component stock to complete kit build.", 400);
+      }
+    }
+
+    const outBalPre = await prisma.inventoryBalance.findFirst({
+      where: {
+        tenantId,
+        warehouseId: task.warehouseId,
+        binId: kitOutBinId,
+        productId: kitOutProductId,
+        lotCode: FUNGIBLE_LOT_CODE,
+      },
+      select: { id: true, onHold: true },
+    });
+    if (outBalPre?.onHold) {
+      return toApiErrorResponseFromStatus("Output bin balance is on hold.", 400);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const line of wo.bomLines) {
+        const delta = deltaRes.deltas.get(line.id)!;
+        if (delta.lte(0)) continue;
+        const p = pickByLine.get(line.id)!;
+        const qtyStr = delta.toFixed();
+        await tx.inventoryBalance.updateMany({
+          where: {
+            tenantId,
+            warehouseId: wo.warehouseId,
+            binId: p.binId,
+            productId: line.componentProductId,
+            lotCode: p.lotCode,
+          },
+          data: { onHandQty: { decrement: qtyStr } },
+        });
+        await tx.inventoryMovement.create({
+          data: {
+            tenantId,
+            warehouseId: wo.warehouseId,
+            binId: p.binId,
+            productId: line.componentProductId,
+            movementType: "ADJUSTMENT",
+            quantity: qtyStr,
+            referenceType: "KIT_BUILD_TASK",
+            referenceId: task.id,
+            note: "Kit build component consumption",
+            createdById: actorId,
+          },
+        });
+        await tx.wmsWorkOrderBomLine.update({
+          where: { id: line.id },
+          data: { consumedQty: { increment: qtyStr } },
+        });
+      }
+
+      await tx.inventoryBalance.upsert({
+        where: {
+          warehouseId_binId_productId_lotCode: {
+            warehouseId: task.warehouseId,
+            binId: kitOutBinId,
+            productId: kitOutProductId,
+            lotCode: FUNGIBLE_LOT_CODE,
+          },
+        },
+        create: {
+          tenantId,
+          warehouseId: task.warehouseId,
+          binId: kitOutBinId,
+          productId: kitOutProductId,
+          lotCode: FUNGIBLE_LOT_CODE,
+          onHandQty: kitQty.toString(),
+        },
+        update: { onHandQty: { increment: kitQty.toString() } },
+      });
+      await tx.inventoryMovement.create({
+        data: {
+          tenantId,
+          warehouseId: task.warehouseId,
+          binId: kitOutBinId,
+          productId: kitOutProductId,
+          movementType: "ADJUSTMENT",
+          quantity: kitQty.toString(),
+          referenceType: "KIT_BUILD_TASK",
+          referenceId: task.id,
+          note: "Kit build output",
+          createdById: actorId,
+        },
+      });
+
+      await tx.wmsTask.update({
+        where: { id: task.id },
+        data: { status: "DONE", completedAt: new Date(), completedById: actorId },
+      });
+
+      const refreshed = await tx.wmsWorkOrderBomLine.findMany({
+        where: { workOrderId: woId, tenantId },
+        select: { plannedQty: true, consumedQty: true },
+      });
+      const allDone = refreshed.every((r) =>
+        new Prisma.Decimal(r.consumedQty).equals(new Prisma.Decimal(r.plannedQty)),
+      );
+      if (allDone) {
+        await tx.wmsWorkOrder.update({
+          where: { id: woId },
+          data: { status: "DONE", completedAt: new Date() },
+        });
+      }
+
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WMS_WORK_ORDER",
+          entityId: woId,
+          action: "kit_build_task_completed",
+          payload: { taskId: task.id, kitQty, outputProductId: kitOutProductId },
           actorUserId: actorId,
         },
       });

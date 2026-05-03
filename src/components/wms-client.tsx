@@ -1,7 +1,7 @@
 "use client";
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
-import type { InventoryMovementType, WmsReceiveStatus } from "@prisma/client";
+import { Prisma, type InventoryMovementType, type WmsReceiveStatus } from "@prisma/client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment } from "react";
@@ -24,6 +24,8 @@ import {
   defaultTrailerChecklistPayload,
   type TrailerChecklistPayload,
 } from "@/lib/wms/dock-trailer-checklist";
+import { computeKitBuildLineDeltas, validateKitBuildLinePicks } from "@/lib/wms/kit-build";
+import { FUNGIBLE_LOT_CODE } from "@/lib/wms/lot-code";
 
 const BF51_VARIANCE_REASONS = ["SHRINK", "DAMAGE", "DATA_ENTRY", "FOUND", "OTHER"] as const;
 
@@ -50,7 +52,7 @@ type Bf52SlottingPreview = {
   }>;
 };
 
-const WMS_LABOR_TASK_TYPES = ["PUTAWAY", "PICK", "REPLENISH", "CYCLE_COUNT", "VALUE_ADD"] as const;
+const WMS_LABOR_TASK_TYPES = ["PUTAWAY", "PICK", "REPLENISH", "CYCLE_COUNT", "VALUE_ADD", "KIT_BUILD"] as const;
 
 /** Matches serialized product refs from `GET /api/wms` (including BF-33 carton hints). */
 type WmsProductRef = {
@@ -377,7 +379,7 @@ type WmsData = {
   }>;
   openTasks: Array<{
     id: string;
-    taskType: "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT" | "VALUE_ADD";
+    taskType: "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT" | "VALUE_ADD" | "KIT_BUILD";
     quantity: string;
     warehouse: { id: string; code: string | null; name: string };
     bin: { id: string; code: string; name: string } | null;
@@ -1078,6 +1080,12 @@ export function WmsClient({
   const [vasTaskWoId, setVasTaskWoId] = useState("");
   const [vasBalanceLineId, setVasBalanceLineId] = useState("");
   const [vasTaskQty, setVasTaskQty] = useState("");
+  const [kitBuildWoId, setKitBuildWoId] = useState("");
+  const [kitOutputProductId, setKitOutputProductId] = useState("");
+  const [kitOutputBinId, setKitOutputBinId] = useState("");
+  const [kitBuildQtyStr, setKitBuildQtyStr] = useState("1");
+  const [kitBomRepStr, setKitBomRepStr] = useState("1");
+  const [kitBuildBalanceByBomLineId, setKitBuildBalanceByBomLineId] = useState<Record<string, string>>({});
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
   const [bf51ScopeNote, setBf51ScopeNote] = useState("");
@@ -1153,7 +1161,7 @@ export function WmsClient({
   const [ledgerDraftUntil, setLedgerDraftUntil] = useState("");
   const [ledgerDraftLimit, setLedgerDraftLimit] = useState("");
   const [openTaskTypeFilter, setOpenTaskTypeFilter] = useState<
-    "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT" | "VALUE_ADD"
+    "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT" | "VALUE_ADD" | "KIT_BUILD"
   >("");
   const [replenishTierFilter, setReplenishTierFilter] = useState<"" | "standard" | "exception">("");
   const [replenishMinPriority, setReplenishMinPriority] = useState("");
@@ -1225,7 +1233,8 @@ export function WmsClient({
       taskType === "PICK" ||
       taskType === "REPLENISH" ||
       taskType === "CYCLE_COUNT" ||
-      taskType === "VALUE_ADD"
+      taskType === "VALUE_ADD" ||
+      taskType === "KIT_BUILD"
     ) {
       startTransition(() => {
         setOpenTaskTypeFilter(taskType);
@@ -1589,6 +1598,33 @@ export function WmsClient({
       ),
     [data?.workOrders, selectedWarehouseId],
   );
+
+  const kitBuildSelectedWo = useMemo(
+    () => workOrdersForWarehouse.find((w) => w.id === kitBuildWoId) ?? null,
+    [workOrdersForWarehouse, kitBuildWoId],
+  );
+
+  const kitBuildPreview = useMemo(() => {
+    const wo = kitBuildSelectedWo;
+    if (!wo?.bomLines?.length) return { status: "idle" as const };
+    const kq = Number(kitBuildQtyStr);
+    const brTrim = kitBomRepStr.trim();
+    const br = brTrim === "" ? 1 : Number(kitBomRepStr);
+    if (!Number.isFinite(kq) || kq <= 0) return { status: "bad_qty" as const };
+    if (!Number.isInteger(br) || br < 1) return { status: "bad_rep" as const };
+    const rows = wo.bomLines.map((bl) => ({
+      id: bl.id,
+      plannedQty: new Prisma.Decimal(bl.plannedQty),
+      consumedQty: new Prisma.Decimal(bl.consumedQty),
+    }));
+    const r = computeKitBuildLineDeltas(rows, kq, br);
+    if (!r.ok) return { status: "delta_err" as const, message: r.message };
+    return { status: "ok" as const, deltas: r.deltas, kitQty: kq, bomRep: br };
+  }, [kitBuildSelectedWo, kitBuildQtyStr, kitBomRepStr]);
+
+  useEffect(() => {
+    setKitBuildBalanceByBomLineId({});
+  }, [kitBuildWoId]);
 
   const productPickOptionsForWarehouse = useMemo(() => {
     const m = new Map<string, WmsProductRef>();
@@ -7372,11 +7408,12 @@ export function WmsClient({
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
         <h2 className="mt-2 text-sm font-semibold text-zinc-900">Value-add / work orders</h2>
         <p className="mt-1 text-xs text-zinc-600">
-          Warehouse-scoped tickets with <span className="font-medium text-zinc-800">VALUE_ADD</span> tasks and
-          optional multi-line <span className="font-medium text-zinc-800">BOM</span> snapshots (BF-18). Completing a
-          task with material consumption posts an{" "}
-          <span className="font-medium text-zinc-800">ADJUSTMENT</span> movement; BOM consumption uses{" "}
-          <span className="font-medium text-zinc-800">referenceType WO_BOM_LINE</span>.{" "}
+          Warehouse-scoped tickets with <span className="font-medium text-zinc-800">VALUE_ADD</span> and{" "}
+          <span className="font-medium text-zinc-800">KIT_BUILD</span> (BF-62) tasks and optional multi-line{" "}
+          <span className="font-medium text-zinc-800">BOM</span> snapshots (BF-18). Completing a task with material
+          consumption posts an <span className="font-medium text-zinc-800">ADJUSTMENT</span> movement; BOM consumption
+          uses <span className="font-medium text-zinc-800">referenceType WO_BOM_LINE</span> or{" "}
+          <span className="font-medium text-zinc-800">KIT_BUILD_TASK</span> for kit assemblies.{" "}
           <span className="font-medium text-zinc-800">BF-26</span> adds CRM quote-line engineering BOM JSON (
           <span className="font-medium text-zinc-800">PATCH …/crm/quotes/…/lines/…</span>) plus WMS sync and estimate
           variance vs rolled-up CRM cents. Billing notes:{" "}
@@ -7538,6 +7575,235 @@ export function WmsClient({
               className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
             >
               Create VALUE_ADD task
+            </button>
+          </div>
+          <div className="md:col-span-2 rounded-xl border border-zinc-100 bg-zinc-50/90 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+              Step 3 · Kit build (BF-62)
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-600">
+              Scaled BOM consumption from bin/lot picks plus finished-good posting to an output bin on complete (
+              <span className="font-medium text-zinc-800">complete_kit_build_task</span>).
+            </p>
+            <label className="mt-2 block">
+              <span className="text-[10px] font-medium uppercase text-zinc-500">Work order (with BOM)</span>
+              <select
+                value={kitBuildWoId}
+                onChange={(e) => setKitBuildWoId(e.target.value)}
+                className="mt-1 w-full max-w-xl rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="">Select OPEN / IN_PROGRESS work order</option>
+                {workOrdersForWarehouse
+                  .filter((wo) => wo.status === "OPEN" || wo.status === "IN_PROGRESS")
+                  .filter((wo) => (wo.bomLines ?? []).length > 0)
+                  .map((wo) => (
+                    <option key={wo.id} value={wo.id}>
+                      {wo.workOrderNo} · {wo.title} ({wo.status})
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <div className="mt-2 flex flex-wrap gap-3">
+              <label className="min-w-[14rem] flex-1">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Output product (kit SKU)</span>
+                <select
+                  value={kitOutputProductId}
+                  onChange={(e) => setKitOutputProductId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Select product</option>
+                  {productPickOptionsForWarehouse.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {(p.productCode || p.sku || "SKU").slice(0, 18)} · {p.name.slice(0, 48)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="min-w-[14rem] flex-1">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Output bin</span>
+                <select
+                  value={kitOutputBinId}
+                  onChange={(e) => setKitOutputBinId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Select bin</option>
+                  {binsForWarehouse.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.code} · {b.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-3">
+              <label>
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Kit quantity</span>
+                <input
+                  type="number"
+                  step="any"
+                  min={0}
+                  value={kitBuildQtyStr}
+                  onChange={(e) => setKitBuildQtyStr(e.target.value)}
+                  className="mt-1 w-28 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <label>
+                <span className="text-[10px] font-medium uppercase text-zinc-500">
+                  BOM scale (planned qty = N outputs)
+                </span>
+                <input
+                  type="number"
+                  step={1}
+                  min={1}
+                  value={kitBomRepStr}
+                  onChange={(e) => setKitBomRepStr(e.target.value)}
+                  className="mt-1 w-28 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            {kitBuildSelectedWo ? (
+              <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-200 bg-white">
+                <table className="min-w-full text-left text-[11px]">
+                  <thead className="border-b border-zinc-100 bg-zinc-50 font-medium uppercase text-zinc-500">
+                    <tr>
+                      <th className="px-2 py-1.5">#</th>
+                      <th className="px-2 py-1.5">Component</th>
+                      <th className="px-2 py-1.5 text-right">Remaining</th>
+                      <th className="px-2 py-1.5 text-right">This build</th>
+                      <th className="px-2 py-1.5">Pick balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(kitBuildSelectedWo.bomLines ?? []).map((bl) => {
+                      const remaining = Number(bl.plannedQty) - Number(bl.consumedQty);
+                      let buildCell = "—";
+                      if (kitBuildPreview.status === "ok") {
+                        const d = kitBuildPreview.deltas.get(bl.id);
+                        buildCell = d ? d.toString() : "—";
+                      } else if (kitBuildPreview.status === "delta_err") {
+                        buildCell = "—";
+                      }
+                      const needPick =
+                        kitBuildPreview.status === "ok" &&
+                        kitBuildPreview.deltas.get(bl.id) &&
+                        kitBuildPreview.deltas.get(bl.id)!.gt(0);
+                      const balChoices = balancesForWarehouseOps.filter(
+                        (b) =>
+                          b.product.id === bl.componentProduct.id &&
+                          Number(b.onHandQty) > 0 &&
+                          !b.onHold,
+                      );
+                      return (
+                        <tr key={bl.id} className="border-b border-zinc-50 align-top">
+                          <td className="px-2 py-1.5 tabular-nums">{bl.lineNo}</td>
+                          <td className="px-2 py-1.5">
+                            {(bl.componentProduct.productCode || bl.componentProduct.sku || "—").slice(0, 14)}{" "}
+                            <span className="text-zinc-600">· {bl.componentProduct.name.slice(0, 40)}</span>
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{Math.max(0, remaining).toFixed(3)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{buildCell}</td>
+                          <td className="px-2 py-1.5">
+                            {needPick ? (
+                              <select
+                                value={kitBuildBalanceByBomLineId[bl.id] ?? ""}
+                                onChange={(e) =>
+                                  setKitBuildBalanceByBomLineId((prev) => ({
+                                    ...prev,
+                                    [bl.id]: e.target.value,
+                                  }))
+                                }
+                                className="max-w-[18rem] rounded border border-zinc-300 px-2 py-1 text-[11px]"
+                              >
+                                <option value="">Select balance</option>
+                                {balChoices.map((b) => (
+                                  <option key={b.id} value={b.id}>
+                                    {b.bin.code} · on-hand {b.onHandQty}
+                                    {b.lotCode ? ` · ${b.lotCode}` : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-zinc-400">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {kitBuildPreview.status === "delta_err" ? (
+                  <p className="border-t border-zinc-100 px-2 py-2 text-[11px] text-rose-700">
+                    {kitBuildPreview.message}
+                  </p>
+                ) : kitBuildPreview.status === "bad_qty" ? (
+                  <p className="border-t border-zinc-100 px-2 py-2 text-[11px] text-zinc-600">Enter a kit quantity &gt; 0.</p>
+                ) : kitBuildPreview.status === "bad_rep" ? (
+                  <p className="border-t border-zinc-100 px-2 py-2 text-[11px] text-zinc-600">
+                    BOM scale must be a positive integer.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            <button
+              type="button"
+              disabled={(() => {
+                if (!canEdit || busy || !selectedWarehouseId || !kitBuildWoId) return true;
+                if (!kitOutputProductId || !kitOutputBinId) return true;
+                if (kitBuildPreview.status !== "ok") return true;
+                for (const [bomLineId, d] of kitBuildPreview.deltas) {
+                  if (d.lte(0)) continue;
+                  const bid = kitBuildBalanceByBomLineId[bomLineId];
+                  if (!bid?.trim()) return true;
+                  const bal = balancesForWarehouseOps.find((b) => b.id === bid);
+                  if (!bal) return true;
+                }
+                const kitLines: Array<{ bomLineId: string; binId: string; lotCode: string }> = [];
+                for (const [bomLineId, d] of kitBuildPreview.deltas) {
+                  if (d.lte(0)) continue;
+                  const bal = balancesForWarehouseOps.find(
+                    (b) => b.id === kitBuildBalanceByBomLineId[bomLineId],
+                  );
+                  if (!bal) return true;
+                  const lotCode = bal.lotCode?.trim() ? bal.lotCode.trim() : FUNGIBLE_LOT_CODE;
+                  kitLines.push({
+                    bomLineId,
+                    binId: bal.bin.id,
+                    lotCode,
+                  });
+                }
+                const v = validateKitBuildLinePicks(kitBuildPreview.deltas, kitLines);
+                return !v.ok;
+              })()}
+              onClick={() => {
+                if (kitBuildPreview.status !== "ok") return;
+                const kitLines: Array<{ bomLineId: string; binId: string; lotCode: string }> = [];
+                for (const [bomLineId, d] of kitBuildPreview.deltas) {
+                  if (d.lte(0)) continue;
+                  const bid = kitBuildBalanceByBomLineId[bomLineId];
+                  const bal = balancesForWarehouseOps.find((b) => b.id === bid);
+                  if (!bal) return;
+                  const lotCode = bal.lotCode?.trim() ? bal.lotCode.trim() : FUNGIBLE_LOT_CODE;
+                  kitLines.push({
+                    bomLineId,
+                    binId: bal.bin.id,
+                    lotCode,
+                  });
+                }
+                const v = validateKitBuildLinePicks(kitBuildPreview.deltas, kitLines);
+                if (!v.ok) return;
+                void runAction({
+                  action: "create_kit_build_task",
+                  workOrderId: kitBuildWoId,
+                  kitOutputProductId,
+                  kitOutputBinId,
+                  kitBuildQuantity: kitBuildPreview.kitQty,
+                  bomRepresentsOutputUnits: kitBuildPreview.bomRep,
+                  kitBuildLines: kitLines,
+                });
+              }}
+              className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Create KIT_BUILD task
             </button>
           </div>
         </div>
@@ -8607,7 +8873,8 @@ export function WmsClient({
                       | "PICK"
                       | "REPLENISH"
                       | "CYCLE_COUNT"
-                      | "VALUE_ADD",
+                      | "VALUE_ADD"
+                      | "KIT_BUILD",
                   )
                 }
                 className="rounded border border-zinc-300 px-2 py-1 text-sm"
@@ -8625,6 +8892,9 @@ export function WmsClient({
                 </option>
                 <option value="VALUE_ADD">
                   Value-add ({data.openTasks.filter((t) => t.taskType === "VALUE_ADD").length})
+                </option>
+                <option value="KIT_BUILD">
+                  Kit build ({data.openTasks.filter((t) => t.taskType === "KIT_BUILD").length})
                 </option>
               </select>
             </label>
@@ -8727,7 +8997,7 @@ export function WmsClient({
                     />
                   </label>
                 ) : null}
-                {t.taskType === "VALUE_ADD" && t.referenceId ? (
+                {(t.taskType === "VALUE_ADD" || t.taskType === "KIT_BUILD") && t.referenceId ? (
                   <span className="text-zinc-500">
                     WO{" "}
                     {data.workOrders.find((w) => w.id === t.referenceId)?.workOrderNo ??
@@ -8766,7 +9036,8 @@ export function WmsClient({
                   t.taskType === "PICK" ||
                   t.taskType === "REPLENISH" ||
                   t.taskType === "CYCLE_COUNT" ||
-                  t.taskType === "VALUE_ADD") ? (
+                  t.taskType === "VALUE_ADD" ||
+                  t.taskType === "KIT_BUILD") ? (
                   <button
                     type="button"
                     disabled={busy}
@@ -8791,6 +9062,10 @@ export function WmsClient({
                       }
                       if (t.taskType === "VALUE_ADD") {
                         void runAction({ action: "complete_value_add_task", taskId: t.id });
+                        return;
+                      }
+                      if (t.taskType === "KIT_BUILD") {
+                        void runAction({ action: "complete_kit_build_task", taskId: t.id });
                         return;
                       }
                       const raw = cycleCountQtyByTask[t.id] ?? t.quantity;

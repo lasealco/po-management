@@ -5180,6 +5180,8 @@ enum WmsTaskType {
   REPLENISH
   CYCLE_COUNT
   VALUE_ADD
+  /// BF-62 — kit assembly: consume BOM components + post finished good to bin on complete.
+  KIT_BUILD
 }
 
 enum WmsTaskStatus {
