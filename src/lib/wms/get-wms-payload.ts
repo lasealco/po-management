@@ -17,6 +17,7 @@ import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { allowedNextWmsReceiveStatuses } from "@/lib/wms/wms-receive-status";
 import { loadInventorySerialTrace, type SerialTraceQueryInput } from "@/lib/wms/inventory-serial-trace";
 import { buildOutboundPackScanPlan } from "@/lib/wms/pack-scan-verify";
+import { manifestParcelIdsFromDbJson } from "@/lib/wms/outbound-manifest-bf67";
 import { prisma } from "@/lib/prisma";
 
 const WMS_PRODUCT_REF_SELECT = {
@@ -981,6 +982,7 @@ export async function getWmsDashboardPayload(
       carrierTrackingNo: o.carrierTrackingNo ?? null,
       carrierLabelAdapterId: o.carrierLabelAdapterId ?? null,
       carrierLabelPurchasedAt: o.carrierLabelPurchasedAt?.toISOString() ?? null,
+      manifestParcelIds: manifestParcelIdsFromDbJson(o.manifestParcelIds),
       status: o.status,
       warehouse: o.warehouse,
       crmAccount: o.crmAccount,

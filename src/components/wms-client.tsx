@@ -321,6 +321,8 @@ type WmsData = {
     carrierTrackingNo: string | null;
     carrierLabelAdapterId: string | null;
     carrierLabelPurchasedAt: string | null;
+    /** BF-67 — additional parcel tracking ids (primary may be `carrierTrackingNo`). */
+    manifestParcelIds: string[];
     status: "DRAFT" | "RELEASED" | "PICKING" | "PACKED" | "SHIPPED" | "CANCELLED";
     warehouse: { id: string; code: string | null; name: string };
     crmAccount: { id: string; name: string; legalName: string | null } | null;
@@ -1076,6 +1078,9 @@ export function WmsClient({
   >("all");
   const [outboundAsnEdits, setOutboundAsnEdits] = useState<
     Record<string, { asn: string; requestedShip: string }>
+  >({});
+  const [outboundManifestParcelDraftById, setOutboundManifestParcelDraftById] = useState<
+    Record<string, string>
   >({});
   const [packScanDraftByOutboundId, setPackScanDraftByOutboundId] = useState<Record<string, string>>({});
   const [packScanTokensByOutboundId, setPackScanTokensByOutboundId] = useState<Record<string, string[]>>(
@@ -6957,6 +6962,9 @@ export function WmsClient({
               o.status !== "CANCELLED";
             const canExportDesadvAsn =
               o.lines.length > 0 && (o.status === "PACKED" || o.status === "SHIPPED");
+            const canExportManifestBf67 =
+              canExportDesadvAsn &&
+              (Boolean(o.carrierTrackingNo) || (o.manifestParcelIds?.length ?? 0) > 0);
             return (
             <div key={o.id} className="rounded border border-zinc-200 p-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -6982,6 +6990,11 @@ export function WmsClient({
                     title={o.carrierTrackingNo}
                   >
                     Tracking: {o.carrierTrackingNo}
+                  </span>
+                ) : null}
+                {(o.manifestParcelIds?.length ?? 0) > 0 ? (
+                  <span className="rounded bg-sky-50 px-2 py-0.5 text-xs text-sky-900" title="BF-67 manifest">
+                    Parcels: {o.manifestParcelIds.length}
                   </span>
                 ) : null}
                 {showCrmPicker ? (
@@ -7147,6 +7160,103 @@ export function WmsClient({
                   >
                     Export ASN JSON
                   </button>
+                ) : null}
+                {canExportManifestBf67 ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="BF-67 multi-parcel manifest JSON for carriers / middleware."
+                    onClick={async () => {
+                      setBusy(true);
+                      setError(null);
+                      try {
+                        const res = await fetch(
+                          `/api/wms/outbound-manifest-export?${new URLSearchParams({
+                            outboundOrderId: o.id,
+                            pretty: "1",
+                          })}`,
+                        );
+                        const text = await res.text();
+                        if (!res.ok) {
+                          let parsed: unknown;
+                          try {
+                            parsed = JSON.parse(text);
+                          } catch {
+                            parsed = null;
+                          }
+                          setError(apiClientErrorMessage(parsed, "Manifest export failed."));
+                          return;
+                        }
+                        const safeName = o.outboundNo.replace(/[^\w.-]+/g, "_") || "outbound";
+                        downloadUtf8Blob(
+                          new Blob([text], { type: "application/json;charset=utf-8" }),
+                          `${safeName}-outbound-manifest-bf67.json`,
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Export manifest JSON
+                  </button>
+                ) : null}
+                {canEdit && o.status !== "CANCELLED" ? (
+                  <div className="mt-2 w-full rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">
+                      BF-67 · Multi-parcel manifest
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-600">
+                      One tracking number per line or comma-separated. Merges with the primary label from{" "}
+                      <span className="font-medium">Purchase carrier label</span> in the export.
+                    </p>
+                    <textarea
+                      value={
+                        outboundManifestParcelDraftById[o.id] ??
+                        (o.manifestParcelIds ?? []).join("\n")
+                      }
+                      onChange={(e) =>
+                        setOutboundManifestParcelDraftById((prev) => ({
+                          ...prev,
+                          [o.id]: e.target.value,
+                        }))
+                      }
+                      rows={2}
+                      disabled={busy}
+                      className="mt-2 w-full max-w-xl rounded-lg border border-zinc-200 px-2 py-1.5 font-mono text-xs text-zinc-900"
+                      placeholder="1Z999AA10123456784 (one per line or comma-separated)"
+                    />
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={async () => {
+                          const raw =
+                            outboundManifestParcelDraftById[o.id] ??
+                            (o.manifestParcelIds ?? []).join("\n");
+                          const ids = raw
+                            .split(/[\n,]+/)
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          const r = await runAction({
+                            action: "set_outbound_manifest_parcel_ids_bf67",
+                            outboundOrderId: o.id,
+                            manifestParcelIds: ids,
+                          });
+                          if (r) {
+                            setOutboundManifestParcelDraftById((prev) => {
+                              const n = { ...prev };
+                              delete n[o.id];
+                              return n;
+                            });
+                          }
+                        }}
+                        className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                      >
+                        Save parcel list
+                      </button>
+                    </div>
+                  </div>
                 ) : null}
                 {canEdit && o.status !== "SHIPPED" && o.status !== "CANCELLED" ? (
                   <button

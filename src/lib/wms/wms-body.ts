@@ -313,6 +313,8 @@ export type WmsBody = {
   catchWeightLabelHint?: string | null;
   /** BF-33 — planner hint on outbound (`set_outbound_order_cube_hint`), cubic metres. */
   estimatedCubeCbm?: number | string | null;
+  /** BF-67 — `set_outbound_manifest_parcel_ids_bf67`: carrier / package tracking ids (max 50 × 128 chars). */
+  manifestParcelIds?: string[];
 
   /** BF-29 — scan tokens (SKU / product code / product id per unit) for pack or ship verification. */
   packScanTokens?: string[];

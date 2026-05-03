@@ -3,6 +3,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 import { prisma } from "@/lib/prisma";
 import { authenticatePartnerApiRequest, partnerHasScope } from "@/lib/wms/partner-api-auth";
+import { manifestParcelIdsFromDbJson } from "@/lib/wms/outbound-manifest-bf67";
 import { partnerV1Json } from "@/lib/wms/partner-v1-response";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,7 @@ export async function GET(
       shipToCity: true,
       shipToCountryCode: true,
       carrierTrackingNo: true,
+      manifestParcelIds: true,
       warehouse: { select: { id: true, code: true, name: true } },
       lines: {
         orderBy: { lineNo: "asc" },
@@ -74,6 +76,7 @@ export async function GET(
     tenantSlug: auth.tenantSlug,
     order: {
       ...order,
+      manifestParcelIds: manifestParcelIdsFromDbJson(order.manifestParcelIds),
       requestedShipDate: order.requestedShipDate?.toISOString() ?? null,
       lines: order.lines.map((ln) => ({
         id: ln.id,

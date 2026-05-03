@@ -55,6 +55,7 @@ import {
   parseDamageExtraDetailJson,
   parseDamagePhotoUrlsForCreate,
 } from "./damage-report-bf65";
+import { parseManifestParcelIdsInput } from "./outbound-manifest-bf67";
 import { buildReceivingAccrualSnapshotV1 } from "./receiving-accrual-staging";
 import { canAdvanceReceiveStatusToReceiptComplete } from "./wms-receipt-close-policy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
@@ -913,6 +914,34 @@ export async function handleWmsPost(
     await prisma.outboundOrder.updateMany({
       where: { id: outboundOrderId, tenantId },
       data: { estimatedCubeCbm: est },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_outbound_manifest_parcel_ids_bf67") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const parsedIds = parseManifestParcelIdsInput(input.manifestParcelIds);
+    if (!parsedIds.ok) {
+      return toApiErrorResponseFromStatus(parsedIds.error, 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true, status: true },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (order.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus("Cannot set manifest parcels on a cancelled outbound.", 400);
+    }
+    const jsonValue: Prisma.InputJsonValue =
+      parsedIds.ids.length > 0 ? (parsedIds.ids as Prisma.InputJsonValue) : [];
+    await prisma.outboundOrder.update({
+      where: { id: order.id },
+      data: { manifestParcelIds: jsonValue },
     });
     return NextResponse.json({ ok: true });
   }

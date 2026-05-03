@@ -5583,6 +5583,8 @@ model OutboundOrder {
   carrierTrackingNo       String?   @db.VarChar(128)
   carrierLabelAdapterId   String?   @db.VarChar(64)
   carrierLabelPurchasedAt DateTime?
+  /// BF-67 — multi-parcel outbound manifest: JSON array of tracking / package ids (string[]).
+  manifestParcelIds       Json?
   createdById       String
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
