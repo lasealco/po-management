@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **`BF-51`** … **`BF-67`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md), [`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md), [`WMS_COLD_CHAIN_BF64.md`](./WMS_COLD_CHAIN_BF64.md), [`WMS_DAMAGE_CLAIM_BF65.md`](./WMS_DAMAGE_CLAIM_BF65.md), [`WMS_VOICE_PICK_BF66.md`](./WMS_VOICE_PICK_BF66.md), [`WMS_MULTI_PARCEL_MANIFEST_BF67.md`](./WMS_MULTI_PARCEL_MANIFEST_BF67.md)). **`BF-68` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
+**Status:** **`BF-51`** … **`BF-68`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md), [`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md), [`WMS_COLD_CHAIN_BF64.md`](./WMS_COLD_CHAIN_BF64.md), [`WMS_DAMAGE_CLAIM_BF65.md`](./WMS_DAMAGE_CLAIM_BF65.md), [`WMS_VOICE_PICK_BF66.md`](./WMS_VOICE_PICK_BF66.md), [`WMS_MULTI_PARCEL_MANIFEST_BF67.md`](./WMS_MULTI_PARCEL_MANIFEST_BF67.md), [`WMS_CUSTOMS_FILING_BF68.md`](./WMS_CUSTOMS_FILING_BF68.md)). **`BF-69` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
 
 **Rules:**
 
@@ -35,7 +35,7 @@
 | **BF-65** | Damage workflow & carrier claim export stub | Claims row | Receiving (**BF-41**/dispositions), Operations UI — [`WMS_DAMAGE_CLAIM_BF65.md`](./WMS_DAMAGE_CLAIM_BF65.md) |
 | **BF-66** | Voice-picking task protocol (vendor-neutral JSON) | Pick execution row | Pick tasks, **BF-56** batch picks — [`WMS_VOICE_PICK_BF66.md`](./WMS_VOICE_PICK_BF66.md) |
 | **BF-67** | Multi-parcel outbound manifests | Packing / carrier row | **BF-39** labels, **BF-43** cartons — **`manifestParcelIds`** + **`GET /api/wms/outbound-manifest-export`** landed ([`WMS_MULTI_PARCEL_MANIFEST_BF67.md`](./WMS_MULTI_PARCEL_MANIFEST_BF67.md)) |
-| **BF-68** | Customs filing export JSON handoff | Trade compliance row | Outbound ship data, **BF-40** ASN lineage |
+| **BF-68** | Customs filing export JSON handoff | Trade compliance row | Outbound ship data, **BF-40** ASN lineage — **`GET /api/wms/customs-filing-export`** landed ([`WMS_CUSTOMS_FILING_BF68.md`](./WMS_CUSTOMS_FILING_BF68.md)) |
 | **BF-69** | Carbon intensity hints on movements | Sustainability reporting row | Movement distances/modes (stub attrs) |
 | **BF-70** | External PDP authorization hooks | Permissions row | **BF-06** tiers, **BF-48** field ACL evaluator hooks |
 
@@ -225,11 +225,13 @@
 
 ---
 
-## BF-68 — Customs filing export JSON handoff
+## BF-68 — Customs filing export JSON handoff ✅ **Minimal landed**
 
 **Objective:** Minimal **AES/customs filing** payload builder from outbound ship lines + parties — handoff to broker tooling.
 
 **Exit sketch (minimal slice):** **`GET /api/wms/customs-filing-export`** for **`OutboundOrder`**; schema version **`bf68.v1`**.
+
+**Shipped:** [`WMS_CUSTOMS_FILING_BF68.md`](./WMS_CUSTOMS_FILING_BF68.md) — **`bf68.v1`** / **`CUSTOMS_FILING_HANDOFF_STUB_V1`**; tenant exporter + warehouse origin + consignee + CRM bill-to; lines with **`Product.hsCode`**, dangerous-goods hints, optional **`commercial*`**; Vitest **`customs-filing-bf68.test.ts`**.
 
 **Out of scope:** Government message signing, customs broker APIs.
 
@@ -261,4 +263,4 @@
 
 ---
 
-_Last updated: 2026-04-30 — **BF-67** multi-parcel outbound manifest ([`WMS_MULTI_PARCEL_MANIFEST_BF67.md`](./WMS_MULTI_PARCEL_MANIFEST_BF67.md)); prior **BF-61** … **BF-66** see footer history in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md). **BF-68 … BF-70** draft stubs._
+_Last updated: 2026-04-30 — **BF-68** customs filing handoff JSON ([`WMS_CUSTOMS_FILING_BF68.md`](./WMS_CUSTOMS_FILING_BF68.md)); **BF-67** multi-parcel manifest ([`WMS_MULTI_PARCEL_MANIFEST_BF67.md`](./WMS_MULTI_PARCEL_MANIFEST_BF67.md)). **BF-69 … BF-70** draft stubs._

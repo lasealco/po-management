@@ -7201,6 +7201,46 @@ export function WmsClient({
                     Export manifest JSON
                   </button>
                 ) : null}
+                {canExportDesadvAsn ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="BF-68 AES/customs handoff JSON for brokers (not a government filing)."
+                    onClick={async () => {
+                      setBusy(true);
+                      setError(null);
+                      try {
+                        const res = await fetch(
+                          `/api/wms/customs-filing-export?${new URLSearchParams({
+                            outboundOrderId: o.id,
+                            pretty: "1",
+                          })}`,
+                        );
+                        const text = await res.text();
+                        if (!res.ok) {
+                          let parsed: unknown;
+                          try {
+                            parsed = JSON.parse(text);
+                          } catch {
+                            parsed = null;
+                          }
+                          setError(apiClientErrorMessage(parsed, "Customs filing export failed."));
+                          return;
+                        }
+                        const safeName = o.outboundNo.replace(/[^\w.-]+/g, "_") || "outbound";
+                        downloadUtf8Blob(
+                          new Blob([text], { type: "application/json;charset=utf-8" }),
+                          `${safeName}-customs-filing-bf68.json`,
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Export customs JSON
+                  </button>
+                ) : null}
                 {canEdit && o.status !== "CANCELLED" ? (
                   <div className="mt-2 w-full rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">
