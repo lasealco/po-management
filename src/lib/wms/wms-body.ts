@@ -255,12 +255,26 @@ export type WmsBody = {
   blockCloseIfOutsideCatchWeight?: boolean;
   /** BF-64 — cold-chain custody JSON on `set_shipment_inbound_fields` / `set_inventory_movement_custody_segment_bf64`; `null` clears. */
   custodySegmentJson?: unknown | null;
+  /** BF-65 — `create_wms_damage_report_bf65` — RECEIVING uses `shipmentId`; PACKING uses `outboundOrderId`. */
+  damageReportContext?: "RECEIVING" | "PACKING";
+  /** BF-65 — defaults DRAFT. */
+  damageReportStatus?: "DRAFT" | "SUBMITTED";
+  /** BF-65 — short damage type label (e.g. CRUSHED). */
+  damageCategory?: string | null;
+  /** BF-65 — operator narrative. */
+  damageDescription?: string | null;
+  /** BF-65 — photo URLs (https / relative); array or comma/newline string. */
+  damagePhotoUrls?: unknown;
+  /** BF-65 — optional plain object; null clears when updating (create omits if undefined). */
+  damageExtraDetailJson?: unknown | null;
+  /** BF-65 — operator claim / ticket id (not carrier API). */
+  carrierClaimReference?: string | null;
 
   /** BF-13 — `WmsInventorySerial.id` (alternative to `productId` + `inventorySerialNo`). */
   inventorySerialId?: string;
   /** BF-13 — raw serial token with `productId` when `inventorySerialId` omitted. */
   inventorySerialNo?: string;
-  /** BF-13 — `InventoryMovement.id` for `attach_inventory_serial_to_movement`. */
+  /** BF-13 — `InventoryMovement.id` for `attach_inventory_serial_to_movement`; BF-64 — `set_inventory_movement_custody_segment_bf64`. */
   inventoryMovementId?: string;
   /** BF-13 — `InventoryBalance.id` for `set_inventory_serial_balance`; `null` clears pointer. */
   serialBalanceId?: string | null;

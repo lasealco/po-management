@@ -59,6 +59,10 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("set_inventory_movement_custody_segment_bf64")).toBe("inventory");
   });
 
+  it("maps BF-65 damage report create to operations tier", () => {
+    expect(wmsMutationTierForPostAction("create_wms_damage_report_bf65")).toBe("operations");
+  });
+
   it("maps BF-53 labor standard + start task tiers", () => {
     expect(wmsMutationTierForPostAction("set_wms_labor_task_standard")).toBe("setup");
     expect(wmsMutationTierForPostAction("start_wms_task")).toBe("operations");

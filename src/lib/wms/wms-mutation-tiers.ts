@@ -75,6 +75,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_shipment_item_return_disposition: "operations",
   set_shipment_item_qa_sampling_bf42: "operations",
   apply_wms_disposition_template_to_shipment_item: "operations",
+  /** BF-65 — damage report + carrier claim export flow. */
+  create_wms_damage_report_bf65: "operations",
   create_wms_receipt: "operations",
   close_wms_receipt: "operations",
   evaluate_wms_receipt_asn_tolerance: "operations",

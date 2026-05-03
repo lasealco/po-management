@@ -85,6 +85,7 @@ model Tenant {
   wmsReceivingAccrualStagings                 WmsReceivingAccrualStaging[]
   wmsInboundAsnAdvises                       WmsInboundAsnAdvise[]
   wmsScanEventBatches                         WmsScanEventBatch[]
+  wmsDamageReports                           WmsDamageReport[]
   wmsBillingInvoiceRuns                       WmsBillingInvoiceRun[]
   wmsBillingCreditMemoStubs                  WmsBillingCreditMemoStub[]
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
@@ -2595,6 +2596,7 @@ model User {
   wmsReceiptsCreated                                  WmsReceipt[]                                  @relation("WmsReceiptCreatedBy")
   wmsInboundAsnAdvisesCreated                         WmsInboundAsnAdvise[]                         @relation("WmsInboundAsnAdviseCreatedBy")
   wmsScanEventBatchesCreated                          WmsScanEventBatch[]                          @relation("WmsScanEventBatchCreatedBy")
+  wmsDamageReportsCreated                            WmsDamageReport[]                             @relation("WmsDamageReportCreatedBy")
   wmsDemandForecastStubsCreated                       WmsDemandForecastStub[]                      @relation("WmsDemandForecastStubCreatedBy")
   wmsReceiptsClosed                                   WmsReceipt[]                                  @relation("WmsReceiptClosedBy")
   wmsWorkOrdersCreated                                WmsWorkOrder[]
@@ -3850,6 +3852,7 @@ model Shipment {
   wmsReceipts                WmsReceipt[]
   receivingAccrualStagings   WmsReceivingAccrualStaging[]
   wmsInboundAsnAdvises      WmsInboundAsnAdvise[]
+  wmsDamageReports          WmsDamageReport[]
 
   @@index([orderId, createdAt])
   @@index([status])
@@ -3909,6 +3912,7 @@ model ShipmentItem {
   orderItem           PurchaseOrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
   containerCargoLines CtContainerCargoLine[]
   wmsReceiptLines     WmsReceiptLine[]
+  wmsDamageReports    WmsDamageReport[]
 
   @@unique([shipmentId, orderItemId])
   @@index([shipmentId])
@@ -4017,6 +4021,51 @@ model WmsScanEventBatch {
 
   @@unique([tenantId, clientBatchId])
   @@index([tenantId, createdAt])
+}
+
+/// BF-65 — receiving vs packing context for damage notes + carrier claim export.
+enum WmsDamageReportContext {
+  RECEIVING
+  PACKING
+}
+
+enum WmsDamageReportStatus {
+  DRAFT
+  SUBMITTED
+}
+
+/// BF-65 — structured damage report (photos + narrative) with `GET .../claim-export` JSON for carrier portals.
+model WmsDamageReport {
+  id                    String                  @id @default(cuid())
+  tenantId              String
+  context               WmsDamageReportContext
+  status                WmsDamageReportStatus    @default(DRAFT)
+  /// Inbound leg — set when `context` is RECEIVING.
+  shipmentId            String?
+  /// Outbound leg — set when `context` is PACKING.
+  outboundOrderId       String?
+  /// Optional inbound line anchor (`ShipmentItem` on `shipmentId`).
+  shipmentItemId        String?
+  damageCategory        String?                 @db.VarChar(128)
+  description           String?                 @db.Text
+  /// Array of URL strings (https or app-relative); capped in application code.
+  photoUrlsJson         Json                    @default("[]")
+  extraDetailJson       Json?
+  /// Operator reference for carrier claim intake (not carrier API).
+  carrierClaimReference String?                 @db.VarChar(256)
+  createdById           String
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment      Shipment?      @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  outboundOrder OutboundOrder? @relation(fields: [outboundOrderId], references: [id], onDelete: SetNull)
+  shipmentItem  ShipmentItem?  @relation(fields: [shipmentItemId], references: [id], onDelete: SetNull)
+  createdBy     User           @relation("WmsDamageReportCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([shipmentId])
+  @@index([outboundOrderId])
 }
 
 model WmsReceiptLine {
@@ -5547,6 +5596,7 @@ model OutboundOrder {
   logisticsUnits    WmsOutboundLogisticsUnit[]
   dockAppointments  WmsDockAppointment[]
   linkedReturnShipments Shipment[]        @relation("ShipmentReturnSourceOutbound")
+  wmsDamageReports      WmsDamageReport[]
 
   @@unique([tenantId, outboundNo])
   @@index([tenantId, warehouseId, status])

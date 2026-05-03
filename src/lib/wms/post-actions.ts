@@ -48,6 +48,13 @@ import {
 } from "./asn-receipt-tolerance";
 import { evaluateCatchWeightAgainstTolerance } from "./catch-weight-receipt";
 import { custodySegmentIndicatesBreach, parseCustodySegmentJsonForPatch } from "./custody-segment-bf64";
+import {
+  DAMAGE_CARRIER_CLAIM_REF_MAX,
+  DAMAGE_CATEGORY_MAX,
+  DAMAGE_DESCRIPTION_MAX,
+  parseDamageExtraDetailJson,
+  parseDamagePhotoUrlsForCreate,
+} from "./damage-report-bf65";
 import { buildReceivingAccrualSnapshotV1 } from "./receiving-accrual-staging";
 import { canAdvanceReceiveStatusToReceiptComplete } from "./wms-receipt-close-policy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
@@ -4309,6 +4316,149 @@ export async function handleWmsPost(
     });
 
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_wms_damage_report_bf65") {
+    const rawCtx = input.damageReportContext;
+    if (rawCtx !== "RECEIVING" && rawCtx !== "PACKING") {
+      return toApiErrorResponseFromStatus("damageReportContext must be RECEIVING or PACKING.", 400);
+    }
+    const shipmentIdIn = input.shipmentId?.trim() ?? "";
+    const outboundOrderIdIn = input.outboundOrderId?.trim() ?? "";
+    if (rawCtx === "RECEIVING") {
+      if (!shipmentIdIn) {
+        return toApiErrorResponseFromStatus("shipmentId required for RECEIVING context.", 400);
+      }
+      if (outboundOrderIdIn) {
+        return toApiErrorResponseFromStatus("outboundOrderId must be omitted for RECEIVING context.", 400);
+      }
+    } else {
+      if (!outboundOrderIdIn) {
+        return toApiErrorResponseFromStatus("outboundOrderId required for PACKING context.", 400);
+      }
+      if (shipmentIdIn) {
+        return toApiErrorResponseFromStatus("shipmentId must be omitted for PACKING context.", 400);
+      }
+    }
+
+    const statusRaw = input.damageReportStatus;
+    const status =
+      statusRaw === "SUBMITTED"
+        ? "SUBMITTED"
+        : statusRaw === "DRAFT" || statusRaw === undefined
+          ? "DRAFT"
+          : null;
+    if (!status) {
+      return toApiErrorResponseFromStatus("damageReportStatus must be DRAFT or SUBMITTED.", 400);
+    }
+
+    const photos = parseDamagePhotoUrlsForCreate(input.damagePhotoUrls);
+    if (!photos.ok) {
+      return toApiErrorResponseFromStatus(photos.message, 400);
+    }
+
+    let extraDetailValue: Prisma.InputJsonValue | null | undefined = undefined;
+    if (input.damageExtraDetailJson !== undefined) {
+      const ex = parseDamageExtraDetailJson(input.damageExtraDetailJson);
+      if (!ex.ok) {
+        return toApiErrorResponseFromStatus(ex.message, 400);
+      }
+      extraDetailValue = ex.value;
+    }
+
+    const category = input.damageCategory?.trim().slice(0, DAMAGE_CATEGORY_MAX) || null;
+    const descRaw = input.damageDescription?.trim() ?? "";
+    if (descRaw.length > DAMAGE_DESCRIPTION_MAX) {
+      return toApiErrorResponseFromStatus(
+        `damageDescription must be at most ${DAMAGE_DESCRIPTION_MAX} characters.`,
+        400,
+      );
+    }
+    const description = descRaw.length > 0 ? descRaw : null;
+
+    const claimRef =
+      input.carrierClaimReference?.trim().slice(0, DAMAGE_CARRIER_CLAIM_REF_MAX) || null;
+
+    let shipmentId: string | null = null;
+    let outboundOrderId: string | null = null;
+    let shipmentItemId: string | null = null;
+
+    if (rawCtx === "RECEIVING") {
+      const ship = await prisma.shipment.findFirst({
+        where: { id: shipmentIdIn, order: { tenantId } },
+        select: { id: true },
+      });
+      if (!ship) {
+        return toApiErrorResponseFromStatus("Shipment not found for tenant.", 404);
+      }
+      shipmentId = ship.id;
+
+      const itemIdRaw = input.shipmentItemId?.trim() ?? "";
+      if (itemIdRaw) {
+        const line = await prisma.shipmentItem.findFirst({
+          where: { id: itemIdRaw, shipmentId: ship.id },
+          select: { id: true },
+        });
+        if (!line) {
+          return toApiErrorResponseFromStatus("shipmentItemId not found on shipment.", 404);
+        }
+        shipmentItemId = line.id;
+      }
+    } else {
+      const ob = await prisma.outboundOrder.findFirst({
+        where: { id: outboundOrderIdIn, tenantId },
+        select: { id: true },
+      });
+      if (!ob) {
+        return toApiErrorResponseFromStatus("Outbound order not found for tenant.", 404);
+      }
+      outboundOrderId = ob.id;
+      if (input.shipmentItemId?.trim()) {
+        return toApiErrorResponseFromStatus("shipmentItemId applies only to RECEIVING context.", 400);
+      }
+    }
+
+    const row = await prisma.wmsDamageReport.create({
+      data: {
+        tenantId,
+        context: rawCtx,
+        status,
+        shipmentId,
+        outboundOrderId,
+        shipmentItemId,
+        damageCategory: category,
+        description,
+        photoUrlsJson: photos.urls,
+        ...(extraDetailValue === undefined
+          ? {}
+          : {
+              extraDetailJson:
+                extraDetailValue === null ? Prisma.JsonNull : extraDetailValue,
+            }),
+        carrierClaimReference: claimRef,
+        createdById: actorId,
+      },
+      select: { id: true },
+    });
+
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        shipmentId,
+        entityType: "WMS_DAMAGE_REPORT",
+        entityId: row.id,
+        action: "wms_damage_report_created_bf65",
+        payload: {
+          context: rawCtx,
+          shipmentId,
+          outboundOrderId,
+          shipmentItemId,
+        },
+        actorUserId: actorId,
+      },
+    });
+
+    return NextResponse.json({ ok: true, id: row.id });
   }
 
   if (action === "register_inventory_serial") {

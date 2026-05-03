@@ -462,6 +462,22 @@ export async function getWmsDashboardPayload(
     },
   });
 
+  const wmsDamageReports = await prisma.wmsDamageReport.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    select: {
+      id: true,
+      context: true,
+      status: true,
+      damageCategory: true,
+      shipmentId: true,
+      outboundOrderId: true,
+      createdAt: true,
+      createdBy: { select: { id: true, name: true } },
+    },
+  });
+
   const serialTrace =
     serialTraceQuery?.productId?.trim() && serialTraceQuery?.serialNoRaw?.trim()
       ? await loadInventorySerialTrace(tenantId, viewScope, {
@@ -1108,6 +1124,16 @@ export async function getWmsDashboardPayload(
       lastStatusCode: b.lastStatusCode,
       createdAt: b.createdAt.toISOString(),
       createdBy: b.createdBy,
+    })),
+    wmsDamageReports: wmsDamageReports.map((r) => ({
+      id: r.id,
+      context: r.context,
+      status: r.status,
+      damageCategory: r.damageCategory,
+      shipmentId: r.shipmentId,
+      outboundOrderId: r.outboundOrderId,
+      createdAt: r.createdAt.toISOString(),
+      createdBy: r.createdBy,
     })),
     inboundShipments: inboundShipments.map((s) => {
       const m0 = s.milestones[0];

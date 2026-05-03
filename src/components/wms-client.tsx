@@ -528,6 +528,17 @@ type WmsData = {
     createdAt: string;
     createdBy: { id: string; name: string | null };
   }>;
+  /** BF-65 — damage reports + carrier claim JSON (`GET /api/wms/damage-reports/[id]/claim-export`). */
+  wmsDamageReports: Array<{
+    id: string;
+    context: string;
+    status: string;
+    damageCategory: string | null;
+    shipmentId: string | null;
+    outboundOrderId: string | null;
+    createdAt: string;
+    createdBy: { id: string; name: string | null };
+  }>;
   putawayCandidates: Array<{
     shipmentItemId: string;
     shipmentId: string;
@@ -915,6 +926,16 @@ export function WmsClient({
   const [bf60BatchJson, setBf60BatchJson] = useState(
     '{\n  "clientBatchId": "00000000-0000-4000-8000-000000000060",\n  "deviceClock": "2026-04-30T12:00:00.000Z",\n  "events": [\n    {\n      "seq": 1,\n      "deviceClock": "2026-04-30T12:00:01.000Z",\n      "type": "VALIDATE_PACK_SCAN",\n      "payload": {\n        "outboundOrderId": "REPLACE_WITH_OUTBOUND_ID",\n        "packScanTokens": []\n      }\n    }\n  ]\n}',
   );
+  const [bf65Context, setBf65Context] = useState<"RECEIVING" | "PACKING">("RECEIVING");
+  const [bf65ShipmentId, setBf65ShipmentId] = useState("");
+  const [bf65OutboundId, setBf65OutboundId] = useState("");
+  const [bf65LineId, setBf65LineId] = useState("");
+  const [bf65Category, setBf65Category] = useState("");
+  const [bf65Desc, setBf65Desc] = useState("");
+  const [bf65Photos, setBf65Photos] = useState("");
+  const [bf65Status, setBf65Status] = useState<"DRAFT" | "SUBMITTED">("DRAFT");
+  const [bf65ClaimRef, setBf65ClaimRef] = useState("");
+  const [bf65ExtraJson, setBf65ExtraJson] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -2027,6 +2048,51 @@ export function WmsClient({
     setBusy(false);
     const o = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
     window.alert(`Scan batch stored (id: ${String(o.batchId ?? "")}).`);
+  }
+
+  async function submitDamageReportBf65(): Promise<void> {
+    let extra: unknown = undefined;
+    if (bf65ExtraJson.trim()) {
+      try {
+        extra = JSON.parse(bf65ExtraJson) as unknown;
+      } catch {
+        window.alert("Extra detail must be valid JSON or leave empty.");
+        return;
+      }
+      if (extra !== null && (typeof extra !== "object" || Array.isArray(extra))) {
+        window.alert("Extra detail must be a JSON object.");
+        return;
+      }
+    }
+    const urls = bf65Photos
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const body: Record<string, unknown> = {
+      action: "create_wms_damage_report_bf65",
+      damageReportContext: bf65Context,
+      damageReportStatus: bf65Status,
+      damageCategory: bf65Category.trim() || undefined,
+      damageDescription: bf65Desc.trim() || undefined,
+      damagePhotoUrls: urls.length > 0 ? urls : undefined,
+      carrierClaimReference: bf65ClaimRef.trim() || undefined,
+    };
+    if (extra !== undefined && bf65ExtraJson.trim()) {
+      body.damageExtraDetailJson = extra;
+    }
+    if (bf65Context === "RECEIVING") {
+      body.shipmentId = bf65ShipmentId.trim();
+      if (bf65LineId.trim()) body.shipmentItemId = bf65LineId.trim();
+    } else {
+      body.outboundOrderId = bf65OutboundId.trim();
+    }
+    const res = await runAction(body);
+    if (res && typeof res.id === "string") {
+      window.alert(`Damage report created (id: ${res.id}).`);
+      setBf65Desc("");
+      setBf65Photos("");
+      setBf65ExtraJson("");
+    }
   }
 
   if (!data) {
@@ -6585,6 +6651,150 @@ export function WmsClient({
                         <td className="px-2 py-1">{b.lastStatusCode}</td>
                         <td className="px-2 py-1">{b.createdBy?.name ?? b.createdBy?.id?.slice(0, 8) ?? "—"}</td>
                         <td className="px-2 py-1 text-zinc-600">{b.createdAt.slice(0, 19)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+        {canEdit ? (
+          <section className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/50 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-amber-900">BF-65 · Damage &amp; carrier claim stub</p>
+            <p className="mt-2 text-xs text-amber-950/85">
+              Create <span className="font-medium">WmsDamageReport</span> via{" "}
+              <span className="font-mono text-[11px]">POST /api/wms</span>{" "}
+              <span className="font-medium">create_wms_damage_report_bf65</span>. Download carrier-oriented JSON from{" "}
+              <span className="font-mono text-[11px]">GET /api/wms/damage-reports/&lt;id&gt;/claim-export</span>. See{" "}
+              <span className="font-medium">docs/wms/WMS_DAMAGE_CLAIM_BF65.md</span>.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="block text-xs font-medium text-amber-950">
+                Context
+                <select
+                  value={bf65Context}
+                  onChange={(e) => setBf65Context(e.target.value as "RECEIVING" | "PACKING")}
+                  className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="RECEIVING">RECEIVING (inbound shipment)</option>
+                  <option value="PACKING">PACKING (outbound order)</option>
+                </select>
+              </label>
+              <label className="block text-xs font-medium text-amber-950">
+                Status
+                <select
+                  value={bf65Status}
+                  onChange={(e) => setBf65Status(e.target.value as "DRAFT" | "SUBMITTED")}
+                  className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="DRAFT">DRAFT</option>
+                  <option value="SUBMITTED">SUBMITTED</option>
+                </select>
+              </label>
+            </div>
+            {bf65Context === "RECEIVING" ? (
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <input
+                  value={bf65ShipmentId}
+                  onChange={(e) => setBf65ShipmentId(e.target.value)}
+                  placeholder="Inbound shipment id"
+                  className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
+                />
+                <input
+                  value={bf65LineId}
+                  onChange={(e) => setBf65LineId(e.target.value)}
+                  placeholder="Shipment item id (optional)"
+                  className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+            ) : (
+              <input
+                value={bf65OutboundId}
+                onChange={(e) => setBf65OutboundId(e.target.value)}
+                placeholder="Outbound order id"
+                className="mt-2 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm sm:max-w-md"
+              />
+            )}
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <input
+                value={bf65Category}
+                onChange={(e) => setBf65Category(e.target.value)}
+                placeholder="Damage category (e.g. CRUSHED)"
+                className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
+              />
+              <input
+                value={bf65ClaimRef}
+                onChange={(e) => setBf65ClaimRef(e.target.value)}
+                placeholder="Your claim / ticket ref (optional)"
+                className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
+              />
+            </div>
+            <textarea
+              value={bf65Desc}
+              onChange={(e) => setBf65Desc(e.target.value)}
+              placeholder="Description"
+              rows={3}
+              className="mt-2 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-zinc-900"
+            />
+            <textarea
+              value={bf65Photos}
+              onChange={(e) => setBf65Photos(e.target.value)}
+              placeholder="Photo URLs (one per line or comma-separated, https or /relative)"
+              rows={3}
+              className="mt-2 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900"
+              spellCheck={false}
+            />
+            <textarea
+              value={bf65ExtraJson}
+              onChange={(e) => setBf65ExtraJson(e.target.value)}
+              placeholder='Optional extra JSON object e.g. {"cartonId":"C-1"}'
+              rows={2}
+              className="mt-2 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void submitDamageReportBf65()}
+              className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Create damage report
+            </button>
+            {(data.wmsDamageReports ?? []).length > 0 ? (
+              <div className="mt-4 overflow-x-auto">
+                <p className="text-xs font-medium text-amber-950">
+                  Recent reports ({(data.wmsDamageReports ?? []).length})
+                </p>
+                <table className="mt-2 min-w-full text-xs">
+                  <thead className="bg-amber-100/80 text-left text-[10px] uppercase text-amber-950">
+                    <tr>
+                      <th className="px-2 py-1">Id</th>
+                      <th className="px-2 py-1">Ctx</th>
+                      <th className="px-2 py-1">Status</th>
+                      <th className="px-2 py-1">Category</th>
+                      <th className="px-2 py-1">Claim export</th>
+                      <th className="px-2 py-1">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-100">
+                    {(data.wmsDamageReports ?? []).map((r) => (
+                      <tr key={r.id}>
+                        <td className="px-2 py-1 font-mono">{r.id.slice(0, 12)}…</td>
+                        <td className="px-2 py-1">{r.context}</td>
+                        <td className="px-2 py-1">{r.status}</td>
+                        <td className="px-2 py-1">{r.damageCategory ?? "—"}</td>
+                        <td className="px-2 py-1">
+                          <a
+                            href={`/api/wms/damage-reports/${encodeURIComponent(r.id)}/claim-export`}
+                            className="font-medium text-[var(--arscmp-primary)] underline"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            JSON
+                          </a>
+                        </td>
+                        <td className="px-2 py-1 text-zinc-600">{r.createdAt.slice(0, 19)}</td>
                       </tr>
                     ))}
                   </tbody>
