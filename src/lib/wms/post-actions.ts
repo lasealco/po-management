@@ -47,6 +47,7 @@ import {
   generateDockGrnReference,
 } from "./asn-receipt-tolerance";
 import { evaluateCatchWeightAgainstTolerance } from "./catch-weight-receipt";
+import { custodySegmentIndicatesBreach, parseCustodySegmentJsonForPatch } from "./custody-segment-bf64";
 import { buildReceivingAccrualSnapshotV1 } from "./receiving-accrual-staging";
 import { canAdvanceReceiveStatusToReceiptComplete } from "./wms-receipt-close-policy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
@@ -2749,6 +2750,7 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus("Shipment not found.", 404);
     }
     const data: Prisma.ShipmentUpdateInput = {};
+    let shipmentCustodyBreachForAudit: Prisma.InputJsonValue | null = null;
     if (input.asnReference !== undefined) {
       data.asnReference = input.asnReference?.trim() ? input.asnReference.trim() : null;
     }
@@ -2826,9 +2828,23 @@ export async function handleWmsPost(
         data.returnSourceOutboundOrder = { connect: { id: oid } };
       }
     }
+    if (input.custodySegmentJson !== undefined) {
+      const seg = parseCustodySegmentJsonForPatch(input.custodySegmentJson);
+      if (!seg.ok) {
+        return toApiErrorResponseFromStatus(seg.message, 400);
+      }
+      if (seg.mode === "clear") {
+        data.custodySegmentJson = Prisma.DbNull;
+      } else if (seg.mode === "set") {
+        data.custodySegmentJson = seg.value;
+        if (custodySegmentIndicatesBreach(seg.value as unknown)) {
+          shipmentCustodyBreachForAudit = seg.value;
+        }
+      }
+    }
     if (Object.keys(data).length === 0) {
       return toApiErrorResponseFromStatus(
-        "Provide inbound fields to update (ASN, receive timing, BF-31 / BF-63 tolerance %, BF-37 tags, BF-41 return subtype / RMA / outbound link).",
+        "Provide inbound fields to update (ASN, receive timing, BF-31 / BF-63 tolerance %, BF-37 tags, BF-41 return subtype / RMA / outbound link, BF-64 custody JSON).",
         400,
       );
     }
@@ -2866,6 +2882,22 @@ export async function handleWmsPost(
               from: "NOT_TRACKED",
               to: "EXPECTED",
               source: "inbound_fields",
+            },
+            actorUserId: actorId,
+          },
+        });
+      }
+      if (shipmentCustodyBreachForAudit) {
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            shipmentId: shipment.id,
+            entityType: "SHIPMENT",
+            entityId: shipment.id,
+            action: "cold_chain_custody_breach_bf64",
+            payload: {
+              custodySegmentJson: shipmentCustodyBreachForAudit,
+              source: "set_shipment_inbound_fields",
             },
             actorUserId: actorId,
           },
@@ -4207,6 +4239,76 @@ export async function handleWmsPost(
     });
 
     return NextResponse.json({ ok: true, id: row.id });
+  }
+
+  if (action === "set_inventory_movement_custody_segment_bf64") {
+    const movementId = input.inventoryMovementId?.trim();
+    if (!movementId) {
+      return toApiErrorResponseFromStatus("inventoryMovementId required.", 400);
+    }
+    if (input.custodySegmentJson === undefined) {
+      return toApiErrorResponseFromStatus(
+        "custodySegmentJson required (object or null to clear).",
+        400,
+      );
+    }
+    const seg = parseCustodySegmentJsonForPatch(input.custodySegmentJson);
+    if (!seg.ok) {
+      return toApiErrorResponseFromStatus(seg.message, 400);
+    }
+    if (seg.mode === "omit") {
+      return toApiErrorResponseFromStatus(
+        "custodySegmentJson required (object or null to clear).",
+        400,
+      );
+    }
+
+    const row = await prisma.inventoryMovement.findFirst({
+      where: { id: movementId, tenantId },
+      select: { id: true, referenceType: true, referenceId: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Inventory movement not found.", 404);
+    }
+
+    const updateData: Prisma.InventoryMovementUpdateInput =
+      seg.mode === "clear"
+        ? { custodySegmentJson: Prisma.DbNull }
+        : { custodySegmentJson: seg.value };
+
+    const linkShipmentId =
+      row.referenceType === "SHIPMENT" && row.referenceId?.trim()
+        ? row.referenceId.trim()
+        : null;
+    const breachPayload =
+      seg.mode === "set" && custodySegmentIndicatesBreach(seg.value as unknown)
+        ? seg.value
+        : null;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.inventoryMovement.update({
+        where: { id: row.id },
+        data: updateData,
+      });
+      if (breachPayload != null) {
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            shipmentId: linkShipmentId,
+            entityType: "INVENTORY_MOVEMENT",
+            entityId: row.id,
+            action: "cold_chain_custody_breach_bf64",
+            payload: {
+              inventoryMovementId: row.id,
+              custodySegmentJson: breachPayload as Prisma.InputJsonValue,
+            },
+            actorUserId: actorId,
+          },
+        });
+      }
+    });
+
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "register_inventory_serial") {

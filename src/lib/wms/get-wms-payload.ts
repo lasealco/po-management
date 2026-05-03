@@ -299,6 +299,7 @@ export async function getWmsDashboardPayload(
         expectedReceiveAt: true,
         asnQtyTolerancePct: true,
         catchWeightTolerancePct: true,
+        custodySegmentJson: true,
         wmsCrossDock: true,
         wmsFlowThrough: true,
         wmsInboundSubtype: true,
@@ -1119,6 +1120,7 @@ export async function getWmsDashboardPayload(
         asnQtyTolerancePct: s.asnQtyTolerancePct != null ? s.asnQtyTolerancePct.toString() : null,
         catchWeightTolerancePct:
           s.catchWeightTolerancePct != null ? s.catchWeightTolerancePct.toString() : null,
+        custodySegmentJson: s.custodySegmentJson ?? null,
         wmsCrossDock: s.wmsCrossDock,
         wmsFlowThrough: s.wmsFlowThrough,
         wmsInboundSubtype: s.wmsInboundSubtype,
@@ -1256,6 +1258,7 @@ export async function getWmsDashboardPayload(
       referenceType: m.referenceType,
       referenceId: m.referenceId,
       note: m.note,
+      custodySegmentJson: m.custodySegmentJson ?? null,
       createdAt: m.createdAt.toISOString(),
       warehouse: m.warehouse,
       bin: m.bin,

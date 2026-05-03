@@ -85,6 +85,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   register_inventory_serial: "inventory",
   set_inventory_serial_balance: "inventory",
   attach_inventory_serial_to_movement: "inventory",
+  /** BF-64 — cold-chain custody segment on ledger movement. */
+  set_inventory_movement_custody_segment_bf64: "inventory",
 
   create_dock_appointment: "operations",
   cancel_dock_appointment: "operations",

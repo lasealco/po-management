@@ -422,6 +422,7 @@ type WmsData = {
     expectedReceiveAt: string | null;
     asnQtyTolerancePct: string | null;
     catchWeightTolerancePct: string | null;
+    custodySegmentJson: unknown | null;
     wmsCrossDock: boolean;
     wmsFlowThrough: boolean;
     wmsInboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
@@ -556,6 +557,7 @@ type WmsData = {
     referenceType: string | null;
     referenceId: string | null;
     note: string | null;
+    custodySegmentJson: unknown | null;
     createdAt: string;
     warehouse: { id: string; code: string | null; name: string };
     bin: { id: string; code: string; name: string } | null;
@@ -803,10 +805,13 @@ function downloadMovementLedgerCsv(
     "referenceType",
     "referenceId",
     "note",
+    "custodySegmentJson",
     "createdBy",
   ];
   const lines = [header.join(",")];
   for (const m of rows) {
+    const custody =
+      m.custodySegmentJson != null ? JSON.stringify(m.custodySegmentJson) : "";
     lines.push(
       [
         esc(m.createdAt),
@@ -820,6 +825,7 @@ function downloadMovementLedgerCsv(
         esc(m.referenceType ?? ""),
         esc(m.referenceId ?? ""),
         esc(m.note ?? ""),
+        esc(custody),
         esc(m.createdBy.name),
       ].join(","),
     );
@@ -1040,6 +1046,7 @@ export function WmsClient({
         inboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
         rmaRef: string;
         returnOutboundId: string;
+        inboundCustodyJson: string;
       }
     >
   >({});
@@ -1183,6 +1190,8 @@ export function WmsClient({
   const [movementSort, setMovementSort] = useState<
     "newest" | "oldest" | "type" | "qtyDesc" | "qtyAsc"
   >("newest");
+  const [bf64MovementId, setBf64MovementId] = useState("");
+  const [bf64CustodyJson, setBf64CustodyJson] = useState("");
   const [balanceSort, setBalanceSort] = useState<
     "bin" | "product" | "availableDesc" | "availableAsc"
   >("bin");
@@ -1480,6 +1489,7 @@ export function WmsClient({
           inboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
           rmaRef: string;
           returnOutboundId: string;
+          inboundCustodyJson: string;
         }
       > = {};
       for (const s of data.inboundShipments) {
@@ -1504,6 +1514,8 @@ export function WmsClient({
           inboundSubtype: s.wmsInboundSubtype,
           rmaRef: s.wmsRmaReference ?? "",
           returnOutboundId: s.returnSourceOutboundOrderId ?? "",
+          inboundCustodyJson:
+            s.custodySegmentJson != null ? JSON.stringify(s.custodySegmentJson) : "",
         };
       }
       setInboundEdits(next);
@@ -4700,6 +4712,7 @@ export function WmsClient({
                 <th className="px-2 py-1">Expected</th>
                 <th className="px-2 py-1">ASN tol %</th>
                 <th className="px-2 py-1">Catch wt %</th>
+                <th className="px-2 py-1">Cold (BF-64)</th>
                 <th className="px-2 py-1">Lines</th>
                 <th className="px-2 py-1">Inbound type</th>
                 <th className="px-2 py-1">RMA</th>
@@ -4714,7 +4727,7 @@ export function WmsClient({
             <tbody className="divide-y divide-zinc-200">
               {inboundShipmentsForOps.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 18 : 15} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 19 : 16} className="px-2 py-3 text-zinc-500">
                     {data.inboundShipments.length === 0
                       ? "No shipments for this tenant yet."
                       : "No inbound rows match this tag filter."}
@@ -4743,6 +4756,8 @@ export function WmsClient({
                       inboundSubtype: s.wmsInboundSubtype,
                       rmaRef: s.wmsRmaReference ?? "",
                       returnOutboundId: s.returnSourceOutboundOrderId ?? "",
+                      inboundCustodyJson:
+                        s.custodySegmentJson != null ? JSON.stringify(s.custodySegmentJson) : "",
                     };
                   const outboundNotInWh =
                     s.returnSourceOutboundOrderId &&
@@ -4752,7 +4767,7 @@ export function WmsClient({
                   const outboundSelectRows = outboundNotInWh
                     ? [...outboundOrdersForWarehouse, outboundNotInWh]
                     : outboundOrdersForWarehouse;
-                  const lineColSpan = canEdit ? 18 : 15;
+                  const lineColSpan = canEdit ? 19 : 16;
                   return (
                     <Fragment key={s.id}>
                       <tr>
@@ -4880,6 +4895,22 @@ export function WmsClient({
                           />
                         ) : (
                           <span className="text-zinc-600">{s.catchWeightTolerancePct ?? "—"}</span>
+                        )}
+                      </td>
+                      <td
+                        className="px-2 py-1 text-xs text-zinc-600"
+                        title={
+                          s.custodySegmentJson != null
+                            ? JSON.stringify(s.custodySegmentJson).slice(0, 500)
+                            : ""
+                        }
+                      >
+                        {s.custodySegmentJson != null ? (
+                          <span className="rounded-full bg-sky-50 px-1.5 py-0.5 font-medium text-sky-900">
+                            Segment
+                          </span>
+                        ) : (
+                          "—"
                         )}
                       </td>
                       <td className="px-2 py-1 text-zinc-600">{s.itemCount}</td>
@@ -5096,6 +5127,75 @@ export function WmsClient({
                         </td>
                       ) : null}
                     </tr>
+                    {canEdit ? (
+                      <tr className="bg-sky-50/40">
+                        <td colSpan={lineColSpan} className="px-2 py-2 align-top">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-sky-800">
+                            Cold-chain custody (BF-64)
+                          </p>
+                          <p className="mt-0.5 max-w-3xl text-[11px] text-sky-900/85">
+                            Shipment-level JSON (probe / min / max °C, breach flags). Breach records{" "}
+                            <span className="font-medium">cold_chain_custody_breach_bf64</span> for Control Tower
+                            timeline.
+                          </p>
+                          <textarea
+                            value={draft.inboundCustodyJson}
+                            disabled={busy}
+                            onChange={(e) =>
+                              setInboundEdits((prev) => ({
+                                ...prev,
+                                [s.id]: { ...draft, inboundCustodyJson: e.target.value },
+                              }))
+                            }
+                            rows={2}
+                            className="mt-2 w-full max-w-2xl rounded-lg border border-sky-200 bg-white px-2 py-1.5 font-mono text-[11px] text-zinc-800"
+                            placeholder='{"minTempC":2,"maxTempC":8,"probeTempC":5}'
+                          />
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                const t = draft.inboundCustodyJson.trim();
+                                if (!t) {
+                                  window.alert("Paste JSON or use Clear custody.");
+                                  return;
+                                }
+                                let parsed: unknown;
+                                try {
+                                  parsed = JSON.parse(t) as unknown;
+                                } catch {
+                                  window.alert("Invalid JSON — fix before applying.");
+                                  return;
+                                }
+                                void runAction({
+                                  action: "set_shipment_inbound_fields",
+                                  shipmentId: s.id,
+                                  custodySegmentJson: parsed,
+                                });
+                              }}
+                              className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                            >
+                              Apply custody JSON
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                void runAction({
+                                  action: "set_shipment_inbound_fields",
+                                  shipmentId: s.id,
+                                  custodySegmentJson: null,
+                                })
+                              }
+                              className="rounded-lg border border-sky-300 bg-white px-3 py-1.5 text-[11px] font-medium text-sky-900 disabled:opacity-40"
+                            >
+                              Clear custody
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
                     {s.receiveLines.length > 0 ? (
                       <tr className="bg-zinc-50/90">
                         <td colSpan={lineColSpan} className="px-2 py-3 align-top">
@@ -9920,6 +10020,76 @@ export function WmsClient({
             Narrow the date range, add filters, or raise the row cap to reduce truncation.
           </p>
         ) : null}
+        {canEdit ? (
+          <div className="mb-3 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
+            <h3 className="text-xs font-semibold text-sky-900">BF-64 — Movement custody JSON</h3>
+            <p className="mt-1 max-w-3xl text-[11px] text-sky-900/85">
+              Attach a cold-chain segment to an inventory ledger row. When{" "}
+              <span className="font-medium">referenceType</span> is SHIPMENT, breach audits attach{" "}
+              <span className="font-medium">shipmentId</span> for Control Tower timeline context.
+            </p>
+            <label className="mt-2 block max-w-xl text-[11px] font-medium text-zinc-700">
+              Movement id
+              <input
+                value={bf64MovementId}
+                onChange={(e) => setBf64MovementId(e.target.value)}
+                disabled={busy}
+                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1 font-mono text-[11px]"
+                placeholder="InventoryMovement.id"
+              />
+            </label>
+            <textarea
+              value={bf64CustodyJson}
+              onChange={(e) => setBf64CustodyJson(e.target.value)}
+              disabled={busy}
+              rows={2}
+              className="mt-2 w-full max-w-2xl rounded-lg border border-sky-200 bg-white px-2 py-1.5 font-mono text-[11px]"
+              placeholder='{"minTempC":2,"maxTempC":8,"probeTempC":9}'
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy || !bf64MovementId.trim()}
+                onClick={() => {
+                  const t = bf64CustodyJson.trim();
+                  if (!t) {
+                    window.alert("Paste JSON or use Clear movement custody.");
+                    return;
+                  }
+                  let parsed: unknown;
+                  try {
+                    parsed = JSON.parse(t) as unknown;
+                  } catch {
+                    window.alert("Invalid JSON.");
+                    return;
+                  }
+                  void runAction({
+                    action: "set_inventory_movement_custody_segment_bf64",
+                    inventoryMovementId: bf64MovementId.trim(),
+                    custodySegmentJson: parsed,
+                  });
+                }}
+                className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+              >
+                Apply to movement
+              </button>
+              <button
+                type="button"
+                disabled={busy || !bf64MovementId.trim()}
+                onClick={() =>
+                  void runAction({
+                    action: "set_inventory_movement_custody_segment_bf64",
+                    inventoryMovementId: bf64MovementId.trim(),
+                    custodySegmentJson: null,
+                  })
+                }
+                className="rounded-lg border border-sky-300 bg-white px-3 py-1.5 text-[11px] font-medium text-sky-900 disabled:opacity-40"
+              >
+                Clear movement custody
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
@@ -9931,13 +10101,14 @@ export function WmsClient({
                 <th className="px-2 py-1">Product</th>
                 <th className="px-2 py-1">Bin</th>
                 <th className="px-2 py-1">Ref</th>
+                <th className="px-2 py-1">Custody</th>
                 <th className="px-2 py-1">By</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {movementsShown.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={9} className="px-2 py-3 text-zinc-500">
                     {ledgerEmptyNoMatch
                       ? "No movements match these filters. Reset filters or broaden date range."
                       : "No movements yet in this view."}
@@ -9963,6 +10134,23 @@ export function WmsClient({
                     <td className="max-w-[10rem] truncate px-2 py-1 text-xs text-zinc-500" title={m.referenceId ?? ""}>
                       {m.referenceType ?? "—"}
                       {m.referenceId ? ` · ${m.referenceId.slice(0, 8)}…` : ""}
+                    </td>
+                    <td className="px-2 py-1 text-xs text-zinc-600">
+                      {m.custodySegmentJson != null ? (
+                        <button
+                          type="button"
+                          className="rounded-full bg-sky-50 px-1.5 py-0.5 font-medium text-sky-900 hover:bg-sky-100"
+                          title={JSON.stringify(m.custodySegmentJson).slice(0, 800)}
+                          onClick={() => {
+                            setBf64MovementId(m.id);
+                            setBf64CustodyJson(JSON.stringify(m.custodySegmentJson, null, 0));
+                          }}
+                        >
+                          Edit
+                        </button>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">{m.createdBy.name}</td>
                   </tr>

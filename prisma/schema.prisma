@@ -3798,6 +3798,8 @@ model Shipment {
   asnQtyTolerancePct      Decimal?       @db.Decimal(5, 2)
   /// BF-63 — optional max allowed %-delta of kg vs declared `cargoGrossWeightKg` on catch-weight lines.
   catchWeightTolerancePct Decimal?       @db.Decimal(5, 2)
+  /// BF-64 — optional shipment-level cold-chain custody segment JSON (leg / trailer probe); see `docs/wms/WMS_COLD_CHAIN_BF64.md`.
+  custodySegmentJson     Json?
   /// BF-37 — inbound tagged for cross-dock visibility and outbound staging preference.
   wmsCrossDock            Boolean        @default(false)
   /// BF-37 — flow-through style moves (lighter putaway path when aligned with demand).
@@ -4880,6 +4882,8 @@ model InventoryMovement {
   referenceType String?
   referenceId   String?
   note          String?
+  /// BF-64 — optional cold-chain / custody segment (probe temps, breach flag); see `docs/wms/WMS_COLD_CHAIN_BF64.md`.
+  custodySegmentJson Json?
   createdById   String
   createdAt     DateTime              @default(now())
 

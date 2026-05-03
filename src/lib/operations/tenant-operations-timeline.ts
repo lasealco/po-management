@@ -170,7 +170,8 @@ function timelineUnionFragments(params: { tenantId: string; sources: Set<Timelin
                'warehouseCode', wh.code,
                'productLabel', COALESCE(p.sku, p."productCode", p.name),
                'referenceType', im."referenceType",
-               'referenceId', im."referenceId"
+               'referenceId', im."referenceId",
+               'custodySegmentJson', im."custodySegmentJson"
              ) AS detail
       FROM "InventoryMovement" im
       JOIN "Product" p ON p.id = im."productId"

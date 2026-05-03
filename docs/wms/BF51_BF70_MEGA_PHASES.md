@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
-**Status:** **`BF-51`** … **`BF-63`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md), [`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md)). **`BF-64` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
+**Status:** **`BF-51`** … **`BF-64`** — **minimal slices shipped** ([`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md), [`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md), [`WMS_COLD_CHAIN_BF64.md`](./WMS_COLD_CHAIN_BF64.md)). **`BF-65` … `BF-70`** remain **draft program IDs** — merge/split/reorder before execution.
 
 **Rules:**
 
@@ -31,7 +31,7 @@
 | **BF-61** | Forecast-driven replenishment hints | Replenishment row | **BF-35** rules — **`WmsDemandForecastStub`** landed ([`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md)) |
 | **BF-62** | Kit assembly / build outbound postings | VAS / kit row | **BF-18** BOM, inventory mutations — **`KIT_BUILD`** tasks landed ([`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md)) |
 | **BF-63** | Catch-weight receiving | Receiving / UOM row | **BF-01**, **BF-31** — [`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md) |
-| **BF-64** | Cold-chain custody segments on movements | Compliance row | Movement ledger, optional **`Shipment`** flags |
+| **BF-64** | Cold-chain custody segments on movements | Compliance row | Movement ledger — [`WMS_COLD_CHAIN_BF64.md`](./WMS_COLD_CHAIN_BF64.md) |
 | **BF-65** | Damage workflow & carrier claim export stub | Claims row | Receiving (**BF-41**/dispositions), attachments metadata |
 | **BF-66** | Voice-picking task protocol (vendor-neutral JSON) | Pick execution row | Pick tasks, **BF-56** batch picks |
 | **BF-67** | Multi-parcel outbound manifests | Packing / carrier row | **BF-39** labels, **BF-43** cartons |
@@ -182,6 +182,8 @@
 **Objective:** **Temperature segment** metadata on **`InventoryMovement`** or shipment legs (min/max probe, breach flag) for pharma/food chains.
 
 **Exit sketch (minimal slice):** **`custodySegmentJson`** on movement or **`Shipment`**; breach **`CtAuditLog`** / timeline hook **BF-49**.
+
+**Shipped:** [`WMS_COLD_CHAIN_BF64.md`](./WMS_COLD_CHAIN_BF64.md) — **`InventoryMovement.custodySegmentJson`**, **`Shipment.custodySegmentJson`**; **`set_shipment_inbound_fields`** + **`set_inventory_movement_custody_segment_bf64`**; breach **`cold_chain_custody_breach_bf64`**; timeline movement **`detail.custodySegmentJson`**; Vitest **`custody-segment-bf64.test.ts`**.
 
 **Out of scope:** IoT probe hardware SDKs.
 

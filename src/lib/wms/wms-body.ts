@@ -253,6 +253,8 @@ export type WmsBody = {
   requireWithinCatchWeightForAdvance?: boolean;
   /** BF-63 — refuse receipt close when catch-weight policy applies but kg deltas violate band. */
   blockCloseIfOutsideCatchWeight?: boolean;
+  /** BF-64 — cold-chain custody JSON on `set_shipment_inbound_fields` / `set_inventory_movement_custody_segment_bf64`; `null` clears. */
+  custodySegmentJson?: unknown | null;
 
   /** BF-13 — `WmsInventorySerial.id` (alternative to `productId` + `inventorySerialNo`). */
   inventorySerialId?: string;
