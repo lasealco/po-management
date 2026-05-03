@@ -18,6 +18,11 @@ export type WmsBody = {
    * when evaluating ASN tolerance (`evaluate_wms_receipt_asn_tolerance`, `close_wms_receipt` guards).
    */
   asnQtyTolerancePct?: number | string | null;
+  /**
+   * BF-63 — optional 0–100; permitted %-delta of net kg per catch-weight line vs declared `cargoGrossWeightKg`
+   * (`evaluate_wms_receipt_asn_tolerance`, `close_wms_receipt` guards).
+   */
+  catchWeightTolerancePct?: number | string | null;
   /** ISO datetime string or null to clear. */
   expectedReceiveAt?: string | null;
   /** BF-37 — inbound shipment cross-dock tag (`set_shipment_inbound_fields`). */
@@ -199,6 +204,8 @@ export type WmsBody = {
   workOrderDescription?: string | null;
   /** `set_shipment_item_receive_line` — counted qty vs ASN line (`quantityShipped`). */
   receivedQty?: number;
+  /** BF-63 — optional scale net kg on receive / dock receipt line; omit unchanged; null clears. */
+  catchWeightKg?: number | string | null;
   /** Optional override; omitted → derive MATCH/SHORT/OVER vs shipped qty. */
   varianceDisposition?: string | null;
   /** Optional operator note (max 1000); omit to leave unchanged; null clears. */
@@ -242,6 +249,10 @@ export type WmsBody = {
   requireWithinAsnToleranceForAdvance?: boolean;
   /** BF-31 — refuse receipt close when tolerance configured but qty deltas violate band. */
   blockCloseIfOutsideTolerance?: boolean;
+  /** BF-63 — same as BF-31 advance guard, for catch-weight kg band. */
+  requireWithinCatchWeightForAdvance?: boolean;
+  /** BF-63 — refuse receipt close when catch-weight policy applies but kg deltas violate band. */
+  blockCloseIfOutsideCatchWeight?: boolean;
 
   /** BF-13 — `WmsInventorySerial.id` (alternative to `productId` + `inventorySerialNo`). */
   inventorySerialId?: string;
@@ -280,6 +291,10 @@ export type WmsBody = {
   cartonWidthMm?: number | null;
   cartonHeightMm?: number | null;
   cartonUnitsPerMasterCarton?: number | string | null;
+  /** BF-63 — `set_product_catch_weight_bf63` — SKU receives variable net weight. */
+  isCatchWeight?: boolean;
+  /** BF-63 — optional operator / label hint (e.g. “Weigh master carton”). */
+  catchWeightLabelHint?: string | null;
   /** BF-33 — planner hint on outbound (`set_outbound_order_cube_hint`), cubic metres. */
   estimatedCubeCbm?: number | string | null;
 

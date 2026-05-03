@@ -28,6 +28,8 @@ const WMS_PRODUCT_REF_SELECT = {
   cartonWidthMm: true,
   cartonHeightMm: true,
   cartonUnitsPerMasterCarton: true,
+  isCatchWeight: true,
+  catchWeightLabelHint: true,
 } satisfies Prisma.ProductSelect;
 
 function mapWmsProductJson(p: {
@@ -39,6 +41,8 @@ function mapWmsProductJson(p: {
   cartonWidthMm: number | null;
   cartonHeightMm: number | null;
   cartonUnitsPerMasterCarton: Prisma.Decimal | null;
+  isCatchWeight: boolean;
+  catchWeightLabelHint: string | null;
 }) {
   return {
     id: p.id,
@@ -50,6 +54,8 @@ function mapWmsProductJson(p: {
     cartonHeightMm: p.cartonHeightMm,
     cartonUnitsPerMasterCarton:
       p.cartonUnitsPerMasterCarton != null ? p.cartonUnitsPerMasterCarton.toString() : null,
+    isCatchWeight: p.isCatchWeight,
+    catchWeightLabelHint: p.catchWeightLabelHint,
   };
 }
 
@@ -292,6 +298,7 @@ export async function getWmsDashboardPayload(
         asnReference: true,
         expectedReceiveAt: true,
         asnQtyTolerancePct: true,
+        catchWeightTolerancePct: true,
         wmsCrossDock: true,
         wmsFlowThrough: true,
         wmsInboundSubtype: true,
@@ -322,6 +329,8 @@ export async function getWmsDashboardPayload(
             id: true,
             quantityShipped: true,
             quantityReceived: true,
+            cargoGrossWeightKg: true,
+            catchWeightKg: true,
             wmsVarianceDisposition: true,
             wmsVarianceNote: true,
             wmsReturnDisposition: true,
@@ -335,7 +344,15 @@ export async function getWmsDashboardPayload(
               select: {
                 lineNo: true,
                 description: true,
-                product: { select: { sku: true, productCode: true } },
+                productId: true,
+                product: {
+                  select: {
+                    sku: true,
+                    productCode: true,
+                    isCatchWeight: true,
+                    catchWeightLabelHint: true,
+                  },
+                },
               },
             },
           },
@@ -1100,6 +1117,8 @@ export async function getWmsDashboardPayload(
         asnReference: s.asnReference,
         expectedReceiveAt: s.expectedReceiveAt?.toISOString() ?? null,
         asnQtyTolerancePct: s.asnQtyTolerancePct != null ? s.asnQtyTolerancePct.toString() : null,
+        catchWeightTolerancePct:
+          s.catchWeightTolerancePct != null ? s.catchWeightTolerancePct.toString() : null,
         wmsCrossDock: s.wmsCrossDock,
         wmsFlowThrough: s.wmsFlowThrough,
         wmsInboundSubtype: s.wmsInboundSubtype,
@@ -1138,6 +1157,12 @@ export async function getWmsDashboardPayload(
               li.orderItem.product?.sku?.trim() ||
               li.orderItem.product?.productCode?.trim() ||
               null,
+            cargoGrossWeightKg:
+              li.cargoGrossWeightKg != null ? li.cargoGrossWeightKg.toString() : null,
+            catchWeightKg: li.catchWeightKg != null ? li.catchWeightKg.toString() : null,
+            isCatchWeightProduct: Boolean(li.orderItem.product?.isCatchWeight),
+            catchWeightLabelHint: li.orderItem.product?.catchWeightLabelHint ?? null,
+            productId: li.orderItem.productId,
             quantityShipped: li.quantityShipped.toString(),
             quantityReceived: li.quantityReceived.toString(),
             wmsVarianceDisposition: li.wmsVarianceDisposition,

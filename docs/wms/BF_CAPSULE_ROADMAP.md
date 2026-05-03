@@ -1,6 +1,6 @@
 # Blueprint finish (`BF-xx`) — roadmap after BF-01
 
-**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-62`** minimal slices where noted), **draft program** **`BF-63` … `BF-70`** ([`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md)), mega-phase definitions ([`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md), [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), and [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
+**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-63`** minimal slices where noted), **draft program** **`BF-64` … `BF-70`** ([`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md)), mega-phase definitions ([`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md), [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), and [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
 **Authority:** Capsule IDs and themes match [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). **`GAP_MAP.md`** stays the repo ↔ blueprint truth.
 
@@ -66,16 +66,16 @@
 | **BF-60** | Offline scan batch replay (minimal) | **`WmsScanEventBatch`** + **`POST /api/wms/scan-events/batch`**, idempotent **`clientBatchId`**, **`409`** **`SCAN_BATCH_CONFLICT`**, **`GET /api/wms`** **`scanEventBatches`** ([`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md)); PWA / CRDT backlog |
 | **BF-61** | Forecast-driven replenishment hints (minimal) | **`WmsDemandForecastStub`**; **`upsert_wms_demand_forecast_stub`**; **`GET /api/wms`** **`forecastGapHints`** + batch priority boost ([`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md)); ML / CRM demand ingest backlog |
 | **BF-62** | Kit assembly / build postings (minimal) | **`WmsTaskType.KIT_BUILD`**; **`create_kit_build_task`** / **`complete_kit_build_task`**; [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md); full MES backlog |
+| **BF-63** | Catch-weight receiving (minimal) | **`ShipmentItem.catchWeightKg`**, **`Shipment.catchWeightTolerancePct`**, product profile + dock close guards ([`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md)); legal-for-trade scales backlog |
 
 ---
 
-## Draft program (`BF-63` … `BF-70`)
+## Draft program (`BF-64` … `BF-70`)
 
 **Status:** **Draft IDs only** — no in-repo minimal slices yet; product may reorder/merge/split before execution. Program rollup + exit sketches: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md). Catalog rows: [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md).
 
 | ID | Theme (short) |
 |----|----------------|
-| **BF-63** | Catch-weight receiving |
 | **BF-64** | Cold-chain custody segments on movements |
 | **BF-65** | Damage workflow & carrier claim export stub |
 | **BF-66** | Voice-picking JSON protocol stub |
@@ -90,7 +90,7 @@
 
 Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **Phase A → E**: inventory truth before execution engines; topology/yard before throwing integrations at cross-product epics.
 
-**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** through **`BF-62`** have **minimal slices shipped** in-repo where noted ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). **`BF-63`** … **`BF-70`** are **draft program placeholders** only ([`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
+**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** through **`BF-63`** have **minimal slices shipped** in-repo where noted ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_CYCLE_COUNT_BF51.md`](./WMS_CYCLE_COUNT_BF51.md), [`WMS_SLOTTING_BF52.md`](./WMS_SLOTTING_BF52.md), [`WMS_LABOR_BF53.md`](./WMS_LABOR_BF53.md), [`WMS_DOCK_DETENTION_BF54.md`](./WMS_DOCK_DETENTION_BF54.md), [`WMS_STOCK_TRANSFER_BF55.md`](./WMS_STOCK_TRANSFER_BF55.md), [`WMS_BATCH_PICK_BF56.md`](./WMS_BATCH_PICK_BF56.md), [`WMS_LU_HIERARCHY_BF57.md`](./WMS_LU_HIERARCHY_BF57.md), [`WMS_INVENTORY_FREEZE_BF58.md`](./WMS_INVENTORY_FREEZE_BF58.md), [`WMS_INBOUND_ASN_ADVISE_BF59.md`](./WMS_INBOUND_ASN_ADVISE_BF59.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md), [`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). **`BF-64`** … **`BF-70`** are **draft program placeholders** only ([`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
 | Order | ID | Phase | Notes |
 |-------|-----|-------|------|
@@ -205,16 +205,16 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-60** | Offline scan batch | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md), [`WMS_OFFLINE_SCAN_BF60.md`](./WMS_OFFLINE_SCAN_BF60.md), [`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md) | WMS | **Partial** — **`WmsScanEventBatch`**, **`POST /api/wms/scan-events/batch`**, **`409`** conflict contract, dashboard **`scanEventBatches`**; full offline PWA backlog |
 | **BF-61** | Forecast replenishment hints | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md), [`WMS_FORECAST_REPLENISHMENT_BF61.md`](./WMS_FORECAST_REPLENISHMENT_BF61.md), [`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md) | WMS | **Partial** — **`WmsDemandForecastStub`**, **`forecastGapHints`**, batch priority boost + task snapshot; ML / CRM demand ingest backlog |
 | **BF-62** | VAS kit assembly | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md), [`WMS_KIT_BUILD_BF62.md`](./WMS_KIT_BUILD_BF62.md), [`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md) | WMS | **Partial** — **`KIT_BUILD`** tasks, BOM-scaled consumption + output posting; discrete MES backlog |
+| **BF-63** | Catch-weight receiving | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md), [`WMS_CATCH_WEIGHT_BF63.md`](./WMS_CATCH_WEIGHT_BF63.md), [`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md) | WMS | **Partial** — **`catchWeightKg`** + shipment **`catchWeightTolerancePct`**, evaluate + close guards, product profile; legal-for-trade backlog |
 
 ---
 
-## Capsule cards (draft `BF-63` … `BF-70`)
+## Capsule cards (draft `BF-64` … `BF-70`)
 
 Use [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) **§BF-xx** for objectives + exit sketches until a capsule ships and earns a dedicated **`WMS_*_BFxx.md`** note.
 
 | ID | `GAP_MAP` signal (when funded) | Primary docs | Shared / CRM / CT? | Status |
 |----|-------------------------------|--------------|---------------------|--------|
-| **BF-63** | Catch-weight receiving | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) §BF-63 | WMS | **Draft** |
 | **BF-64** | Cold-chain custody | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) §BF-64 | WMS + CT | **Draft** |
 | **BF-65** | Damage / claims export | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) §BF-65 | WMS | **Draft** |
 | **BF-66** | Voice pick protocol | [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) §BF-66 | WMS | **Draft** |
@@ -229,7 +229,7 @@ Use [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md) **§BF-xx** for obj
 
 | Artifact | Location |
 |----------|-----------|
-| IDs + themes | [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) — **BF-51**–**BF-62** landed minimal · **BF-63 … BF-70** draft rows |
+| IDs + themes | [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) — **BF-51**–**BF-63** landed minimal · **BF-64 … BF-70** draft rows |
 | **Order + dependency narrative** | This file |
 | Execution | **One capsule per milestone:** GitHub issue (label `module:wms`) or agent prompt with **`BF-xx`** in the title and goals copied from the **correct** row — **not** the BF-01 template unless the capsule **is** BF-01 |
 

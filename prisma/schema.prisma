@@ -3366,6 +3366,11 @@ model Product {
   /// BF-33 — SKU units packed in one master carton when dims are set (defaults to 1 in wave heuristic when null).
   cartonUnitsPerMasterCarton Decimal? @db.Decimal(14, 3)
 
+  /// BF-63 — variable net-weight / catch-weight SKU; receiving records `ShipmentItem.catchWeightKg` vs declared `cargoGrossWeightKg`.
+  isCatchWeight        Boolean @default(false)
+  /// BF-63 — optional hint for scale / label workflows (informational; not legal-for-trade certification).
+  catchWeightLabelHint String? @db.VarChar(256)
+
   supplierOfficeId String?
   supplierOffice   SupplierOffice? @relation(fields: [supplierOfficeId], references: [id], onDelete: SetNull)
 
@@ -3791,6 +3796,8 @@ model Shipment {
   cargoDimensionsText     String?        @db.VarChar(512)
   /// BF-31 — optional max allowed absolute %-delta per line vs `quantityShipped` when evaluating ASN tolerance (`receiveLines`).
   asnQtyTolerancePct      Decimal?       @db.Decimal(5, 2)
+  /// BF-63 — optional max allowed %-delta of kg vs declared `cargoGrossWeightKg` on catch-weight lines.
+  catchWeightTolerancePct Decimal?       @db.Decimal(5, 2)
   /// BF-37 — inbound tagged for cross-dock visibility and outbound staging preference.
   wmsCrossDock            Boolean        @default(false)
   /// BF-37 — flow-through style moves (lighter putaway path when aligned with demand).
@@ -3880,6 +3887,8 @@ model ShipmentItem {
   /// Line-level outward packages (optional; may differ from PO qty unit).
   cargoPackageCount   Int?
   cargoGrossWeightKg  Decimal?  @db.Decimal(14, 3)
+  /// BF-63 — scale-reported net weight (kg) for catch-weight lines; compared to `cargoGrossWeightKg` when shipment tolerance is set.
+  catchWeightKg       Decimal?  @db.Decimal(14, 3)
   cargoVolumeCbm      Decimal?  @db.Decimal(12, 6)
   cargoDimensionsText String?   @db.VarChar(512)
   /// BF-01 — variance disposition vs `quantityShipped` after receiving count (see `set_shipment_item_receive_line`).

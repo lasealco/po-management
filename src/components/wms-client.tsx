@@ -64,6 +64,8 @@ type WmsProductRef = {
   cartonWidthMm: number | null;
   cartonHeightMm: number | null;
   cartonUnitsPerMasterCarton: string | null;
+  isCatchWeight: boolean;
+  catchWeightLabelHint: string | null;
 };
 
 type WmsOutboundLuKindUi = "PALLET" | "CASE" | "INNER_PACK" | "EACH" | "UNKNOWN";
@@ -419,6 +421,7 @@ type WmsData = {
     asnReference: string | null;
     expectedReceiveAt: string | null;
     asnQtyTolerancePct: string | null;
+    catchWeightTolerancePct: string | null;
     wmsCrossDock: boolean;
     wmsFlowThrough: boolean;
     wmsInboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
@@ -446,6 +449,11 @@ type WmsData = {
       lineNo: number;
       description: string | null;
       productSku: string | null;
+      cargoGrossWeightKg: string | null;
+      catchWeightKg: string | null;
+      isCatchWeightProduct: boolean;
+      catchWeightLabelHint: string | null;
+      productId: string;
       quantityShipped: string;
       quantityReceived: string;
       wmsVarianceDisposition:
@@ -940,6 +948,9 @@ export function WmsClient({
   const [bf33CartonUnits, setBf33CartonUnits] = useState("");
   const [bf33OutboundCubeOrderId, setBf33OutboundCubeOrderId] = useState("");
   const [bf33EstimatedCubeCbm, setBf33EstimatedCubeCbm] = useState("");
+  const [bf63CatchProductId, setBf63CatchProductId] = useState("");
+  const [bf63IsCatchWeight, setBf63IsCatchWeight] = useState(false);
+  const [bf63LabelHint, setBf63LabelHint] = useState("");
   const [rackVizCode, setRackVizCode] = useState("");
   const [topologyExportBusy, setTopologyExportBusy] = useState(false);
   const [slottingWindowDays, setSlottingWindowDays] = useState("30");
@@ -1014,6 +1025,7 @@ export function WmsClient({
         asn: string;
         expectedReceiveAt: string;
         asnTolerancePct: string;
+        catchWeightTolerancePct: string;
         receiptDockNote: string;
         receiptDockAt: string;
         receiptCompleteOnClose: boolean;
@@ -1021,6 +1033,8 @@ export function WmsClient({
         generateGrnOnClose: boolean;
         requireTolAdvanceClose: boolean;
         blockTolOutsideClose: boolean;
+        requireCwAdvanceClose: boolean;
+        blockCwOutsideClose: boolean;
         crossDock: boolean;
         flowThrough: boolean;
         inboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
@@ -1451,6 +1465,7 @@ export function WmsClient({
           asn: string;
           expectedReceiveAt: string;
           asnTolerancePct: string;
+          catchWeightTolerancePct: string;
           receiptDockNote: string;
           receiptDockAt: string;
           receiptCompleteOnClose: boolean;
@@ -1458,6 +1473,8 @@ export function WmsClient({
           generateGrnOnClose: boolean;
           requireTolAdvanceClose: boolean;
           blockTolOutsideClose: boolean;
+          requireCwAdvanceClose: boolean;
+          blockCwOutsideClose: boolean;
           crossDock: boolean;
           flowThrough: boolean;
           inboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
@@ -1472,6 +1489,7 @@ export function WmsClient({
             ? s.expectedReceiveAt.slice(0, 16)
             : "",
           asnTolerancePct: s.asnQtyTolerancePct ?? "",
+          catchWeightTolerancePct: s.catchWeightTolerancePct ?? "",
           receiptDockNote: "",
           receiptDockAt: "",
           receiptCompleteOnClose: false,
@@ -1479,6 +1497,8 @@ export function WmsClient({
           generateGrnOnClose: false,
           requireTolAdvanceClose: false,
           blockTolOutsideClose: false,
+          requireCwAdvanceClose: false,
+          blockCwOutsideClose: false,
           crossDock: s.wmsCrossDock,
           flowThrough: s.wmsFlowThrough,
           inboundSubtype: s.wmsInboundSubtype,
@@ -2382,6 +2402,7 @@ export function WmsClient({
             Select a warehouse above to filter outbound picks for this warehouse.
           </p>
         ) : (
+          <>
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">Product master carton</p>
@@ -2540,6 +2561,75 @@ export function WmsClient({
               </div>
             </div>
           </div>
+          <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+              BF-63 — Catch-weight product
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-600">
+              Marks SKUs variable net-weight for receiving. Shipments optionally set a catch-weight % band via{" "}
+              <span className="font-medium">Catch wt %</span> on inbound (vs declared <span className="font-medium">cargoGrossWeightKg</span>).
+            </p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <label className="block sm:col-span-2">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Product</span>
+                <select
+                  disabled={!canEdit || busy}
+                  value={bf63CatchProductId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setBf63CatchProductId(id);
+                    const p = productPickOptionsForWarehouse.find((x) => x.id === id);
+                    setBf63IsCatchWeight(p?.isCatchWeight ?? false);
+                    setBf63LabelHint(p?.catchWeightLabelHint ?? "");
+                  }}
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Select product…</option>
+                  {productPickOptionsForWarehouse.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.sku || p.productCode || p.id.slice(0, 8)} · {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-700 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="rounded border-zinc-300"
+                  disabled={!canEdit || busy || !bf63CatchProductId}
+                  checked={bf63IsCatchWeight}
+                  onChange={(e) => setBf63IsCatchWeight(e.target.checked)}
+                />
+                Catch-weight SKU
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Label / scale hint</span>
+                <input
+                  value={bf63LabelHint}
+                  onChange={(e) => setBf63LabelHint(e.target.value)}
+                  disabled={!canEdit || busy || !bf63CatchProductId}
+                  placeholder="e.g. Weigh master carton"
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <div className="mt-3">
+              <ActionButton
+                disabled={!canEdit || busy || !bf63CatchProductId}
+                onClick={() =>
+                  void runAction({
+                    action: "set_product_catch_weight_bf63",
+                    productId: bf63CatchProductId,
+                    isCatchWeight: bf63IsCatchWeight,
+                    catchWeightLabelHint: bf63LabelHint.trim() ? bf63LabelHint.trim() : null,
+                  })
+                }
+              >
+                Save catch-weight profile
+              </ActionButton>
+            </div>
+          </div>
+          </>
         )}
       </section>
 
@@ -4609,6 +4699,7 @@ export function WmsClient({
                 <th className="px-2 py-1">ASN ref</th>
                 <th className="px-2 py-1">Expected</th>
                 <th className="px-2 py-1">ASN tol %</th>
+                <th className="px-2 py-1">Catch wt %</th>
                 <th className="px-2 py-1">Lines</th>
                 <th className="px-2 py-1">Inbound type</th>
                 <th className="px-2 py-1">RMA</th>
@@ -4623,7 +4714,7 @@ export function WmsClient({
             <tbody className="divide-y divide-zinc-200">
               {inboundShipmentsForOps.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 17 : 14} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 18 : 15} className="px-2 py-3 text-zinc-500">
                     {data.inboundShipments.length === 0
                       ? "No shipments for this tenant yet."
                       : "No inbound rows match this tag filter."}
@@ -4637,6 +4728,7 @@ export function WmsClient({
                       asn: "",
                       expectedReceiveAt: "",
                       asnTolerancePct: "",
+                      catchWeightTolerancePct: "",
                       receiptDockNote: "",
                       receiptDockAt: "",
                       receiptCompleteOnClose: false,
@@ -4644,8 +4736,10 @@ export function WmsClient({
                       generateGrnOnClose: false,
                       requireTolAdvanceClose: false,
                       blockTolOutsideClose: false,
-                      crossDock: false,
-                      flowThrough: false,
+                      requireCwAdvanceClose: false,
+                      blockCwOutsideClose: false,
+                      crossDock: s.wmsCrossDock,
+                      flowThrough: s.wmsFlowThrough,
                       inboundSubtype: s.wmsInboundSubtype,
                       rmaRef: s.wmsRmaReference ?? "",
                       returnOutboundId: s.returnSourceOutboundOrderId ?? "",
@@ -4658,7 +4752,7 @@ export function WmsClient({
                   const outboundSelectRows = outboundNotInWh
                     ? [...outboundOrdersForWarehouse, outboundNotInWh]
                     : outboundOrdersForWarehouse;
-                  const lineColSpan = canEdit ? 17 : 14;
+                  const lineColSpan = canEdit ? 18 : 15;
                   return (
                     <Fragment key={s.id}>
                       <tr>
@@ -4768,6 +4862,24 @@ export function WmsClient({
                           />
                         ) : (
                           <span className="text-zinc-600">{s.asnQtyTolerancePct ?? "—"}</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1">
+                        {canEdit ? (
+                          <input
+                            value={draft.catchWeightTolerancePct}
+                            onChange={(e) =>
+                              setInboundEdits((prev) => ({
+                                ...prev,
+                                [s.id]: { ...draft, catchWeightTolerancePct: e.target.value },
+                              }))
+                            }
+                            className="w-16 rounded border border-zinc-300 px-1 py-1 text-xs"
+                            placeholder="—"
+                            title="BF-63 optional max %-delta vs declared kg per catch-weight line"
+                          />
+                        ) : (
+                          <span className="text-zinc-600">{s.catchWeightTolerancePct ?? "—"}</span>
                         )}
                       </td>
                       <td className="px-2 py-1 text-zinc-600">{s.itemCount}</td>
@@ -4960,6 +5072,10 @@ export function WmsClient({
                                   draft.asnTolerancePct.trim() === ""
                                     ? null
                                     : Number(draft.asnTolerancePct),
+                                catchWeightTolerancePct:
+                                  draft.catchWeightTolerancePct.trim() === ""
+                                    ? null
+                                    : Number(draft.catchWeightTolerancePct),
                                 wmsCrossDock: draft.crossDock,
                                 wmsFlowThrough: draft.flowThrough,
                                 wmsInboundSubtype: draft.inboundSubtype,
@@ -5065,6 +5181,36 @@ export function WmsClient({
                                         />
                                         BF-31 — block close if outside tolerance
                                       </label>
+                                      <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-600">
+                                        <input
+                                          type="checkbox"
+                                          className="rounded border-zinc-300"
+                                          checked={draft.requireCwAdvanceClose}
+                                          disabled={busy}
+                                          onChange={(e) =>
+                                            setInboundEdits((prev) => ({
+                                              ...prev,
+                                              [s.id]: { ...draft, requireCwAdvanceClose: e.target.checked },
+                                            }))
+                                          }
+                                        />
+                                        BF-63 — require catch-weight kg tolerance before advance
+                                      </label>
+                                      <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-600">
+                                        <input
+                                          type="checkbox"
+                                          className="rounded border-zinc-300"
+                                          checked={draft.blockCwOutsideClose}
+                                          disabled={busy}
+                                          onChange={(e) =>
+                                            setInboundEdits((prev) => ({
+                                              ...prev,
+                                              [s.id]: { ...draft, blockCwOutsideClose: e.target.checked },
+                                            }))
+                                          }
+                                        />
+                                        BF-63 — block close if outside catch-weight band
+                                      </label>
                                     </div>
                                     <div className="flex flex-wrap items-end gap-2">
                                       <label className="block min-w-[11rem] text-[11px] font-medium text-zinc-600">
@@ -5113,6 +5259,8 @@ export function WmsClient({
                                                 : {}),
                                             requireWithinAsnToleranceForAdvance: draft.requireTolAdvanceClose,
                                             blockCloseIfOutsideTolerance: draft.blockTolOutsideClose,
+                                            requireWithinCatchWeightForAdvance: draft.requireCwAdvanceClose,
+                                            blockCloseIfOutsideCatchWeight: draft.blockCwOutsideClose,
                                           })
                                         }
                                         className="ml-auto rounded-lg border border-zinc-300 px-3 py-1.5 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
@@ -5203,13 +5351,15 @@ export function WmsClient({
                             ) : null}
                           </div>
                           <div className="mt-2 overflow-x-auto">
-                            <table className="min-w-[960px] w-full border-collapse text-xs">
+                            <table className="min-w-[1100px] w-full border-collapse text-xs">
                               <thead>
                                 <tr className="border-b border-zinc-200 bg-zinc-100 text-left text-[10px] uppercase text-zinc-600">
                                   <th className="px-2 py-1">Ln</th>
                                   <th className="px-2 py-1">Description</th>
                                   <th className="px-2 py-1">Expected</th>
                                   <th className="px-2 py-1">Received</th>
+                                  <th className="px-2 py-1">Decl kg</th>
+                                  <th className="px-2 py-1">Catch kg</th>
                                   <th className="px-2 py-1">Recorded</th>
                                   <th className="px-2 py-1">Disposition</th>
                                   <th className="px-2 py-1">Return disp.</th>
@@ -5225,7 +5375,15 @@ export function WmsClient({
                                       {line.lineNo}
                                     </td>
                                     <td className="max-w-[10rem] truncate px-2 py-1.5 text-zinc-700" title={line.description ?? ""}>
-                                      {line.description ?? "—"}
+                                      <span className="block truncate">{line.description ?? "—"}</span>
+                                      {line.isCatchWeightProduct ? (
+                                        <span className="mt-0.5 block truncate text-[10px] font-normal text-amber-800">
+                                          Catch-weight
+                                          {line.catchWeightLabelHint
+                                            ? ` · ${line.catchWeightLabelHint}`
+                                            : ""}
+                                        </span>
+                                      ) : null}
                                     </td>
                                     <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-zinc-800">
                                       {line.quantityShipped}
@@ -5244,6 +5402,26 @@ export function WmsClient({
                                         />
                                       ) : (
                                         <span className="tabular-nums text-zinc-800">{line.quantityReceived}</span>
+                                      )}
+                                    </td>
+                                    <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-zinc-600">
+                                      {line.cargoGrossWeightKg ?? "—"}
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                      {canEdit ? (
+                                        <input
+                                          key={`cw-${line.shipmentItemId}-${line.catchWeightKg ?? ""}`}
+                                          id={`inbound-cw-${line.shipmentItemId}`}
+                                          type="number"
+                                          min={0}
+                                          step="0.001"
+                                          defaultValue={line.catchWeightKg ?? ""}
+                                          disabled={busy}
+                                          title="BF-63 scale net kg vs declared"
+                                          className="w-20 rounded border border-zinc-300 px-1.5 py-1 tabular-nums"
+                                        />
+                                      ) : (
+                                        <span className="tabular-nums text-zinc-800">{line.catchWeightKg ?? "—"}</span>
                                       )}
                                     </td>
                                     <td className="whitespace-nowrap px-2 py-1.5 text-zinc-700">
@@ -5451,11 +5629,28 @@ export function WmsClient({
                                             }
                                             const vd = dispEl?.value?.trim() ?? "";
                                             const noteVal = noteEl?.value ?? "";
+                                            const cwEl = document.getElementById(
+                                              `inbound-cw-${line.shipmentItemId}`,
+                                            ) as HTMLInputElement | null;
+                                            const cwTrim = cwEl?.value?.trim() ?? "";
+                                            const hadCatch =
+                                              line.catchWeightKg != null && line.catchWeightKg !== "";
+                                            let catchWeightKg: number | null | undefined;
+                                            if (cwTrim === "") {
+                                              catchWeightKg = hadCatch ? null : undefined;
+                                            } else {
+                                              const cwN = Number.parseFloat(cwTrim);
+                                              if (!Number.isFinite(cwN) || cwN < 0) {
+                                                return;
+                                              }
+                                              catchWeightKg = cwN;
+                                            }
                                             const base = {
                                               shipmentItemId: line.shipmentItemId,
                                               receivedQty,
                                               varianceDisposition: vd === "" ? undefined : vd,
                                               varianceNote: noteVal,
+                                              ...(catchWeightKg !== undefined ? { catchWeightKg } : {}),
                                             };
                                             void (async () => {
                                               if (s.wmsInboundSubtype === "CUSTOMER_RETURN") {

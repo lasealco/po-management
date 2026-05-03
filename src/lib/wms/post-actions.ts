@@ -46,6 +46,7 @@ import {
   evaluateShipmentReceiveAgainstAsnTolerance,
   generateDockGrnReference,
 } from "./asn-receipt-tolerance";
+import { evaluateCatchWeightAgainstTolerance } from "./catch-weight-receipt";
 import { buildReceivingAccrualSnapshotV1 } from "./receiving-accrual-staging";
 import { canAdvanceReceiveStatusToReceiptComplete } from "./wms-receipt-close-policy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
@@ -187,6 +188,26 @@ async function releaseInventoryHoldForBalanceId(
     },
   });
   return null;
+}
+
+function parseOptionalCatchWeightKgBf63(
+  raw: unknown,
+):
+  | { ok: true; value: number | null | undefined }
+  | { ok: false; response: NextResponse } {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (raw === null || raw === "") return { ok: true, value: null };
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n) || n < 0) {
+    return {
+      ok: false,
+      response: toApiErrorResponseFromStatus(
+        "catchWeightKg must be a non-negative number or null.",
+        400,
+      ),
+    };
+  }
+  return { ok: true, value: n };
 }
 
 export async function handleWmsPost(
@@ -800,6 +821,50 @@ export async function handleWmsPost(
     if (Object.keys(data).length === 0) {
       return toApiErrorResponseFromStatus(
         "Send at least one of cartonLengthMm, cartonWidthMm, cartonHeightMm, cartonUnitsPerMasterCarton to update.",
+        400,
+      );
+    }
+
+    await prisma.product.updateMany({
+      where: { id: productId, tenantId },
+      data,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_product_catch_weight_bf63") {
+    const productId = input.productId?.trim();
+    if (!productId) {
+      return toApiErrorResponseFromStatus("productId required.", 400);
+    }
+    const row = await prisma.product.findFirst({
+      where: { id: productId, tenantId },
+      select: { id: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Product not found.", 404);
+    }
+
+    const data: Prisma.ProductUpdateManyMutationInput = {};
+
+    if (input.isCatchWeight !== undefined) {
+      if (typeof input.isCatchWeight !== "boolean") {
+        return toApiErrorResponseFromStatus("isCatchWeight must be a boolean when provided.", 400);
+      }
+      data.isCatchWeight = input.isCatchWeight;
+    }
+
+    if (input.catchWeightLabelHint !== undefined) {
+      if (input.catchWeightLabelHint === null || String(input.catchWeightLabelHint).trim() === "") {
+        data.catchWeightLabelHint = null;
+      } else {
+        data.catchWeightLabelHint = String(input.catchWeightLabelHint).trim().slice(0, 256);
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return toApiErrorResponseFromStatus(
+        "Send at least one of isCatchWeight, catchWeightLabelHint to update.",
         400,
       );
     }
@@ -2699,6 +2764,18 @@ export async function handleWmsPost(
         data.asnQtyTolerancePct = n;
       }
     }
+    if (input.catchWeightTolerancePct !== undefined) {
+      const rawCw = input.catchWeightTolerancePct;
+      if (rawCw === null || rawCw === "") {
+        data.catchWeightTolerancePct = null;
+      } else {
+        const n = typeof rawCw === "number" ? rawCw : Number(rawCw);
+        if (!Number.isFinite(n) || n < 0 || n > 100) {
+          return toApiErrorResponseFromStatus("catchWeightTolerancePct must be between 0 and 100.", 400);
+        }
+        data.catchWeightTolerancePct = n;
+      }
+    }
     if (input.expectedReceiveAt !== undefined) {
       const raw = input.expectedReceiveAt;
       if (raw === null || raw === "") {
@@ -2751,7 +2828,7 @@ export async function handleWmsPost(
     }
     if (Object.keys(data).length === 0) {
       return toApiErrorResponseFromStatus(
-        "Provide inbound fields to update (ASN, receive timing, BF-37 tags, BF-41 return subtype / RMA / outbound link).",
+        "Provide inbound fields to update (ASN, receive timing, BF-31 / BF-63 tolerance %, BF-37 tags, BF-41 return subtype / RMA / outbound link).",
         400,
       );
     }
@@ -2895,6 +2972,10 @@ export async function handleWmsPost(
           ? null
           : String(rawNote).trim().slice(0, 1000);
 
+    const cwParsed = parseOptionalCatchWeightKgBf63(input.catchWeightKg);
+    if (!cwParsed.ok) return cwParsed.response;
+    const catchWeightKg = cwParsed.value;
+
     await prisma.$transaction(async (tx) => {
       await writeShipmentItemReceiveLineInTx(
         tx,
@@ -2907,9 +2988,51 @@ export async function handleWmsPost(
           receivedQty,
           disposition,
           varianceNotePayload,
+          ...(catchWeightKg !== undefined ? { catchWeightKg } : {}),
         },
         { source: "set_shipment_item_receive_line" },
       );
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_shipment_item_catch_weight") {
+    const shipmentItemId = input.shipmentItemId?.trim();
+    if (!shipmentItemId) {
+      return toApiErrorResponseFromStatus("shipmentItemId required.", 400);
+    }
+    if (input.catchWeightKg === undefined) {
+      return toApiErrorResponseFromStatus("catchWeightKg required (number or null to clear).", 400);
+    }
+    const cwParsed = parseOptionalCatchWeightKgBf63(input.catchWeightKg);
+    if (!cwParsed.ok) return cwParsed.response;
+    const kg = cwParsed.value;
+
+    const row = await prisma.shipmentItem.findFirst({
+      where: { id: shipmentItemId, shipment: { order: { tenantId } } },
+      select: { id: true, shipmentId: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Shipment item not found.", 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.shipmentItem.update({
+        where: { id: row.id },
+        data: { catchWeightKg: kg == null ? null : kg.toFixed(3) },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: row.shipmentId,
+          entityType: "SHIPMENT_ITEM",
+          entityId: row.id,
+          action: "catch_weight_kg_set",
+          payload: { catchWeightKg: kg },
+          actorUserId: actorId,
+        },
+      });
     });
 
     return NextResponse.json({ ok: true });
@@ -3581,7 +3704,19 @@ export async function handleWmsPost(
       select: {
         id: true,
         asnQtyTolerancePct: true,
-        items: { select: { id: true, quantityShipped: true, quantityReceived: true } },
+        catchWeightTolerancePct: true,
+        items: {
+          select: {
+            id: true,
+            quantityShipped: true,
+            quantityReceived: true,
+            cargoGrossWeightKg: true,
+            catchWeightKg: true,
+            orderItem: {
+              select: { product: { select: { isCatchWeight: true } } },
+            },
+          },
+        },
       },
     });
     if (!ship) {
@@ -3595,6 +3730,17 @@ export async function handleWmsPost(
         quantityReceived: Number(it.quantityReceived),
       })),
       tol,
+    );
+    const cwTol =
+      ship.catchWeightTolerancePct != null ? Number(ship.catchWeightTolerancePct) : null;
+    const cwEv = evaluateCatchWeightAgainstTolerance(
+      ship.items.map((it) => ({
+        shipmentItemId: it.id,
+        isCatchWeightProduct: Boolean(it.orderItem?.product?.isCatchWeight),
+        declaredKg: it.cargoGrossWeightKg != null ? Number(it.cargoGrossWeightKg) : null,
+        receivedKg: it.catchWeightKg != null ? Number(it.catchWeightKg) : null,
+      })),
+      cwTol,
     );
     return NextResponse.json({
       ok: true,
@@ -3610,6 +3756,22 @@ export async function handleWmsPost(
         deltaPctOfShipped: l.deltaPctOfShipped != null ? Number(l.deltaPctOfShipped.toFixed(6)) : null,
         ok: l.ok,
       })),
+      catchWeight: {
+        tolerancePct: cwEv.tolerancePct,
+        policyApplied: cwEv.policyApplied,
+        withinTolerance: cwEv.withinTolerance,
+        lines: cwEv.lines.map((l) => ({
+          shipmentItemId: l.shipmentItemId,
+          isCatchWeightProduct: l.isCatchWeightProduct,
+          declaredKg: l.declaredKg,
+          receivedKg: l.receivedKg,
+          deltaAbsKg: l.deltaAbsKg,
+          deltaPctOfDeclared:
+            l.deltaPctOfDeclared != null ? Number(l.deltaPctOfDeclared.toFixed(6)) : null,
+          skipped: l.skipped,
+          ok: l.ok,
+        })),
+      },
     });
   }
 
@@ -3621,6 +3783,8 @@ export async function handleWmsPost(
     const receiptCompleteOnClose = Boolean(input.receiptCompleteOnClose);
     const requireWithinAsnToleranceForAdvance = Boolean(input.requireWithinAsnToleranceForAdvance);
     const blockCloseIfOutsideTolerance = Boolean(input.blockCloseIfOutsideTolerance);
+    const requireWithinCatchWeightForAdvance = Boolean(input.requireWithinCatchWeightForAdvance);
+    const blockCloseIfOutsideCatchWeight = Boolean(input.blockCloseIfOutsideCatchWeight);
     const generateGrn = Boolean(input.generateGrn);
 
     let explicitGrn: string | null | undefined;
@@ -3644,6 +3808,7 @@ export async function handleWmsPost(
             customerCrmAccountId: true,
             wmsReceiveStatus: true,
             asnQtyTolerancePct: true,
+            catchWeightTolerancePct: true,
             shipmentNo: true,
             asnReference: true,
             order: {
@@ -3658,6 +3823,8 @@ export async function handleWmsPost(
                 id: true,
                 quantityShipped: true,
                 quantityReceived: true,
+                cargoGrossWeightKg: true,
+                catchWeightKg: true,
                 wmsVarianceDisposition: true,
                 orderItem: {
                   select: {
@@ -3668,6 +3835,7 @@ export async function handleWmsPost(
                         sku: true,
                         productCode: true,
                         name: true,
+                        isCatchWeight: true,
                       },
                     },
                   },
@@ -3696,9 +3864,34 @@ export async function handleWmsPost(
       tol,
     );
 
+    const cwTol =
+      rec.shipment.catchWeightTolerancePct != null
+        ? Number(rec.shipment.catchWeightTolerancePct)
+        : null;
+    const catchWeightEval = evaluateCatchWeightAgainstTolerance(
+      rec.shipment.items.map((it) => ({
+        shipmentItemId: it.id,
+        isCatchWeightProduct: Boolean(it.orderItem?.product?.isCatchWeight),
+        declaredKg: it.cargoGrossWeightKg != null ? Number(it.cargoGrossWeightKg) : null,
+        receivedKg: it.catchWeightKg != null ? Number(it.catchWeightKg) : null,
+      })),
+      cwTol,
+    );
+
     if (blockCloseIfOutsideTolerance && toleranceEval.policyApplied && !toleranceEval.withinTolerance) {
       return toApiErrorResponseFromStatus(
         "Receipt close blocked: inbound lines are outside configured ASN qty tolerance (BF-31).",
+        400,
+      );
+    }
+
+    if (
+      blockCloseIfOutsideCatchWeight &&
+      catchWeightEval.policyApplied &&
+      !catchWeightEval.withinTolerance
+    ) {
+      return toApiErrorResponseFromStatus(
+        "Receipt close blocked: catch-weight lines are outside configured kg tolerance (BF-63).",
         400,
       );
     }
@@ -3717,13 +3910,22 @@ export async function handleWmsPost(
       receiptCompleteOnClose &&
       (!requireWithinAsnToleranceForAdvance ||
         !toleranceEval.policyApplied ||
-        toleranceEval.withinTolerance);
+        toleranceEval.withinTolerance) &&
+      (!requireWithinCatchWeightForAdvance ||
+        !catchWeightEval.policyApplied ||
+        catchWeightEval.withinTolerance);
 
     const receiveStatusSkippedDueToTolerance =
       receiptCompleteOnClose &&
       requireWithinAsnToleranceForAdvance &&
       toleranceEval.policyApplied &&
       !toleranceEval.withinTolerance;
+
+    const receiveStatusSkippedDueToCatchWeight =
+      receiptCompleteOnClose &&
+      requireWithinCatchWeightForAdvance &&
+      catchWeightEval.policyApplied &&
+      !catchWeightEval.withinTolerance;
 
     let receiveStatusAdvanced = false;
     await prisma.$transaction(async (tx) => {
@@ -3751,6 +3953,12 @@ export async function handleWmsPost(
             asnToleranceWithin: toleranceEval.withinTolerance,
             ...(tol != null ? { asnQtyTolerancePct: tol } : {}),
             ...(receiveStatusSkippedDueToTolerance ? { receiveStatusSkippedDueToTolerance: true } : {}),
+            catchWeightPolicyApplied: catchWeightEval.policyApplied,
+            catchWeightWithin: catchWeightEval.withinTolerance,
+            ...(cwTol != null ? { catchWeightTolerancePct: cwTol } : {}),
+            ...(receiveStatusSkippedDueToCatchWeight
+              ? { receiveStatusSkippedDueToCatchWeight: true }
+              : {}),
           },
           actorUserId: actorId,
         },
@@ -3821,6 +4029,10 @@ export async function handleWmsPost(
       receivingAccrualStagingCreated: true,
       withinAsnTolerance: toleranceEval.policyApplied ? toleranceEval.withinTolerance : null,
       receiveStatusSkippedDueToTolerance,
+      withinCatchWeightTolerance: catchWeightEval.policyApplied
+        ? catchWeightEval.withinTolerance
+        : null,
+      receiveStatusSkippedDueToCatchWeight,
     });
   }
 
@@ -3870,6 +4082,10 @@ export async function handleWmsPost(
           ? null
           : String(rawNote).trim().slice(0, 1000);
 
+    const cwParsed = parseOptionalCatchWeightKgBf63(input.catchWeightKg);
+    if (!cwParsed.ok) return cwParsed.response;
+    const catchWeightKg = cwParsed.value;
+
     const qtyStr = receivedQty.toFixed(3);
 
     await prisma.$transaction(async (tx) => {
@@ -3902,6 +4118,7 @@ export async function handleWmsPost(
           receivedQty,
           disposition,
           varianceNotePayload,
+          ...(catchWeightKg !== undefined ? { catchWeightKg } : {}),
         },
         { wmsReceiptId: receipt.id, source: "set_wms_receipt_line" },
       );

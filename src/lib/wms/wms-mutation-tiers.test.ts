@@ -50,8 +50,9 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("sync_work_order_bom_from_crm_quote_line")).toBe("operations");
   });
 
-  it("maps BF-31 ASN tolerance evaluate POST to operations tier", () => {
-    expect(wmsMutationTierForPostAction("evaluate_wms_receipt_asn_tolerance")).toBe("operations");
+  it("maps BF-63 catch-weight product setup + line weight mutation tiers", () => {
+    expect(wmsMutationTierForPostAction("set_product_catch_weight_bf63")).toBe("setup");
+    expect(wmsMutationTierForPostAction("set_shipment_item_catch_weight")).toBe("operations");
   });
 
   it("maps BF-53 labor standard + start task tiers", () => {

@@ -9,6 +9,8 @@ export type ShipmentReceiveLineWriteInput = {
   disposition: WmsShipmentItemVarianceDisposition;
   /** `undefined` — omit `wmsVarianceNote` in DB update; `null` — clear. */
   varianceNotePayload: string | null | undefined;
+  /** BF-63 — `undefined` omit; `null` clear `catchWeightKg`; number sets kg. */
+  catchWeightKg?: number | null;
 };
 
 /** Updates `ShipmentItem` receiving fields + `CtAuditLog` (`inbound_receive_line_updated`). */
@@ -21,12 +23,17 @@ export async function writeShipmentItemReceiveLineInTx(
 ): Promise<void> {
   const shipped = input.quantityShipped;
   const qtyStr = input.receivedQty.toFixed(3);
+  const catchPatch =
+    input.catchWeightKg === undefined
+      ? {}
+      : { catchWeightKg: input.catchWeightKg == null ? null : input.catchWeightKg.toFixed(3) };
   await tx.shipmentItem.update({
     where: { id: input.itemId },
     data: {
       quantityReceived: qtyStr,
       wmsVarianceDisposition: input.disposition,
       ...(input.varianceNotePayload !== undefined ? { wmsVarianceNote: input.varianceNotePayload } : {}),
+      ...catchPatch,
     },
   });
   await tx.ctAuditLog.create({
@@ -40,6 +47,7 @@ export async function writeShipmentItemReceiveLineInTx(
         quantityShipped: shipped,
         quantityReceived: input.receivedQty,
         disposition: input.disposition,
+        ...(input.catchWeightKg !== undefined ? { catchWeightKg: input.catchWeightKg } : {}),
         ...(input.varianceNotePayload !== undefined && input.varianceNotePayload !== null
           ? { note: input.varianceNotePayload }
           : {}),
