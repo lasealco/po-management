@@ -143,6 +143,14 @@ import {
   varianceRequiresReason,
 } from "./cycle-count-session";
 import { validateOutboundLuHierarchy } from "./outbound-lu-hierarchy";
+import {
+  buildDgChecklistStateBf72V1,
+  checklistStateSatisfiesTemplate,
+  evaluateDangerousGoodsReadinessBf72,
+  outboundLinesRequireDangerousGoodsChecklist,
+  parseDgChecklistJsonFromDb,
+  validateDangerousGoodsChecklistSubmission,
+} from "./dangerous-goods-bf72";
 import { bf71EvaluationFromLoadedOrder } from "./serial-aggregation-bf71";
 import type { WmsBody } from "./wms-body";
 import { loadWmsViewReadScope } from "./wms-read-scope";
@@ -2658,6 +2666,121 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "validate_outbound_dangerous_goods_bf72") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      include: { lines: { include: { product: true } } },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    const eval72 = evaluateDangerousGoodsReadinessBf72({
+      lines: order.lines.map((l) => ({ product: l.product })),
+      wmsDangerousGoodsChecklistJson: order.wmsDangerousGoodsChecklistJson,
+    });
+    return NextResponse.json({
+      ok: !eval72.checklistRequired || eval72.checklistComplete,
+      checklistRequired: eval72.checklistRequired,
+      checklistComplete: eval72.checklistComplete,
+      warnings: eval72.warnings,
+      checklist: parseDgChecklistJsonFromDb(order.wmsDangerousGoodsChecklistJson),
+    });
+  }
+
+  if (action === "submit_outbound_dangerous_goods_checklist_bf72") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const rawItems = input.dangerousGoodsChecklistItems;
+    const checklistDecision = validateDangerousGoodsChecklistSubmission(
+      rawItems && typeof rawItems === "object" && !Array.isArray(rawItems)
+        ? (rawItems as Record<string, unknown>)
+        : undefined,
+    );
+    if (!checklistDecision.ok) {
+      return toApiErrorResponseFromStatus(checklistDecision.message, 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      include: { lines: { include: { product: true } } },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (order.status === "SHIPPED" || order.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus(
+        "Cannot submit DG checklist on SHIPPED or CANCELLED outbound orders.",
+        400,
+      );
+    }
+    if (!outboundLinesRequireDangerousGoodsChecklist(order.lines.map((l) => ({ product: l.product })))) {
+      return toApiErrorResponseFromStatus(
+        "Dangerous goods checklist applies only when at least one line SKU is flagged dangerous goods.",
+        400,
+      );
+    }
+    const state = buildDgChecklistStateBf72V1(actorId);
+    await prisma.$transaction(async (tx) => {
+      await tx.outboundOrder.update({
+        where: { id: order.id },
+        data: { wmsDangerousGoodsChecklistJson: state as Prisma.InputJsonValue },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "OUTBOUND_ORDER",
+          entityId: order.id,
+          action: "bf72_outbound_dangerous_goods_checklist_submitted",
+          payload: { outboundNo: order.outboundNo },
+          actorUserId: actorId,
+        },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "clear_outbound_dangerous_goods_checklist_bf72") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true, status: true, outboundNo: true },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (order.status === "SHIPPED" || order.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus(
+        "Cannot clear DG checklist on SHIPPED or CANCELLED outbound orders.",
+        400,
+      );
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.outboundOrder.update({
+        where: { id: order.id },
+        data: { wmsDangerousGoodsChecklistJson: Prisma.JsonNull },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "OUTBOUND_ORDER",
+          entityId: order.id,
+          action: "bf72_outbound_dangerous_goods_checklist_cleared",
+          payload: { outboundNo: order.outboundNo },
+          actorUserId: actorId,
+        },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "validate_outbound_pack_scan") {
     const outboundOrderId = input.outboundOrderId?.trim();
     if (!outboundOrderId) {
@@ -2931,6 +3054,22 @@ export async function handleWmsPost(
               400,
             );
           }
+        }
+      }
+    }
+
+    const enforceDg72 = process.env.WMS_ENFORCE_DG_CHECKLIST_BF72 === "1";
+    if (enforceDg72) {
+      const dgNeeded = outboundLinesRequireDangerousGoodsChecklist(
+        order.lines.map((l) => ({ product: l.product })),
+      );
+      if (dgNeeded) {
+        const parsed72 = parseDgChecklistJsonFromDb(order.wmsDangerousGoodsChecklistJson);
+        if (!checklistStateSatisfiesTemplate(parsed72)) {
+          return toApiErrorResponseFromStatus(
+            "WMS_ENFORCE_DG_CHECKLIST_BF72=1: submit dangerous goods checklist before shipping.",
+            400,
+          );
         }
       }
     }

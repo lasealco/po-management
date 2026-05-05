@@ -322,6 +322,9 @@ export type WmsBody = {
   /** BF-67 — `set_outbound_manifest_parcel_ids_bf67`: carrier / package tracking ids (max 50 × 128 chars). */
   manifestParcelIds?: string[];
 
+  /** BF-72 — `submit_outbound_dangerous_goods_checklist_bf72`: checklist codes → must all be `true`. */
+  dangerousGoodsChecklistItems?: Record<string, boolean>;
+
   /** BF-29 — scan tokens (SKU / product code / product id per unit) for pack or ship verification. */
   packScanTokens?: string[];
   shipScanTokens?: string[];

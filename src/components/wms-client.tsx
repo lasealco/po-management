@@ -26,6 +26,7 @@ import {
 } from "@/lib/wms/dock-trailer-checklist";
 import { computeKitBuildLineDeltas, validateKitBuildLinePicks } from "@/lib/wms/kit-build";
 import { FUNGIBLE_LOT_CODE } from "@/lib/wms/lot-code";
+import { DG_CHECKLIST_ITEM_DEFS } from "@/lib/wms/dangerous-goods-bf72";
 
 const BF51_VARIANCE_REASONS = ["SHRINK", "DAMAGE", "DATA_ENTRY", "FOUND", "OTHER"] as const;
 
@@ -68,6 +69,13 @@ type WmsProductRef = {
   catchWeightLabelHint: string | null;
   /** BF-69 — grams CO₂e per kg·km planning factor (nullable). */
   wmsCo2eFactorGramsPerKgKm?: string | null;
+  /** BF-72 — dangerous goods master data snapshot from catalog (informational on outbound lines). */
+  isDangerousGoods?: boolean;
+  dangerousGoodsClass?: string | null;
+  unNumber?: string | null;
+  properShippingName?: string | null;
+  packingGroup?: string | null;
+  msdsUrl?: string | null;
 };
 
 type WmsOutboundLuKindUi = "PALLET" | "CASE" | "INNER_PACK" | "EACH" | "UNKNOWN";
@@ -92,6 +100,18 @@ const BF43_EMPTY_LU_DRAFT: WmsLuDraftBf43 = {
 
 function mergeBf43LuDraft(stored: Partial<WmsLuDraftBf43> | undefined): WmsLuDraftBf43 {
   return { ...BF43_EMPTY_LU_DRAFT, ...stored };
+}
+
+function emptyBf72DgDraft(): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const d of DG_CHECKLIST_ITEM_DEFS) {
+    out[d.code] = false;
+  }
+  return out;
+}
+
+function mergeBf72DgDraft(stored: Record<string, boolean> | undefined): Record<string, boolean> {
+  return { ...emptyBf72DgDraft(), ...stored };
 }
 
 type WmsData = {
@@ -334,6 +354,17 @@ type WmsData = {
     carrierLabelPurchasedAt: string | null;
     /** BF-67 — additional parcel tracking ids (primary may be `carrierTrackingNo`). */
     manifestParcelIds: string[];
+    /** BF-72 — any outbound line SKU flagged dangerous goods in master data. */
+    dangerousGoodsChecklistRequired: boolean;
+    /** BF-72 — checklist satisfied when required (or true when not required). */
+    dangerousGoodsChecklistComplete: boolean;
+    /** BF-72 — last submitted checklist snapshot (`wms.dg_checklist_state.bf72.v1`), when present. */
+    dangerousGoodsChecklist: {
+      schema: string;
+      completedAt: string;
+      actorUserId: string;
+      items: Array<{ code: string; label: string; ok: boolean }>;
+    } | null;
     status: "DRAFT" | "RELEASED" | "PICKING" | "PACKED" | "SHIPPED" | "CANCELLED";
     warehouse: { id: string; code: string | null; name: string };
     crmAccount: { id: string; name: string; legalName: string | null } | null;
@@ -1128,6 +1159,11 @@ export function WmsClient({
   const [bf71LinkDraftByOutboundId, setBf71LinkDraftByOutboundId] = useState<
     Record<string, { logisticsUnitId: string; inventorySerialId: string }>
   >({});
+  /** BF-72 — DG checklist checkbox draft keyed by checklist code. */
+  const [bf72DgDraftByOutboundId, setBf72DgDraftByOutboundId] = useState<Record<string, Record<string, boolean>>>(
+    {},
+  );
+  const [bf72DgValidateMsgByOutboundId, setBf72DgValidateMsgByOutboundId] = useState<Record<string, string>>({});
   const [outboundCreateAsn, setOutboundCreateAsn] = useState("");
   const [outboundCreateRequestedShip, setOutboundCreateRequestedShip] = useState("");
   const [dockShipmentLink, setDockShipmentLink] = useState("");
@@ -7379,6 +7415,7 @@ export function WmsClient({
                   </button>
                 ) : null}
                 {canExportDesadvAsn ? (
+                  <>
                   <button
                     type="button"
                     disabled={busy}
@@ -7417,6 +7454,45 @@ export function WmsClient({
                   >
                     Export customs JSON
                   </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="BF-72 dangerous goods manifest JSON (operator checklist + SKU DG hints)."
+                    onClick={async () => {
+                      setBusy(true);
+                      setError(null);
+                      try {
+                        const res = await fetch(
+                          `/api/wms/dangerous-goods-manifest?${new URLSearchParams({
+                            outboundOrderId: o.id,
+                            pretty: "1",
+                          })}`,
+                        );
+                        const text = await res.text();
+                        if (!res.ok) {
+                          let parsed: unknown;
+                          try {
+                            parsed = JSON.parse(text);
+                          } catch {
+                            parsed = null;
+                          }
+                          setError(apiClientErrorMessage(parsed, "Dangerous goods manifest export failed."));
+                          return;
+                        }
+                        const safeName = o.outboundNo.replace(/[^\w.-]+/g, "_") || "outbound";
+                        downloadUtf8Blob(
+                          new Blob([text], { type: "application/json;charset=utf-8" }),
+                          `${safeName}-dangerous-goods-manifest-bf72.json`,
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Export DG manifest JSON
+                  </button>
+                  </>
                 ) : null}
                 {canEdit && o.status !== "CANCELLED" ? (
                   <div className="mt-2 w-full rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
@@ -7935,6 +8011,130 @@ export function WmsClient({
                         </button>
                       ) : null}
                     </div>
+                  </div>
+                </div>
+              ) : null}
+              {canEdit &&
+              o.dangerousGoodsChecklistRequired &&
+              o.status !== "SHIPPED" &&
+              o.status !== "CANCELLED" ? (
+                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/55 p-2 text-xs text-amber-950">
+                  <p className="font-semibold text-amber-950">BF-72 · Dangerous goods checklist</p>
+                  <p className="mt-0.5 text-amber-900/85">
+                    Confirm SDS review, labeling, packaging, and segregation awareness before ship. JSON export pairs with{" "}
+                    <span className="font-medium">BF-68</span> customs handoff. Optional gate{" "}
+                    <span className="font-mono text-[10px]">WMS_ENFORCE_DG_CHECKLIST_BF72=1</span> on{" "}
+                    <span className="font-medium">Mark shipped</span>.
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={busy || !canEdit}
+                      onClick={async () => {
+                        const ret = await runAction({
+                          action: "validate_outbound_dangerous_goods_bf72",
+                          outboundOrderId: o.id,
+                        });
+                        if (!ret) return;
+                        const ok = ret.ok === true;
+                        const warns = Array.isArray(ret.warnings) ? (ret.warnings as string[]).join("; ") : "";
+                        const req = ret.checklistRequired === true;
+                        const done = ret.checklistComplete === true;
+                        setBf72DgValidateMsgByOutboundId((prev) => ({
+                          ...prev,
+                          [o.id]: !req
+                            ? "BF-72: no dangerous goods SKUs on this order."
+                            : ok && done
+                              ? warns
+                                ? `BF-72 checklist OK. Notes: ${warns}`
+                                : "BF-72 checklist OK."
+                              : `BF-72 checklist incomplete or warnings: ${warns || "submit checklist"}`,
+                        }));
+                      }}
+                      className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-amber-950 disabled:opacity-40"
+                    >
+                      Validate DG readiness
+                    </button>
+                    {bf72DgValidateMsgByOutboundId[o.id] ? (
+                      <span className="text-[11px] text-amber-950/90">{bf72DgValidateMsgByOutboundId[o.id]}</span>
+                    ) : null}
+                  </div>
+                  {o.dangerousGoodsChecklistComplete ? (
+                    <p className="mt-2 text-[11px] font-medium text-emerald-800">
+                      Checklist filed on server for this outbound
+                      {o.dangerousGoodsChecklist?.completedAt
+                        ? ` (${new Date(o.dangerousGoodsChecklist.completedAt).toLocaleString()})`
+                        : ""}
+                      .
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-amber-900/80">
+                      Checklist not complete — enforcement mode will block ship until submitted.
+                    </p>
+                  )}
+                  <div className="mt-2 grid gap-2">
+                    {DG_CHECKLIST_ITEM_DEFS.map((def) => (
+                      <label
+                        key={def.code}
+                        className="flex cursor-pointer gap-2 rounded border border-amber-100 bg-white p-2 shadow-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={mergeBf72DgDraft(bf72DgDraftByOutboundId[o.id])[def.code] ?? false}
+                          onChange={(e) =>
+                            setBf72DgDraftByOutboundId((prev) => ({
+                              ...prev,
+                              [o.id]: {
+                                ...mergeBf72DgDraft(prev[o.id]),
+                                [def.code]: e.target.checked,
+                              },
+                            }))
+                          }
+                          disabled={busy}
+                          className="mt-0.5"
+                        />
+                        <span className="text-[11px] leading-snug text-amber-950">{def.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={
+                        busy ||
+                        !DG_CHECKLIST_ITEM_DEFS.every(
+                          (def) => mergeBf72DgDraft(bf72DgDraftByOutboundId[o.id])[def.code] === true,
+                        )
+                      }
+                      onClick={() => {
+                        const d = mergeBf72DgDraft(bf72DgDraftByOutboundId[o.id]);
+                        const dangerousGoodsChecklistItems: Record<string, boolean> = {};
+                        for (const def of DG_CHECKLIST_ITEM_DEFS) {
+                          dangerousGoodsChecklistItems[def.code] = d[def.code] === true;
+                        }
+                        void runAction({
+                          action: "submit_outbound_dangerous_goods_checklist_bf72",
+                          outboundOrderId: o.id,
+                          dangerousGoodsChecklistItems,
+                        });
+                      }}
+                      className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                    >
+                      Submit checklist
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void runAction({
+                          action: "clear_outbound_dangerous_goods_checklist_bf72",
+                          outboundOrderId: o.id,
+                        })
+                      }
+                      className="rounded border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                    >
+                      Clear checklist
+                    </button>
                   </div>
                 </div>
               ) : null}

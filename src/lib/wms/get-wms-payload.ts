@@ -24,6 +24,10 @@ import {
 } from "@/lib/wms/carbon-intensity-bf69";
 import { externalPdpBf70DashboardMeta } from "@/lib/wms/external-pdp-bf70";
 import { prisma } from "@/lib/prisma";
+import {
+  evaluateDangerousGoodsReadinessBf72,
+  parseDgChecklistJsonFromDb,
+} from "@/lib/wms/dangerous-goods-bf72";
 
 const WMS_PRODUCT_REF_SELECT = {
   id: true,
@@ -37,6 +41,12 @@ const WMS_PRODUCT_REF_SELECT = {
   isCatchWeight: true,
   catchWeightLabelHint: true,
   wmsCo2eFactorGramsPerKgKm: true,
+  isDangerousGoods: true,
+  dangerousGoodsClass: true,
+  unNumber: true,
+  properShippingName: true,
+  packingGroup: true,
+  msdsUrl: true,
 } satisfies Prisma.ProductSelect;
 
 function mapWmsProductJson(p: {
@@ -51,6 +61,12 @@ function mapWmsProductJson(p: {
   isCatchWeight: boolean;
   catchWeightLabelHint: string | null;
   wmsCo2eFactorGramsPerKgKm: Prisma.Decimal | null;
+  isDangerousGoods: boolean;
+  dangerousGoodsClass: string | null;
+  unNumber: string | null;
+  properShippingName: string | null;
+  packingGroup: string | null;
+  msdsUrl: string | null;
 }) {
   return {
     id: p.id,
@@ -66,6 +82,12 @@ function mapWmsProductJson(p: {
     catchWeightLabelHint: p.catchWeightLabelHint,
     wmsCo2eFactorGramsPerKgKm:
       p.wmsCo2eFactorGramsPerKgKm != null ? p.wmsCo2eFactorGramsPerKgKm.toString() : null,
+    isDangerousGoods: p.isDangerousGoods,
+    dangerousGoodsClass: p.dangerousGoodsClass,
+    unNumber: p.unNumber,
+    properShippingName: p.properShippingName,
+    packingGroup: p.packingGroup,
+    msdsUrl: p.msdsUrl,
   };
 }
 
@@ -1002,6 +1024,12 @@ export async function getWmsDashboardPayload(
       carrierLabelAdapterId: o.carrierLabelAdapterId ?? null,
       carrierLabelPurchasedAt: o.carrierLabelPurchasedAt?.toISOString() ?? null,
       manifestParcelIds: manifestParcelIdsFromDbJson(o.manifestParcelIds),
+      dangerousGoodsChecklistRequired: o.lines.some((l) => l.product.isDangerousGoods),
+      dangerousGoodsChecklistComplete: evaluateDangerousGoodsReadinessBf72({
+        lines: o.lines.map((l) => ({ product: l.product })),
+        wmsDangerousGoodsChecklistJson: o.wmsDangerousGoodsChecklistJson,
+      }).checklistComplete,
+      dangerousGoodsChecklist: parseDgChecklistJsonFromDb(o.wmsDangerousGoodsChecklistJson),
       status: o.status,
       warehouse: o.warehouse,
       crmAccount: o.crmAccount,

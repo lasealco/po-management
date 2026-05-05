@@ -96,6 +96,12 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("unlink_outbound_lu_serial_bf71")).toBe("inventory");
   });
 
+  it("maps BF-72 dangerous goods checklist mutations to operations tier", () => {
+    expect(wmsMutationTierForPostAction("validate_outbound_dangerous_goods_bf72")).toBe("operations");
+    expect(wmsMutationTierForPostAction("submit_outbound_dangerous_goods_checklist_bf72")).toBe("operations");
+    expect(wmsMutationTierForPostAction("clear_outbound_dangerous_goods_checklist_bf72")).toBe("operations");
+  });
+
   it("maps BF-58 inventory freeze actions to inventory tier", () => {
     expect(wmsMutationTierForPostAction("apply_inventory_freeze")).toBe("inventory");
     expect(wmsMutationTierForPostAction("release_inventory_freeze")).toBe("inventory");

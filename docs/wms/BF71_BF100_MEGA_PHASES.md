@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped wave: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md).
 
-**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** … **`BF-100`** remain draft IDs until each capsule ships.
+**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** … **`BF-100`** remain draft IDs until each capsule ships.
 
 **Rules:**
 
@@ -19,7 +19,7 @@
 | ID | Mega phase (short) | Primary `GAP_MAP` signal (when funded) | Typical depends on |
 |----|-------------------|----------------------------------------|---------------------|
 | **BF-71** | Aggregated serial closure at ship/pack | SKU / serial row (🔗 [`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)) | **BF-13** registry, **BF-57** LU closure |
-| **BF-72** | Dangerous goods checklist + DG manifest JSON | Packing / trade compliance row | **BF-68** customs stub, **BF-29** scans |
+| **BF-72** | Dangerous goods checklist + DG manifest JSON | Packing / trade compliance row ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)) | **BF-68** customs stub, **BF-29** scans |
 | **BF-73** | Recall campaign workflow stub | Holds / compliance row | **BF-58** freeze matrix, **BF-02** lot metadata |
 | **BF-74** | Yard geofence arrival webhook stub | Dock / yard row | **BF-05**, **BF-54** detention |
 | **BF-75** | Inbound ASN EDI normalize stub | Inbound ASN row | **BF-59** pre-advise, **BF-31** tolerance |
@@ -69,7 +69,9 @@
 
 **Objective:** Tenant DG profile per SKU/shipment + checklist gate before **`mark_outbound_shipped`**; JSON manifest sibling to **BF-68**.
 
-**Exit sketch:** `Product` / shipment DG attrs + **`GET /api/wms/dangerous-goods-manifest`** (schema version stub).
+**Exit (landed):** Product dangerous-goods columns (existing master data) + **`OutboundOrder.wmsDangerousGoodsChecklistJson`** (`wms.dg_checklist_state.bf72.v1`) + **`submit_outbound_dangerous_goods_checklist_bf72`** / **`clear_outbound_dangerous_goods_checklist_bf72`** / **`validate_outbound_dangerous_goods_bf72`** + **`GET /api/wms/dangerous-goods-manifest`** (`bf72.v1`) + optional **`WMS_ENFORCE_DG_CHECKLIST_BF72`** on **`mark_outbound_shipped`** — see [`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md).
+
+**Exit sketch (remaining backlog):** Tenant DG policy matrices, carrier placard automation.
 
 **Out of scope:** IMDG certified labeling automation.
 
