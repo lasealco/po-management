@@ -5530,7 +5530,52 @@ export function WmsClient({
           <span className="font-mono text-[11px]">bf75.v1</span> normalize path (
           <span className="font-mono text-[11px]">POST /api/wms/inbound-asn-normalize</span>) — see{" "}
           <span className="font-medium">docs/wms/WMS_INBOUND_ASN_NORMALIZE_BF75.md</span>.
+          <span className="font-medium"> BF-83</span> adds{" "}
+          <span className="font-medium">supplier / carrier / CRM-customer receiving scorecard</span> export (
+          <span className="font-mono text-[11px]">GET /api/wms/supplier-receiving-scorecard</span>) — see{" "}
+          <span className="font-medium">docs/wms/WMS_SUPPLIER_RECEIVING_SCORECARD_BF83.md</span>.
         </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-700">
+          <span className="font-semibold text-zinc-600">BF-83 · Scorecard (last 90 days)</span>
+          <a
+            className="underline decoration-zinc-400 underline-offset-2 hover:text-zinc-900"
+            href={`/api/wms/supplier-receiving-scorecard?${new URLSearchParams({
+              since: new Date(Date.now() - 90 * 86400000 * 1000).toISOString(),
+              until: new Date().toISOString(),
+              format: "csv",
+              groupBy: "supplier",
+            }).toString()}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Supplier CSV
+          </a>
+          <a
+            className="underline decoration-zinc-400 underline-offset-2 hover:text-zinc-900"
+            href={`/api/wms/supplier-receiving-scorecard?${new URLSearchParams({
+              since: new Date(Date.now() - 90 * 86400000 * 1000).toISOString(),
+              until: new Date().toISOString(),
+              format: "csv",
+              groupBy: "carrier",
+            }).toString()}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Carrier CSV
+          </a>
+          <a
+            className="underline decoration-zinc-400 underline-offset-2 hover:text-zinc-900"
+            href={`/api/wms/supplier-receiving-scorecard?${new URLSearchParams({
+              since: new Date(Date.now() - 90 * 86400000 * 1000).toISOString(),
+              until: new Date().toISOString(),
+              groupBy: "customer",
+            }).toString()}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            CRM customer JSON
+          </a>
+        </div>
         {canEdit ? (
           <Fragment>
             <section className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">
