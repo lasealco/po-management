@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
+import { toApiErrorResponse, toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
 import { Prisma, ShipmentMilestoneCode, type WmsOutboundLogisticsUnitKind, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition, type WmsShipmentItemVarianceDisposition, type WmsTaskType, type WmsWavePickMode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -47,6 +47,7 @@ import {
   generateDockGrnReference,
 } from "./asn-receipt-tolerance";
 import { evaluateCatchWeightAgainstTolerance } from "./catch-weight-receipt";
+import { evaluateWmsReceiptQaSamplingBf80 } from "./qa-sampling-receipt-bf80";
 import {
   parseCo2eEstimateGramsForPatch,
   parseCo2eStubJsonForPatch,
@@ -4246,6 +4247,7 @@ export async function handleWmsPost(
     const blockCloseIfOutsideTolerance = Boolean(input.blockCloseIfOutsideTolerance);
     const requireWithinCatchWeightForAdvance = Boolean(input.requireWithinCatchWeightForAdvance);
     const blockCloseIfOutsideCatchWeight = Boolean(input.blockCloseIfOutsideCatchWeight);
+    const blockCloseIfQaSamplingIncompleteBf80 = Boolean(input.blockCloseIfQaSamplingIncompleteBf80);
     const generateGrn = Boolean(input.generateGrn);
 
     let explicitGrn: string | null | undefined;
@@ -4263,6 +4265,12 @@ export async function handleWmsPost(
         status: true,
         grnReference: true,
         shipmentId: true,
+        lines: {
+          select: {
+            shipmentItemId: true,
+            wmsVarianceNote: true,
+          },
+        },
         shipment: {
           select: {
             id: true,
@@ -4287,6 +4295,10 @@ export async function handleWmsPost(
                 cargoGrossWeightKg: true,
                 catchWeightKg: true,
                 wmsVarianceDisposition: true,
+                wmsVarianceNote: true,
+                wmsQaSamplingSkipLot: true,
+                wmsQaSamplingPct: true,
+                wmsReceivingDispositionTemplateId: true,
                 orderItem: {
                   select: {
                     productId: true,
@@ -4357,6 +4369,43 @@ export async function handleWmsPost(
       );
     }
 
+    const receiptLineNoteByItemId = new Map(
+      rec.lines.map((l) => [l.shipmentItemId, l]),
+    );
+    const qaSamplingBf80Eval = evaluateWmsReceiptQaSamplingBf80({
+      shipmentItems: rec.shipment.items.map((it) => {
+        const pctRaw = it.wmsQaSamplingPct != null ? Number(it.wmsQaSamplingPct) : null;
+        const pct =
+          pctRaw != null && Number.isFinite(pctRaw) ? Math.min(100, Math.max(0, pctRaw)) : null;
+        return {
+          shipmentItemId: it.id,
+          wmsReceivingDispositionTemplateId: it.wmsReceivingDispositionTemplateId,
+          wmsQaSamplingSkipLot: Boolean(it.wmsQaSamplingSkipLot),
+          wmsQaSamplingPct: pct,
+          wmsVarianceNote: it.wmsVarianceNote,
+        };
+      }),
+      receiptLinesByShipmentItemId: new Map(
+        [...receiptLineNoteByItemId].map(([id, row]) => [
+          id,
+          { shipmentItemId: id, wmsVarianceNote: row.wmsVarianceNote },
+        ]),
+      ),
+    });
+    if (
+      blockCloseIfQaSamplingIncompleteBf80 &&
+      qaSamplingBf80Eval.policyApplied &&
+      !qaSamplingBf80Eval.complete
+    ) {
+      return toApiErrorResponse({
+        status: 400,
+        code: "WMS_BF80_QA_SAMPLING_INCOMPLETE",
+        error:
+          "Receipt close blocked: BF-42 QA sampling lines require variance documentation (shipment line note or dock receipt line note) before close.",
+        extra: { incompleteShipmentItemIds: qaSamplingBf80Eval.incompleteShipmentItemIds },
+      });
+    }
+
     const closedAt = new Date();
     const grnResolved = generateGrn
       ? generateDockGrnReference(rec.id, closedAt)
@@ -4420,6 +4469,8 @@ export async function handleWmsPost(
             ...(receiveStatusSkippedDueToCatchWeight
               ? { receiveStatusSkippedDueToCatchWeight: true }
               : {}),
+            qaSamplingBf80PolicyApplied: qaSamplingBf80Eval.policyApplied,
+            qaSamplingBf80Complete: qaSamplingBf80Eval.complete,
           },
           actorUserId: actorId,
         },
@@ -4494,6 +4545,8 @@ export async function handleWmsPost(
         ? catchWeightEval.withinTolerance
         : null,
       receiveStatusSkippedDueToCatchWeight,
+      qaSamplingBf80PolicyApplied: qaSamplingBf80Eval.policyApplied,
+      qaSamplingBf80Complete: qaSamplingBf80Eval.complete,
     });
   }
 

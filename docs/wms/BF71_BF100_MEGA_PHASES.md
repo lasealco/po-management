@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped wave: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md).
 
-**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** — **minimal slice landed** ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)). **`BF-75`** — **minimal slice landed** ([`WMS_INBOUND_ASN_NORMALIZE_BF75.md`](./WMS_INBOUND_ASN_NORMALIZE_BF75.md)). **`BF-76`** — **minimal slice landed** ([`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md)). **`BF-77`** — **minimal slice landed** ([`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md)). **`BF-78`** — **minimal slice landed** ([`WMS_STO_LANDED_COST_BF78.md`](./WMS_STO_LANDED_COST_BF78.md)). **`BF-79`** — **minimal slice landed** ([`WMS_VMI_CONSIGNMENT_BF79.md`](./WMS_VMI_CONSIGNMENT_BF79.md)). **`BF-80`** … **`BF-100`** remain draft IDs until each capsule ships.
+**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** — **minimal slice landed** ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)). **`BF-75`** — **minimal slice landed** ([`WMS_INBOUND_ASN_NORMALIZE_BF75.md`](./WMS_INBOUND_ASN_NORMALIZE_BF75.md)). **`BF-76`** — **minimal slice landed** ([`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md)). **`BF-77`** — **minimal slice landed** ([`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md)). **`BF-78`** — **minimal slice landed** ([`WMS_STO_LANDED_COST_BF78.md`](./WMS_STO_LANDED_COST_BF78.md)). **`BF-79`** — **minimal slice landed** ([`WMS_VMI_CONSIGNMENT_BF79.md`](./WMS_VMI_CONSIGNMENT_BF79.md)). **`BF-80`** — **minimal slice landed** ([`WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md`](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md)). **`BF-81`** … **`BF-100`** remain draft IDs until each capsule ships.
 
 **Rules:**
 
@@ -27,7 +27,7 @@
 | **BF-77** | Labor variance exception queue | Labor row | **BF-53** standards + actuals |
 | **BF-78** | STO landed-cost / FX notes stub | Inter-site inventory row (🔗 [`WMS_STO_LANDED_COST_BF78.md`](./WMS_STO_LANDED_COST_BF78.md)) | **BF-55** transfers |
 | **BF-79** | VMI / consignment ownership metadata | Inventory accounting row (🔗 [`WMS_VMI_CONSIGNMENT_BF79.md`](./WMS_VMI_CONSIGNMENT_BF79.md)) | Stable **`InventoryBalance`** + tenant policy |
-| **BF-80** | QA sampling enforcement on receipt close | Receiving / QA row | **BF-42** templates, **BF-31** close guards |
+| **BF-80** | QA sampling enforcement on receipt close | Receiving / QA row (🔗 [`WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md`](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md)) | **BF-42** templates, **BF-31** close guards |
 | **BF-81** | RFID commissioning scan bridge | Packing / identification row | **BF-29** multiset scans |
 | **BF-82** | Movement hash-chain audit export | Permissions / audit row | Movement ledger stable |
 | **BF-83** | Supplier receiving scorecard export | Receiving / SRM row | **BF-42**, **`Shipment`** disposition stats |
@@ -151,7 +151,7 @@
 
 **Objective:** Block **`close_wms_receipt`** when **BF-42** template demands sampling and required QA rows incomplete.
 
-**Exit sketch:** Evaluate helper + deterministic error code.
+**Shipped:** [`WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md`](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md) — **`evaluateWmsReceiptQaSamplingBf80`**, optional **`blockCloseIfQaSamplingIncompleteBf80`**, deterministic **`WMS_BF80_QA_SAMPLING_INCOMPLETE`**; Operations inbound checkbox (default on); Vitest.
 
 **Out of scope:** LIMS instrument feeds.
 

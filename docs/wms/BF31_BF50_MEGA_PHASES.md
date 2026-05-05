@@ -161,7 +161,7 @@
 
 **Objective:** Configurable **sampling plans** (e.g. skip-lot / fixed percentage) on inbound lines with templated **disposition** notes.
 
-**Shipped (minimal slice):** See [`WMS_QA_SAMPLING_BF42.md`](./WMS_QA_SAMPLING_BF42.md) — template CRUD (Setup tier), **`ShipmentItem`** sampling flags + default template FK, **`apply_wms_disposition_template_to_shipment_item`** substituting tokens into **`wmsVarianceNote`**, Operations QA column + audit hooks.
+**Shipped (minimal slice):** See [`WMS_QA_SAMPLING_BF42.md`](./WMS_QA_SAMPLING_BF42.md) — template CRUD (Setup tier), **`ShipmentItem`** sampling flags + default template FK, **`apply_wms_disposition_template_to_shipment_item`** substituting tokens into **`wmsVarianceNote`**, Operations QA column + audit hooks. Optional receipt-close documentation gate — [**BF-80**](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md).
 
 **Out of scope:** Full LIMS, regulated pharma validation package.
 

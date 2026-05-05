@@ -58,4 +58,4 @@ Pure helper: **`substituteReceivingDispositionNoteTemplate`** — [`src/lib/wms/
 
 ## Explicit backlog (not BF-42)
 
-Full LIMS, regulated pharma validation package, automated AQL tables, enforced sampling gates on receipt close.
+Full LIMS, regulated pharma validation package, automated AQL tables. **BF-80** [`WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md`](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md) adds an optional documentation gate on **`close_wms_receipt`** when sampling hints apply.

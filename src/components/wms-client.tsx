@@ -1428,6 +1428,7 @@ export function WmsClient({
         blockTolOutsideClose: boolean;
         requireCwAdvanceClose: boolean;
         blockCwOutsideClose: boolean;
+        blockQaSamplingIncompleteClose: boolean;
         crossDock: boolean;
         flowThrough: boolean;
         inboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
@@ -1912,6 +1913,7 @@ export function WmsClient({
           blockTolOutsideClose: boolean;
           requireCwAdvanceClose: boolean;
           blockCwOutsideClose: boolean;
+          blockQaSamplingIncompleteClose: boolean;
           crossDock: boolean;
           flowThrough: boolean;
           inboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
@@ -1937,6 +1939,7 @@ export function WmsClient({
           blockTolOutsideClose: false,
           requireCwAdvanceClose: false,
           blockCwOutsideClose: false,
+          blockQaSamplingIncompleteClose: true,
           crossDock: s.wmsCrossDock,
           flowThrough: s.wmsFlowThrough,
           inboundSubtype: s.wmsInboundSubtype,
@@ -5630,6 +5633,7 @@ export function WmsClient({
                       blockTolOutsideClose: false,
                       requireCwAdvanceClose: false,
                       blockCwOutsideClose: false,
+                      blockQaSamplingIncompleteClose: true,
                       crossDock: s.wmsCrossDock,
                       flowThrough: s.wmsFlowThrough,
                       inboundSubtype: s.wmsInboundSubtype,
@@ -6190,6 +6194,24 @@ export function WmsClient({
                                         />
                                         BF-63 — block close if outside catch-weight band
                                       </label>
+                                      <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-600">
+                                        <input
+                                          type="checkbox"
+                                          className="rounded border-zinc-300"
+                                          checked={draft.blockQaSamplingIncompleteClose}
+                                          disabled={busy}
+                                          onChange={(e) =>
+                                            setInboundEdits((prev) => ({
+                                              ...prev,
+                                              [s.id]: {
+                                                ...draft,
+                                                blockQaSamplingIncompleteClose: e.target.checked,
+                                              },
+                                            }))
+                                          }
+                                        />
+                                        BF-80 — block close if QA sampling notes incomplete
+                                      </label>
                                     </div>
                                     <div className="flex flex-wrap items-end gap-2">
                                       <label className="block min-w-[11rem] text-[11px] font-medium text-zinc-600">
@@ -6240,6 +6262,8 @@ export function WmsClient({
                                             blockCloseIfOutsideTolerance: draft.blockTolOutsideClose,
                                             requireWithinCatchWeightForAdvance: draft.requireCwAdvanceClose,
                                             blockCloseIfOutsideCatchWeight: draft.blockCwOutsideClose,
+                                            blockCloseIfQaSamplingIncompleteBf80:
+                                              draft.blockQaSamplingIncompleteClose,
                                           })
                                         }
                                         className="ml-auto rounded-lg border border-zinc-300 px-3 py-1.5 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
