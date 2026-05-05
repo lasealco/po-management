@@ -312,6 +312,8 @@
 
 **Exit sketch:** **`dockSlaRiskScores`** array on **`GET /api/wms`** when enabled.
 
+**Shipped (minimal):** `src/lib/wms/dock-sla-risk-bf96.ts` builds sorted rows for **SCHEDULED** appointments without **`departedAt`** (phases **PRE_GATE** / **GATE_TO_DOCK** / **DOCK_DWELL**); payload includes **`dockSlaRiskScores`** when BF-93 **`dockSlaRiskScorerBf96`** is **true**; Operations dock panel adds BF-96 summary + optional **SLA risk** column; Vitest covers scorer + flag gate.
+
 **Out of scope:** ML models training pipeline.
 
 ---

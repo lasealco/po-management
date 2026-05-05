@@ -185,6 +185,22 @@ type WmsData = {
     limitMinutes: number;
     phaseStartedAt: string;
   }>;
+  /** BF-96 — deterministic SLA risk rows when BF-93 flag `dockSlaRiskScorerBf96` is true; otherwise omitted or null. */
+  dockSlaRiskScores?:
+    | Array<{
+        appointmentId: string;
+        dockCode: string;
+        warehouseId: string;
+        phase: "PRE_GATE" | "GATE_TO_DOCK" | "DOCK_DWELL";
+        riskScore: number;
+        minutesConsumed: number | null;
+        limitMinutes: number | null;
+        minutesRemaining: number | null;
+        windowEndsAt: string;
+        factors: string[];
+        detentionBreached: boolean;
+      }>
+    | null;
   /** BF-77 — DONE tasks exceeding actual vs engineered standard (`Tenant.wmsLaborVariancePolicyJson`). */
   laborVarianceBf77?: {
     schemaVersion: string;
@@ -2676,6 +2692,24 @@ export function WmsClient({
     }
     return rows;
   }, [balanceSort, balancesTableRows]);
+
+  const dockSlaRiskBf96Ui = useMemo(() => {
+    const rows = data?.dockSlaRiskScores;
+    if (rows == null) return null;
+    const byId = new Map<string, NonNullable<WmsData["dockSlaRiskScores"]>[number]>();
+    for (const r of rows) {
+      byId.set(r.appointmentId, r);
+    }
+    const filtered = selectedWarehouseId
+      ? rows.filter((r) => r.warehouseId === selectedWarehouseId)
+      : rows;
+    return { byId, filtered };
+  }, [data?.dockSlaRiskScores, selectedWarehouseId]);
+
+  const dockAppointmentsTableColSpan = useMemo(() => {
+    const slaCol = data?.dockSlaRiskScores != null ? 1 : 0;
+    return 13 + slaCol + (canEdit ? 1 : 0);
+  }, [data?.dockSlaRiskScores, canEdit]);
 
   const loadSavedViews = useCallback(async () => {
     if (section !== "stock") return;
@@ -8204,7 +8238,10 @@ export function WmsClient({
           >
             GET /api/wms/tms-appointment-hints
           </a>
-          , optional <span className="font-medium">warehouseId</span>) combining dock queue overlap with BF-54 timers — read-only for TMS planning. BF-38 adds optional{" "}
+          , optional <span className="font-medium">warehouseId</span>) combining dock queue overlap with BF-54 timers — read-only for TMS planning.{" "}
+          <span className="font-medium">BF-96</span> adds heuristic SLA risk scores on{" "}
+          <span className="font-mono text-[11px]">GET /api/wms</span> (<span className="font-mono text-[11px]">dockSlaRiskScores</span>) when BF-93 sets{" "}
+          <span className="font-mono text-[11px]">dockSlaRiskScorerBf96</span>. BF-38 adds optional{" "}
           <span className="font-medium">physical door</span>,{" "}
           <span className="font-medium">trailer checklist</span> with DEPARTED validation when required lines stay open, optional{" "}
           <span className="font-mono text-[11px]">WMS_BF38_REQUIRE_DOOR_BEFORE_AT_DOCK</span> for AT_DOCK, and a{" "}
@@ -8343,6 +8380,60 @@ export function WmsClient({
             </button>
           </div>
         </div>
+        {dockSlaRiskBf96Ui != null && dockSlaRiskBf96Ui.filtered.length > 0 ? (
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">BF-96 — Dock SLA risk</p>
+            <p className="mt-1 text-xs text-zinc-600">
+              Ordinal scores (0–100) from milestones and BF-54 minute thresholds; enable via BF-93 flag{" "}
+              <span className="font-mono text-[11px]">dockSlaRiskScorerBf96</span>.
+            </p>
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-full text-left text-xs">
+                <thead className="border-b border-zinc-200 text-[10px] uppercase tracking-wide text-zinc-500">
+                  <tr>
+                    <th className="py-1.5 pr-3 font-medium">Dock</th>
+                    <th className="py-1.5 pr-3 font-medium">Phase</th>
+                    <th className="py-1.5 pr-3 font-medium">Score</th>
+                    <th className="py-1.5 pr-3 font-medium">Consumed / limit</th>
+                    <th className="py-1.5 font-medium">Factors</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {dockSlaRiskBf96Ui.filtered.slice(0, 12).map((r) => (
+                    <tr key={r.appointmentId}>
+                      <td className="py-1.5 pr-3 font-mono text-[11px] text-zinc-800">{r.dockCode}</td>
+                      <td className="py-1.5 pr-3 text-zinc-700">{r.phase.replace(/_/g, " ")}</td>
+                      <td className="py-1.5 pr-3">
+                        <span
+                          className={
+                            r.riskScore >= 70
+                              ? "rounded-md bg-rose-100 px-1.5 py-0.5 font-semibold text-rose-950"
+                              : r.riskScore >= 40
+                                ? "rounded-md bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-950"
+                                : "rounded-md bg-zinc-100 px-1.5 py-0.5 font-semibold text-zinc-800"
+                          }
+                        >
+                          {r.riskScore}
+                          {r.detentionBreached ? " · BF-54" : ""}
+                        </span>
+                      </td>
+                      <td className="py-1.5 pr-3 text-zinc-600">
+                        {r.minutesConsumed != null && r.limitMinutes != null
+                          ? `${r.minutesConsumed} / ${r.limitMinutes} min`
+                          : r.minutesRemaining != null
+                            ? `${r.minutesRemaining > 0 ? "+" : ""}${r.minutesRemaining} min (window)`
+                            : "—"}
+                      </td>
+                      <td className="max-w-[14rem] truncate py-1.5 text-zinc-500" title={r.factors.join(", ")}>
+                        {r.factors.join(", ") || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
@@ -8355,6 +8446,9 @@ export function WmsClient({
                 <th className="px-2 py-1">Ref</th>
                 <th className="px-2 py-1">Carrier</th>
                 <th className="px-2 py-1">Yard</th>
+                {dockSlaRiskBf96Ui != null ? (
+                  <th className="px-2 py-1">SLA risk</th>
+                ) : null}
                 <th className="px-2 py-1">Detention</th>
                 <th className="px-2 py-1">TMS load</th>
                 <th className="px-2 py-1">TMS booking</th>
@@ -8368,7 +8462,7 @@ export function WmsClient({
                 (a) => !selectedWarehouseId || a.warehouse.id === selectedWarehouseId,
               ).length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 14 : 13} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={dockAppointmentsTableColSpan} className="px-2 py-3 text-zinc-500">
                     No dock appointments
                     {selectedWarehouseId ? " for this warehouse" : ""} yet.
                   </td>
@@ -8422,6 +8516,28 @@ export function WmsClient({
                         <td className="max-w-[11rem] truncate px-2 py-1 text-xs text-zinc-600">
                           {dockYardDisplayLine(a)}
                         </td>
+                        {dockSlaRiskBf96Ui != null ? (
+                          <td className="px-2 py-1 text-xs">
+                            {(() => {
+                              const s = dockSlaRiskBf96Ui.byId.get(a.id);
+                              if (!s) return <span className="text-zinc-400">—</span>;
+                              const tier =
+                                s.riskScore >= 70
+                                  ? "bg-rose-100 text-rose-950"
+                                  : s.riskScore >= 40
+                                    ? "bg-amber-100 text-amber-950"
+                                    : "bg-zinc-100 text-zinc-700";
+                              return (
+                                <span
+                                  className={`inline-block rounded px-1.5 py-0.5 font-medium ${tier}`}
+                                  title={`${s.phase}: ${s.factors.join(", ")}`}
+                                >
+                                  {s.riskScore}
+                                </span>
+                              );
+                            })()}
+                          </td>
+                        ) : null}
                         <td className="px-2 py-1 text-xs">
                           {a.detentionAlert ? (
                             <span
@@ -8469,7 +8585,7 @@ export function WmsClient({
                     const yardControls =
                       canEdit && a.status === "SCHEDULED" ? (
                         <tr key={`${a.id}-yard`} className="bg-zinc-50/90">
-                          <td colSpan={canEdit ? 14 : 13} className="px-3 py-2">
+                          <td colSpan={dockAppointmentsTableColSpan} className="px-3 py-2">
                             <div className="flex flex-wrap items-end gap-3">
                               <label className="block min-w-[140px] text-[11px] font-medium text-zinc-600">
                                 Carrier name

@@ -5,6 +5,7 @@ import { crmAccountInScope } from "@/lib/crm-scope";
 import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { trailerChecklistFromDb } from "@/lib/wms/dock-trailer-checklist";
 import { collectDockDetentionAlerts, parseDockDetentionPolicy } from "@/lib/wms/dock-detention";
+import { buildDockSlaRiskScoresBf96, isDockSlaRiskScorerBf96Enabled } from "@/lib/wms/dock-sla-risk-bf96";
 import {
   forecastGapQty,
   forecastPriorityBoostFromGap,
@@ -721,6 +722,23 @@ export async function getWmsDashboardPayload(
   const wmsFeatureFlagsBf93 = mapWmsFeatureFlagsBf93ForPayload(
     tenantPolicyJsonRow?.wmsFeatureFlagsJsonBf93 ?? null,
   );
+  const dockSlaRiskScores = isDockSlaRiskScorerBf96Enabled(wmsFeatureFlagsBf93)
+    ? buildDockSlaRiskScoresBf96(
+        dockAppointmentsRaw.map((a) => ({
+          id: a.id,
+          warehouseId: a.warehouseId,
+          dockCode: a.dockCode,
+          status: a.status,
+          windowStart: a.windowStart,
+          windowEnd: a.windowEnd,
+          gateCheckedInAt: a.gateCheckedInAt,
+          atDockAt: a.atDockAt,
+          departedAt: a.departedAt,
+        })),
+        dockDetentionPolicy,
+        dockDetentionNow,
+      )
+    : null;
   const laborVarianceExceptions = await loadLaborVarianceExceptionsBf77(
     prisma,
     tenantId,
@@ -1052,6 +1070,7 @@ export async function getWmsDashboardPayload(
       freeMinutesDockToDepart: dockDetentionPolicy.freeMinutesDockToDepart,
     },
     dockDetentionAlerts,
+    dockSlaRiskScores,
     laborVarianceBf77: {
       schemaVersion: LABOR_VARIANCE_POLICY_SCHEMA_VERSION,
       evaluatedAt: new Date().toISOString(),
