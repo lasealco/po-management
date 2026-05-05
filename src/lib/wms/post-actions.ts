@@ -120,6 +120,7 @@ import {
   validateLandedCostNotesBf78Draft,
 } from "./landed-cost-notes-bf78";
 import { evaluateDeniedPartyScreeningBf92ForMarkOutboundShipped } from "./denied-party-screening-bf92";
+import { validateWmsFeatureFlagsBf93FromPost } from "./wms-feature-flags-bf93";
 import { persistDockYardMilestoneWithDetentionAudit } from "./dock-yard-milestone-tx";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
@@ -5909,6 +5910,31 @@ export async function handleWmsPost(
       data: {
         wmsAtpReservationPolicyJsonBf88: atpReservationPolicyBf88ToStoredJson(validated.policy),
       },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_wms_feature_flags") {
+    if (input.wmsFeatureFlagsBf93Clear === true) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { wmsFeatureFlagsJsonBf93: Prisma.JsonNull },
+      });
+      return NextResponse.json({ ok: true });
+    }
+    if (input.wmsFeatureFlagsBf93 === undefined) {
+      return toApiErrorResponseFromStatus(
+        "wmsFeatureFlagsBf93 body required, or set wmsFeatureFlagsBf93Clear true.",
+        400,
+      );
+    }
+    const validatedFf = validateWmsFeatureFlagsBf93FromPost(input.wmsFeatureFlagsBf93);
+    if (!validatedFf.ok) {
+      return toApiErrorResponseFromStatus(validatedFf.error, 400);
+    }
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: { wmsFeatureFlagsJsonBf93: validatedFf.doc },
     });
     return NextResponse.json({ ok: true });
   }

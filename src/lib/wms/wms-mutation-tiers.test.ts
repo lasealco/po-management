@@ -77,6 +77,7 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("set_wms_dock_detention_policy")).toBe("setup");
     expect(wmsMutationTierForPostAction("set_wms_labor_variance_policy")).toBe("setup");
     expect(wmsMutationTierForPostAction("set_wms_atp_reservation_policy_bf88")).toBe("setup");
+    expect(wmsMutationTierForPostAction("set_wms_feature_flags")).toBe("setup");
   });
 
   it("maps BF-55 stock transfer actions to operations tier", () => {

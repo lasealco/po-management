@@ -18,6 +18,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_wms_labor_variance_policy: "setup",
   /** BF-88 — ATP soft-reservation tiers (`Tenant.wmsAtpReservationPolicyJsonBf88`). */
   set_wms_atp_reservation_policy_bf88: "setup",
+  /** BF-93 — tenant toggle bundle (`Tenant.wmsFeatureFlagsJsonBf93`). */
+  set_wms_feature_flags: "setup",
   /** BF-81 — RFID commissioning encoding table (`Tenant.wmsRfidEncodingTableJsonBf81`). */
   set_wms_rfid_encoding_table_bf81: "setup",
   create_bin: "setup",

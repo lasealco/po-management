@@ -459,6 +459,12 @@ type WmsData = {
     failOpen: boolean;
     bearerConfigured: boolean;
   };
+  /** BF-93 — tenant toggle bundle on `Tenant.wmsFeatureFlagsJsonBf93`. */
+  wmsFeatureFlagsBf93?: {
+    schemaVersion: string;
+    flags: Record<string, boolean | number | string | null>;
+    parseError?: string;
+  } | null;
   /** BF-79 — echo of balance ownership filter applied to `balances` (`GET /api/wms` query). */
   inventoryOwnershipBalanceFilterBf79?: {
     schemaVersion: string;
@@ -1691,6 +1697,8 @@ export function WmsClient({
   const [bf88Busy, setBf88Busy] = useState(false);
   const [rfidEncodingDraftBf81, setRfidEncodingDraftBf81] = useState("");
   const [rfidEncodingBusyBf81, setRfidEncodingBusyBf81] = useState(false);
+  const [bf93FeatureFlagsJsonDraft, setBf93FeatureFlagsJsonDraft] = useState("{}");
+  const [bf93FeatureFlagsBusy, setBf93FeatureFlagsBusy] = useState(false);
   const [stoFromWh, setStoFromWh] = useState("");
   const [stoToWh, setStoToWh] = useState("");
   const [stoSourceBalanceId, setStoSourceBalanceId] = useState("");
@@ -1944,6 +1952,15 @@ export function WmsClient({
     data?.laborVarianceBf77?.policy?.lookbackDays,
     data?.laborVarianceBf77?.policy?.maxRows,
   ]);
+
+  useEffect(() => {
+    const raw = data?.wmsFeatureFlagsBf93;
+    if (!raw || typeof raw.flags !== "object") {
+      setBf93FeatureFlagsJsonDraft("{}");
+      return;
+    }
+    setBf93FeatureFlagsJsonDraft(JSON.stringify(raw.flags, null, 2));
+  }, [data?.wmsFeatureFlagsBf93]);
 
   useEffect(() => {
     const p = data?.atpReservationPolicyBf88?.policy;
@@ -4594,6 +4611,81 @@ export function WmsClient({
                         setRfidEncodingDraftBf81("");
                       } finally {
                         setRfidEncodingBusyBf81(false);
+                      }
+                    })()
+                  }
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/35 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Feature flags (BF-93)</h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Tenant bundle <span className="font-mono text-[11px]">wmsFeatureFlagsJsonBf93</span> surfaced on{" "}
+                <span className="font-mono text-[11px]">GET /api/wms</span> — POST{" "}
+                <span className="font-mono text-[11px]">set_wms_feature_flags</span> (
+                <span className="font-medium">org.wms.setup → edit</span>). Values: boolean, finite number, short string,
+                or null per flag key.
+              </p>
+              {data?.wmsFeatureFlagsBf93?.parseError ? (
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                  Parse warning: {data.wmsFeatureFlagsBf93.parseError}
+                </p>
+              ) : null}
+              <textarea
+                value={bf93FeatureFlagsJsonDraft}
+                onChange={(e) => setBf93FeatureFlagsJsonDraft(e.target.value)}
+                rows={8}
+                spellCheck={false}
+                disabled={bf93FeatureFlagsBusy || !canEdit}
+                className="mt-2 w-full rounded-lg border border-zinc-300 bg-white p-2 font-mono text-[11px] text-zinc-900"
+                placeholder={`{\n  "exampleRolloutToggle": true,\n  "opsPilotHint": "demo"\n}`}
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={bf93FeatureFlagsBusy || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        setBf93FeatureFlagsBusy(true);
+                        let doc: unknown;
+                        try {
+                          doc = JSON.parse(bf93FeatureFlagsJsonDraft.trim() || "{}") as unknown;
+                        } catch {
+                          window.alert("Invalid JSON — fix the textarea before saving.");
+                          return;
+                        }
+                        await runAction({
+                          action: "set_wms_feature_flags",
+                          wmsFeatureFlagsBf93: doc,
+                        });
+                      } finally {
+                        setBf93FeatureFlagsBusy(false);
+                      }
+                    })()
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {bf93FeatureFlagsBusy ? "Saving…" : "Save BF-93 flags"}
+                </button>
+                <button
+                  type="button"
+                  disabled={bf93FeatureFlagsBusy || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      if (!window.confirm("Clear tenant WMS feature flags for this tenant?")) return;
+                      try {
+                        setBf93FeatureFlagsBusy(true);
+                        await runAction({
+                          action: "set_wms_feature_flags",
+                          wmsFeatureFlagsBf93Clear: true,
+                        });
+                        setBf93FeatureFlagsJsonDraft("{}");
+                      } finally {
+                        setBf93FeatureFlagsBusy(false);
                       }
                     })()
                   }

@@ -54,6 +54,8 @@ model Tenant {
   wmsRfidEncodingTableJsonBf81                Json?
   /// BF-88 — ATP soft-reservation tier TTL/priority + optional pick-allocation priority floor (`schemaVersion` `bf88.v1`).
   wmsAtpReservationPolicyJsonBf88           Json?
+  /// BF-93 — tenant ops toggle bundle (`{ schemaVersion: "bf93.v1", flags: { … } }`); surfaced on `GET /api/wms`.
+  wmsFeatureFlagsJsonBf93                    Json?
 
   users                                       User[]
   orgUnits                                    OrgUnit[]

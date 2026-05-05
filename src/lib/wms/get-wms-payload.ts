@@ -24,6 +24,7 @@ import {
 } from "@/lib/wms/carbon-intensity-bf69";
 import { externalPdpBf70DashboardMeta } from "@/lib/wms/external-pdp-bf70";
 import { deniedPartyScreeningBf92DashboardMeta } from "@/lib/wms/denied-party-screening-bf92";
+import { mapWmsFeatureFlagsBf93ForPayload } from "@/lib/wms/wms-feature-flags-bf93";
 import { prisma } from "@/lib/prisma";
 import {
   evaluateDangerousGoodsReadinessBf72,
@@ -523,6 +524,7 @@ export async function getWmsDashboardPayload(
         wmsLaborVariancePolicyJson: true,
         wmsRfidEncodingTableJsonBf81: true,
         wmsAtpReservationPolicyJsonBf88: true,
+        wmsFeatureFlagsJsonBf93: true,
       },
     }),
     prisma.wmsDemandForecastStub.findMany({
@@ -713,6 +715,9 @@ export async function getWmsDashboardPayload(
   );
   const rfidBf81Parsed = parseRfidEncodingTableBf81Json(
     tenantPolicyJsonRow?.wmsRfidEncodingTableJsonBf81 ?? null,
+  );
+  const wmsFeatureFlagsBf93 = mapWmsFeatureFlagsBf93ForPayload(
+    tenantPolicyJsonRow?.wmsFeatureFlagsJsonBf93 ?? null,
   );
   const laborVarianceExceptions = await loadLaborVarianceExceptionsBf77(
     prisma,
@@ -1008,6 +1013,7 @@ export async function getWmsDashboardPayload(
     },
     externalPdpBf70: externalPdpBf70DashboardMeta(),
     deniedPartyScreeningBf92: deniedPartyScreeningBf92DashboardMeta(),
+    wmsFeatureFlagsBf93,
     inventoryOwnershipBalanceFilterBf79: echoInventoryOwnershipBf79Filter(inventoryOwnershipBalanceFilterBf79 ?? null),
     suppliersBf79: suppliersBf79.map((s) => ({ id: s.id, code: s.code, name: s.name })),
     atpByWarehouseProduct,

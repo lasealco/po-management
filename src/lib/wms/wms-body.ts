@@ -430,6 +430,11 @@ export type WmsBody = {
   atpReservationPickFloorPriorityBf88?: number | string | null;
   atpReservationTiersBf88?: unknown[];
 
+  /** BF-93 — `set_wms_feature_flags`: clears tenant toggle bundle (`Tenant.wmsFeatureFlagsJsonBf93`). */
+  wmsFeatureFlagsBf93Clear?: boolean;
+  /** BF-93 — `{ flags: { … } }` or flat flag bag (excluding schemaVersion); boolean, finite number, string (≤256 chars), or null per flag. */
+  wmsFeatureFlagsBf93?: unknown;
+
   /** BF-55 — source site for `create_wms_stock_transfer`. */
   fromWarehouseId?: string;
   /** BF-55 — destination site for `create_wms_stock_transfer`. */
