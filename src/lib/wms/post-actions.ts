@@ -82,9 +82,9 @@ import {
 import { laborStandardMinutesSnapshot } from "./labor-standards";
 import {
   collectDockDetentionAlerts,
-  detectMilestonePhaseBreach,
   parseDockDetentionPolicy,
 } from "./dock-detention";
+import { persistDockYardMilestoneWithDetentionAudit } from "./dock-yard-milestone-tx";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
 import { buildSscc18DemoFromOutbound } from "./gs1-sscc";
@@ -5612,68 +5612,29 @@ export async function handleWmsPost(
       );
     }
 
-    const milestoneData: Prisma.WmsDockAppointmentUpdateInput =
-      milestone === "GATE_IN"
-        ? { gateCheckedInAt: occurredAt }
-        : milestone === "AT_DOCK"
-          ? { atDockAt: occurredAt }
-          : { departedAt: occurredAt, status: "COMPLETED" };
-
     const tenantDetentionRow = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { wmsDockDetentionPolicyJson: true },
     });
-    const detentionParsed = parseDockDetentionPolicy(tenantDetentionRow?.wmsDockDetentionPolicyJson);
-    const detentionPolicyForEval = detentionParsed.ok
-      ? detentionParsed.value
-      : { enabled: false, freeMinutesGateToDock: 120, freeMinutesDockToDepart: 240 };
 
     await prisma.$transaction(async (tx) => {
-      await tx.wmsDockAppointment.update({
-        where: { id: existingRow.id },
-        data: milestoneData,
-      });
-      await tx.ctAuditLog.create({
-        data: {
-          tenantId,
+      await persistDockYardMilestoneWithDetentionAudit(tx, {
+        tenantId,
+        appointment: {
+          id: existingRow.id,
           shipmentId: existingRow.shipmentId,
-          entityType: "WMS_DOCK_APPOINTMENT",
-          entityId: existingRow.id,
+          gateCheckedInAt: existingRow.gateCheckedInAt,
+          atDockAt: existingRow.atDockAt,
+        },
+        milestone,
+        occurredAt,
+        actorUserId: actorId,
+        detentionPolicyJson: tenantDetentionRow?.wmsDockDetentionPolicyJson,
+        primaryAudit: {
           action: "dock_yard_milestone",
           payload: { milestone, occurredAt: occurredAt.toISOString() },
-          actorUserId: actorId,
         },
       });
-
-      const breach =
-        milestone === "AT_DOCK" || milestone === "DEPARTED"
-          ? detectMilestonePhaseBreach({
-              policy: detentionPolicyForEval,
-              milestone,
-              occurredAt,
-              gateCheckedInAt: existingRow.gateCheckedInAt,
-              atDockAt: milestone === "DEPARTED" ? existingRow.atDockAt : null,
-            })
-          : null;
-      if (breach) {
-        await tx.ctAuditLog.create({
-          data: {
-            tenantId,
-            shipmentId: existingRow.shipmentId,
-            entityType: "WMS_DOCK_APPOINTMENT",
-            entityId: existingRow.id,
-            action: "dock_detention_breach",
-            payload: {
-              phase: breach.phase,
-              actualMinutes: breach.actualMinutes,
-              limitMinutes: breach.limitMinutes,
-              milestone,
-              occurredAt: occurredAt.toISOString(),
-            },
-            actorUserId: actorId,
-          },
-        });
-      }
     });
     return NextResponse.json({ ok: true });
   }

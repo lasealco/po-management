@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped wave: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md).
 
-**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** … **`BF-100`** remain draft IDs until each capsule ships.
+**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** — **minimal slice landed** ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)). **`BF-75`** … **`BF-100`** remain draft IDs until each capsule ships.
 
 **Rules:**
 
@@ -21,7 +21,7 @@
 | **BF-71** | Aggregated serial closure at ship/pack | SKU / serial row (🔗 [`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)) | **BF-13** registry, **BF-57** LU closure |
 | **BF-72** | Dangerous goods checklist + DG manifest JSON | Packing / trade compliance row ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)) | **BF-68** customs stub, **BF-29** scans |
 | **BF-73** | Recall campaign workflow stub | Holds / compliance row (🔗 [`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)) | **BF-58** freeze matrix, **BF-02** lot metadata |
-| **BF-74** | Yard geofence arrival webhook stub | Dock / yard row | **BF-05**, **BF-54** detention |
+| **BF-74** | Yard geofence arrival webhook stub | Dock / yard row (🔗 [`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)) | **BF-05**, **BF-54** detention |
 | **BF-75** | Inbound ASN EDI normalize stub | Inbound ASN row | **BF-59** pre-advise, **BF-31** tolerance |
 | **BF-76** | Pick path sequence export | Pick execution row | **BF-56** batch waves, **BF-50** topology |
 | **BF-77** | Labor variance exception queue | Labor row | **BF-53** standards + actuals |
@@ -89,9 +89,9 @@
 
 ## BF-74 — Yard geofence arrival webhook stub
 
-**Objective:** Signed **`POST /api/wms/yard-geofence-webhook`** translating trailer arrival pings → optional **`record_dock_appointment_yard_milestone`** hints.
+**Objective:** Signed **`POST /api/wms/yard-geofence-webhook`** translating trailer arrival pings → **`record_dock_appointment_yard_milestone`**-equivalent updates (**BF-05**, **BF-54**).
 
-**Exit sketch:** Env secret + idempotent **`externalEventId`** + audit row.
+**Exit (landed):** **`WMS_YARD_GEOFENCE_WEBHOOK_SECRET`** Bearer + optional HMAC (**`X-Yard-Geofence-Signature`**) + **`WmsYardGeofenceWebhookReceipt`** idempotency (**`externalEventId`**) + **`CtAuditLog`** **`yard_geofence_webhook_bf74`** + shared milestone writer with **`dock_detention_breach`** — see [`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md).
 
 **Out of scope:** Fleet telematics OEM integrations.
 

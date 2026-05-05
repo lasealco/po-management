@@ -92,6 +92,7 @@ model Tenant {
   wmsSavedLedgerViews                         WmsSavedLedgerView[]
   wmsDockAppointments                         WmsDockAppointment[]
   wmsTmsWebhookReceipts                       WmsTmsWebhookReceipt[]
+  wmsYardGeofenceWebhookReceipts              WmsYardGeofenceWebhookReceipt[]
   wmsReceipts                                 WmsReceipt[]
   wmsReceivingDispositionTemplates           WmsReceivingDispositionTemplate[]
   wmsOutboundLogisticsUnits                  WmsOutboundLogisticsUnit[]
@@ -5522,6 +5523,20 @@ model WmsDockAppointment {
 
 /// BF-25 — TMS webhook idempotency: one successful processing row per tenant + carrier `externalEventId`.
 model WmsTmsWebhookReceipt {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  externalEventId     String   @db.VarChar(128)
+  dockAppointmentId   String
+  createdAt           DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, externalEventId])
+  @@index([tenantId, dockAppointmentId])
+}
+
+/// BF-74 — yard geofence / telematics arrival webhook idempotency (distinct from TMS receipts).
+model WmsYardGeofenceWebhookReceipt {
   id                  String   @id @default(cuid())
   tenantId            String
   externalEventId     String   @db.VarChar(128)

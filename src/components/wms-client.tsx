@@ -6097,7 +6097,11 @@ export function WmsClient({
           <span className="font-medium">BF-25</span> adds optional HMAC signing (<span className="font-medium">X-TMS-Signature</span>) and{" "}
           <span className="font-medium">externalEventId</span> idempotency — see{" "}
           <span className="font-medium">docs/wms/WMS_DOCK_APPOINTMENTS.md</span> and{" "}
-          <span className="font-medium">docs/wms/WMS_TMS_WEBHOOK_BF25.md</span>. BF-38 adds optional{" "}
+          <span className="font-medium">docs/wms/WMS_TMS_WEBHOOK_BF25.md</span>.{" "}
+          <span className="font-medium">BF-74</span> adds a dedicated signed{" "}
+          <span className="font-medium">POST /api/wms/yard-geofence-webhook</span> for arrival pings (requires{" "}
+          <span className="font-medium">externalEventId</span>) — see{" "}
+          <span className="font-medium">docs/wms/WMS_YARD_GEOFENCE_BF74.md</span>. BF-38 adds optional{" "}
           <span className="font-medium">physical door</span>,{" "}
           <span className="font-medium">trailer checklist</span> with DEPARTED validation when required lines stay open, optional{" "}
           <span className="font-mono text-[11px]">WMS_BF38_REQUIRE_DOOR_BEFORE_AT_DOCK</span> for AT_DOCK, and a{" "}
