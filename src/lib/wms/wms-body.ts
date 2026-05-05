@@ -123,6 +123,21 @@ export type WmsBody = {
   freezeScopeLotCode?: string | null;
   /** BF-58 — narrative alias for `holdReason`. */
   freezeNote?: string | null;
+
+  /** BF-73 — `WmsRecallCampaign.id` for materialize / close. */
+  recallCampaignId?: string;
+  /** BF-73 — unique per tenant (`create_recall_campaign_bf73`). */
+  recallCampaignCode?: string;
+  recallCampaignTitle?: string;
+  recallCampaignNote?: string | null;
+  recallScopeWarehouseIds?: string[];
+  recallScopeProductIds?: string[];
+  recallScopeLotCodes?: string[] | null;
+  /** BF-73 — stored on campaign; defaults to RECALL on create when omitted. */
+  recallHoldReasonCode?: string | null;
+  /** BF-73 — optional delegated release grant (same catalog as BF-58). */
+  recallHoldReleaseGrant?: string | null;
+
   /** `set_zone_parent` — target zone id (BF-04). */
   zoneId?: string;
   /** `set_zone_parent` — parent zone id or `null` to clear (same warehouse). */

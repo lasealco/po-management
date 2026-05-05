@@ -106,4 +106,10 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("apply_inventory_freeze")).toBe("inventory");
     expect(wmsMutationTierForPostAction("release_inventory_freeze")).toBe("inventory");
   });
+
+  it("maps BF-73 recall campaign mutations to inventory tier", () => {
+    expect(wmsMutationTierForPostAction("create_recall_campaign_bf73")).toBe("inventory");
+    expect(wmsMutationTierForPostAction("materialize_recall_campaign_bf73")).toBe("inventory");
+    expect(wmsMutationTierForPostAction("close_recall_campaign_bf73")).toBe("inventory");
+  });
 });

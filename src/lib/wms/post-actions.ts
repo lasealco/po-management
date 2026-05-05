@@ -152,6 +152,12 @@ import {
   validateDangerousGoodsChecklistSubmission,
 } from "./dangerous-goods-bf72";
 import { bf71EvaluationFromLoadedOrder } from "./serial-aggregation-bf71";
+import {
+  materializeRecallCampaignBalances,
+  parseRecallScopeFromWmsBody,
+  parseStoredRecallScopeJson,
+  recallHoldSummaryNote,
+} from "./recall-campaign-bf73";
 import type { WmsBody } from "./wms-body";
 import { loadWmsViewReadScope } from "./wms-read-scope";
 import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
@@ -5762,6 +5768,220 @@ export async function handleWmsPost(
     }
     const n = await prisma.inventoryBalance.updateMany({ where: whereBal, data });
     return NextResponse.json({ ok: true, updatedCount: n.count });
+  }
+
+  if (action === "create_recall_campaign_bf73") {
+    const campaignCode = input.recallCampaignCode?.trim();
+    const title = input.recallCampaignTitle?.trim();
+    if (!campaignCode || !title) {
+      return toApiErrorResponseFromStatus("recallCampaignCode and recallCampaignTitle required.", 400);
+    }
+    if (campaignCode.length > 80) {
+      return toApiErrorResponseFromStatus("recallCampaignCode exceeds 80 characters.", 400);
+    }
+    if (title.length > 500) {
+      return toApiErrorResponseFromStatus("recallCampaignTitle exceeds 500 characters.", 400);
+    }
+    const scopeRes = parseRecallScopeFromWmsBody(input);
+    if (!scopeRes.ok) {
+      return toApiErrorResponseFromStatus(scopeRes.error, 400);
+    }
+    const reasonParsed = normalizeInventoryFreezeReasonCode(input.recallHoldReasonCode ?? "RECALL");
+    if (!reasonParsed.ok) {
+      return toApiErrorResponseFromStatus(reasonParsed.error, 400);
+    }
+    const grantParsed = normalizeHoldReleaseGrantInput(
+      input.recallHoldReleaseGrant ?? input.holdReleaseGrant,
+    );
+    if (!grantParsed.ok) {
+      return toApiErrorResponseFromStatus(grantParsed.error, 400);
+    }
+    const rawCampaignNote = input.recallCampaignNote?.trim();
+    const noteDb =
+      rawCampaignNote && rawCampaignNote.length > 0 ? rawCampaignNote.slice(0, 2000) : null;
+
+    const whRows = await prisma.warehouse.findMany({
+      where: { tenantId, id: { in: scopeRes.scope.warehouseIds } },
+      select: { id: true },
+    });
+    if (whRows.length !== scopeRes.scope.warehouseIds.length) {
+      return toApiErrorResponseFromStatus(
+        "One or more recallScopeWarehouseIds are unknown for this tenant.",
+        404,
+      );
+    }
+    const prodRows = await prisma.product.findMany({
+      where: { tenantId, id: { in: scopeRes.scope.productIds } },
+      select: { id: true },
+    });
+    if (prodRows.length !== scopeRes.scope.productIds.length) {
+      return toApiErrorResponseFromStatus(
+        "One or more recallScopeProductIds are unknown for this tenant.",
+        404,
+      );
+    }
+
+    try {
+      const row = await prisma.wmsRecallCampaign.create({
+        data: {
+          tenantId,
+          campaignCode,
+          title,
+          note: noteDb,
+          scopeJson: scopeRes.scope as unknown as Prisma.InputJsonValue,
+          holdReasonCode: reasonParsed.code,
+          holdReleaseGrant: grantParsed.grant,
+          createdById: actorId,
+        },
+        select: { id: true },
+      });
+      await prisma.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WMS_RECALL_CAMPAIGN",
+          entityId: row.id,
+          action: "bf73_recall_campaign_created",
+          payload: {
+            campaignCode,
+            title,
+            scope: scopeRes.scope,
+          },
+          actorUserId: actorId,
+        },
+      });
+      return NextResponse.json({ ok: true, id: row.id });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        return toApiErrorResponseFromStatus("recallCampaignCode already exists for this tenant.", 409);
+      }
+      throw e;
+    }
+  }
+
+  if (action === "materialize_recall_campaign_bf73") {
+    const id = input.recallCampaignId?.trim();
+    if (!id) {
+      return toApiErrorResponseFromStatus("recallCampaignId required.", 400);
+    }
+    const row = await prisma.wmsRecallCampaign.findFirst({
+      where: { id, tenantId },
+      select: {
+        id: true,
+        status: true,
+        campaignCode: true,
+        title: true,
+        note: true,
+        scopeJson: true,
+        holdReasonCode: true,
+        holdReleaseGrant: true,
+      },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Recall campaign not found.", 404);
+    }
+    if (row.status !== "DRAFT") {
+      return toApiErrorResponseFromStatus("Campaign must be DRAFT to materialize.", 400);
+    }
+    const scopeParsed = parseStoredRecallScopeJson(row.scopeJson);
+    if (!scopeParsed.ok) {
+      return toApiErrorResponseFromStatus(scopeParsed.error, 400);
+    }
+
+    const whRows = await prisma.warehouse.findMany({
+      where: { tenantId, id: { in: scopeParsed.scope.warehouseIds } },
+      select: { id: true },
+    });
+    if (whRows.length !== scopeParsed.scope.warehouseIds.length) {
+      return toApiErrorResponseFromStatus(
+        "Campaign scope references an unknown warehouse (master data may have changed).",
+        400,
+      );
+    }
+    const prodRows = await prisma.product.findMany({
+      where: { tenantId, id: { in: scopeParsed.scope.productIds } },
+      select: { id: true },
+    });
+    if (prodRows.length !== scopeParsed.scope.productIds.length) {
+      return toApiErrorResponseFromStatus(
+        "Campaign scope references an unknown product (master data may have changed).",
+        400,
+      );
+    }
+
+    const holdNote = recallHoldSummaryNote(row.campaignCode, row.title, row.note);
+
+    const matResult = await prisma.$transaction(async (tx) => {
+      const mat = await materializeRecallCampaignBalances(tx, {
+        tenantId,
+        actorId,
+        scope: scopeParsed.scope,
+        holdReasonCode: row.holdReasonCode,
+        holdReleaseGrant: row.holdReleaseGrant,
+        holdNote,
+      });
+      if (!mat.ok) {
+        return { ok: false as const, error: mat.error };
+      }
+      await tx.wmsRecallCampaign.update({
+        where: { id: row.id },
+        data: {
+          status: "MATERIALIZED",
+          materializedAt: new Date(),
+          frozenBalanceCount: mat.updatedCount,
+        },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WMS_RECALL_CAMPAIGN",
+          entityId: row.id,
+          action: "bf73_recall_campaign_materialized",
+          payload: {
+            campaignCode: row.campaignCode,
+            updatedCount: mat.updatedCount,
+          },
+          actorUserId: actorId,
+        },
+      });
+      return { ok: true as const, updatedCount: mat.updatedCount };
+    });
+
+    if (!matResult.ok) {
+      return toApiErrorResponseFromStatus(matResult.error, 400);
+    }
+    return NextResponse.json({ ok: true, updatedCount: matResult.updatedCount });
+  }
+
+  if (action === "close_recall_campaign_bf73") {
+    const id = input.recallCampaignId?.trim();
+    if (!id) {
+      return toApiErrorResponseFromStatus("recallCampaignId required.", 400);
+    }
+    const row = await prisma.wmsRecallCampaign.findFirst({
+      where: { id, tenantId },
+      select: { id: true, status: true, campaignCode: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Recall campaign not found.", 404);
+    }
+    if (row.status === "CLOSED") {
+      return toApiErrorResponseFromStatus("Campaign is already CLOSED.", 400);
+    }
+    await prisma.wmsRecallCampaign.update({
+      where: { id: row.id },
+      data: { status: "CLOSED" },
+    });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_RECALL_CAMPAIGN",
+        entityId: row.id,
+        action: "bf73_recall_campaign_closed",
+        payload: { campaignCode: row.campaignCode, priorStatus: row.status },
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "set_balance_hold") {

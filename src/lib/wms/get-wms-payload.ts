@@ -564,6 +564,27 @@ export async function getWmsDashboardPayload(
     lotProfileMap.set(`${lb.productId}\t${normalizeLotCode(lb.lotCode)}`, lb);
   }
 
+  const recallCampaignsRaw = await prisma.wmsRecallCampaign.findMany({
+    where: { tenantId },
+    orderBy: { updatedAt: "desc" },
+    take: 48,
+    select: {
+      id: true,
+      campaignCode: true,
+      title: true,
+      note: true,
+      status: true,
+      scopeJson: true,
+      holdReasonCode: true,
+      holdReleaseGrant: true,
+      materializedAt: true,
+      frozenBalanceCount: true,
+      createdAt: true,
+      updatedAt: true,
+      createdBy: { select: { id: true, name: true } },
+    },
+  });
+
   const dockAppointmentsRaw = await prisma.wmsDockAppointment.findMany({
     where: { tenantId },
     orderBy: [{ windowStart: "asc" }],
@@ -1475,6 +1496,21 @@ export async function getWmsDashboardPayload(
         status: ln.status,
         inventoryMovementId: ln.inventoryMovementId,
       })),
+    })),
+    recallCampaigns: recallCampaignsRaw.map((c) => ({
+      id: c.id,
+      campaignCode: c.campaignCode,
+      title: c.title,
+      note: c.note,
+      status: c.status,
+      scopeJson: c.scopeJson,
+      holdReasonCode: c.holdReasonCode,
+      holdReleaseGrant: c.holdReleaseGrant,
+      materializedAt: c.materializedAt?.toISOString() ?? null,
+      frozenBalanceCount: c.frozenBalanceCount,
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
+      createdBy: { id: c.createdBy.id, name: c.createdBy.name },
     })),
     serialTrace,
   };

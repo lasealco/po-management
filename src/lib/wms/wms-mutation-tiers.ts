@@ -118,6 +118,11 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   /** BF-58 — same payload as clear_balance_hold; prefer for new integrations. */
   release_inventory_freeze: "inventory",
 
+  /** BF-73 — recall campaign doc + scoped freeze materialization (BF-58). */
+  create_recall_campaign_bf73: "inventory",
+  materialize_recall_campaign_bf73: "inventory",
+  close_recall_campaign_bf73: "inventory",
+
   create_soft_reservation: "inventory",
   release_soft_reservation: "inventory",
 

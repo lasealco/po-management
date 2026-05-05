@@ -18,7 +18,10 @@ import {
   normalizeMovementLedgerQueryString,
   readStockLedgerUrlState,
 } from "@/lib/wms/stock-ledger-url";
-import { WMS_INVENTORY_FREEZE_REASON_CODES } from "@/lib/wms/inventory-freeze-matrix";
+import {
+  WMS_INVENTORY_FREEZE_REASON_CODES,
+  WMS_INVENTORY_HOLD_RELEASE_GRANTS,
+} from "@/lib/wms/inventory-freeze-matrix";
 import { WMS_RECEIVE_STATUS_LABEL } from "@/lib/wms/wms-receive-status";
 import {
   defaultTrailerChecklistPayload,
@@ -293,6 +296,22 @@ type WmsData = {
     isActive: boolean;
     createdAt: string;
     lastUsedAt: string | null;
+  }>;
+  /** BF-73 — recall campaigns (scoped BF-58 freeze materialization). */
+  recallCampaigns?: Array<{
+    id: string;
+    campaignCode: string;
+    title: string;
+    note: string | null;
+    status: "DRAFT" | "MATERIALIZED" | "CLOSED";
+    scopeJson: unknown;
+    holdReasonCode: string;
+    holdReleaseGrant: string | null;
+    materializedAt: string | null;
+    frozenBalanceCount: number | null;
+    createdAt: string;
+    updatedAt: string;
+    createdBy: { id: string; name: string };
   }>;
   crmAccountOptions: Array<{ id: string; name: string; legalName: string | null }>;
   crmQuoteOptions: Array<{
@@ -942,6 +961,13 @@ function readSsccDemoCompanyPrefixDigits(): string | null {
   return d.length >= 7 && d.length <= 10 ? d : null;
 }
 
+function splitRecallIdList(raw: string): string[] {
+  return raw
+    .split(/[\s,;\n]+/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function WmsClient({
   canEdit,
   section,
@@ -1036,6 +1062,14 @@ export function WmsClient({
   const [bf69MovementId, setBf69MovementId] = useState("");
   const [bf69Co2eGrams, setBf69Co2eGrams] = useState("");
   const [bf69StubJson, setBf69StubJson] = useState("");
+  const [bf73RecallCode, setBf73RecallCode] = useState("");
+  const [bf73RecallTitle, setBf73RecallTitle] = useState("");
+  const [bf73RecallNote, setBf73RecallNote] = useState("");
+  const [bf73RecallWarehouseIdsRaw, setBf73RecallWarehouseIdsRaw] = useState("");
+  const [bf73RecallProductIdsRaw, setBf73RecallProductIdsRaw] = useState("");
+  const [bf73RecallLotCodesRaw, setBf73RecallLotCodesRaw] = useState("");
+  const [bf73RecallHoldReason, setBf73RecallHoldReason] = useState<string>("RECALL");
+  const [bf73RecallHoldGrant, setBf73RecallHoldGrant] = useState("");
   const [rackVizCode, setRackVizCode] = useState("");
   const [topologyExportBusy, setTopologyExportBusy] = useState(false);
   const [slottingWindowDays, setSlottingWindowDays] = useState("30");
@@ -10276,6 +10310,212 @@ export function WmsClient({
             </p>
           </section>
         ) : null}
+        <section className="mb-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-zinc-900">Recall campaigns (BF-73)</h2>
+          <p className="mt-1 text-xs text-zinc-600">
+            Draft a named scope (warehouse ids × product ids, optional lot codes), then materialize once to apply the BF-58 freeze payload across matching balances—same semantics as bulk{" "}
+            <span className="font-medium">apply_inventory_freeze</span>. Close marks the campaign administratively complete; balance releases still use{" "}
+            <span className="font-medium">release_inventory_freeze</span>.
+          </p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-2">
+              <label className="text-xs font-medium text-zinc-700">
+                Campaign code
+                <input
+                  value={bf73RecallCode}
+                  onChange={(e) => setBf73RecallCode(e.target.value)}
+                  placeholder="e.g. RECALL-2026-A"
+                  className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="text-xs font-medium text-zinc-700">
+                Title
+                <input
+                  value={bf73RecallTitle}
+                  onChange={(e) => setBf73RecallTitle(e.target.value)}
+                  placeholder="Short operator-facing title"
+                  className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="text-xs font-medium text-zinc-700">
+                Note (optional)
+                <textarea
+                  value={bf73RecallNote}
+                  onChange={(e) => setBf73RecallNote(e.target.value)}
+                  rows={2}
+                  placeholder="Extra context stored on the campaign row"
+                  className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-xs font-medium text-zinc-700">
+                Warehouse ids (comma / newline / space separated)
+                <textarea
+                  value={bf73RecallWarehouseIdsRaw}
+                  onChange={(e) => setBf73RecallWarehouseIdsRaw(e.target.value)}
+                  rows={3}
+                  placeholder="Paste warehouse cuid ids"
+                  className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 font-mono text-xs"
+                />
+              </label>
+              <label className="text-xs font-medium text-zinc-700">
+                Product ids (comma / newline / space separated)
+                <textarea
+                  value={bf73RecallProductIdsRaw}
+                  onChange={(e) => setBf73RecallProductIdsRaw(e.target.value)}
+                  rows={3}
+                  placeholder="Paste product cuid ids"
+                  className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 font-mono text-xs"
+                />
+              </label>
+              <label className="text-xs font-medium text-zinc-700">
+                Lot codes (optional — omit to freeze all lots in scope)
+                <textarea
+                  value={bf73RecallLotCodesRaw}
+                  onChange={(e) => setBf73RecallLotCodesRaw(e.target.value)}
+                  rows={2}
+                  placeholder="Optional — narrows to listed lots only"
+                  className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 font-mono text-xs"
+                />
+              </label>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="text-xs font-medium text-zinc-700">
+              Hold reason code
+              <select
+                value={bf73RecallHoldReason}
+                onChange={(e) => setBf73RecallHoldReason(e.target.value)}
+                className="mt-1 block rounded border border-zinc-300 px-3 py-2 text-sm"
+              >
+                {WMS_INVENTORY_FREEZE_REASON_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-medium text-zinc-700">
+              Restricted release grant (optional)
+              <select
+                value={bf73RecallHoldGrant}
+                onChange={(e) => setBf73RecallHoldGrant(e.target.value)}
+                className="mt-1 block min-w-[14rem] rounded border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="">None</option>
+                {WMS_INVENTORY_HOLD_RELEASE_GRANTS.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={!stockQtyEdit || busy}
+              onClick={() => {
+                const wh = splitRecallIdList(bf73RecallWarehouseIdsRaw);
+                const pr = splitRecallIdList(bf73RecallProductIdsRaw);
+                const lotsRaw = splitRecallIdList(bf73RecallLotCodesRaw);
+                if (!bf73RecallCode.trim() || !bf73RecallTitle.trim()) {
+                  window.alert("Campaign code and title are required.");
+                  return;
+                }
+                void runAction({
+                  action: "create_recall_campaign_bf73",
+                  recallCampaignCode: bf73RecallCode.trim(),
+                  recallCampaignTitle: bf73RecallTitle.trim(),
+                  recallCampaignNote: bf73RecallNote.trim() || null,
+                  recallScopeWarehouseIds: wh,
+                  recallScopeProductIds: pr,
+                  recallScopeLotCodes: lotsRaw.length ? lotsRaw : null,
+                  recallHoldReasonCode: bf73RecallHoldReason,
+                  recallHoldReleaseGrant: bf73RecallHoldGrant.trim() || null,
+                }).then((res) => {
+                  if (res?.id) window.alert(`Draft recall campaign created (id: ${String(res.id)}).`);
+                });
+              }}
+              className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Create draft campaign
+            </button>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-zinc-200 text-zinc-600">
+                  <th className="py-2 pr-3 font-semibold">Code</th>
+                  <th className="py-2 pr-3 font-semibold">Title</th>
+                  <th className="py-2 pr-3 font-semibold">Status</th>
+                  <th className="py-2 pr-3 font-semibold">Frozen rows</th>
+                  <th className="py-2 pr-3 font-semibold">Materialized</th>
+                  <th className="py-2 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.recallCampaigns ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-3 text-zinc-500">
+                      No recall campaigns yet.
+                    </td>
+                  </tr>
+                ) : (
+                  (data?.recallCampaigns ?? []).map((c) => (
+                    <tr key={c.id} className="border-b border-zinc-100">
+                      <td className="py-2 pr-3 font-mono text-[11px]">{c.campaignCode}</td>
+                      <td className="py-2 pr-3">{c.title}</td>
+                      <td className="py-2 pr-3">{c.status}</td>
+                      <td className="py-2 pr-3">{c.frozenBalanceCount ?? "—"}</td>
+                      <td className="py-2 pr-3">{c.materializedAt ? c.materializedAt.slice(0, 16) : "—"}</td>
+                      <td className="py-2">
+                        <div className="flex flex-wrap gap-2">
+                          {c.status === "DRAFT" ? (
+                            <button
+                              type="button"
+                              disabled={!stockQtyEdit || busy}
+                              onClick={() =>
+                                void runAction({
+                                  action: "materialize_recall_campaign_bf73",
+                                  recallCampaignId: c.id,
+                                }).then((res) => {
+                                  if (res && typeof res.updatedCount === "number") {
+                                    window.alert(`Materialized — inventory rows updated: ${res.updatedCount}`);
+                                  }
+                                })
+                              }
+                              className="rounded-lg border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+                            >
+                              Materialize
+                            </button>
+                          ) : null}
+                          {c.status !== "CLOSED" ? (
+                            <button
+                              type="button"
+                              disabled={!stockQtyEdit || busy}
+                              onClick={() => {
+                                if (!window.confirm(`Close campaign ${c.campaignCode}?`)) return;
+                                void runAction({
+                                  action: "close_recall_campaign_bf73",
+                                  recallCampaignId: c.id,
+                                }).then((res) => {
+                                  if (res?.ok) window.alert("Campaign closed.");
+                                });
+                              }}
+                              className="rounded-lg border border-zinc-300 px-3 py-1 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                            >
+                              Close
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-[16rem] flex-1">

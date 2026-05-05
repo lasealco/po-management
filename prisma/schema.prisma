@@ -96,6 +96,7 @@ model Tenant {
   wmsReceivingDispositionTemplates           WmsReceivingDispositionTemplate[]
   wmsOutboundLogisticsUnits                  WmsOutboundLogisticsUnit[]
   wmsOutboundLuSerials                       WmsOutboundLuSerial[]
+  wmsRecallCampaigns                         WmsRecallCampaign[]
   wmsOutboundWebhookSubscriptions             WmsOutboundWebhookSubscription[]
   wmsOutboundWebhookDeliveries                WmsOutboundWebhookDelivery[]
   wmsPartnerApiKeys                           WmsPartnerApiKey[]
@@ -2756,6 +2757,7 @@ model User {
   srmSupplierDocumentAuditAuthored                    SrmSupplierDocumentAuditLog[]                @relation("SrmSupplierDocumentAuditActor")
   companyLegalEntityAudits                            CompanyLegalEntityAuditLog[]
   wmsSavedLedgerViews                                 WmsSavedLedgerView[]
+  wmsRecallCampaignsCreated                           WmsRecallCampaign[]                        @relation("WmsRecallCampaignCreatedBy")
   assistantEmailSendConfirms                          AssistantEmailThread[]                       @relation("AssistantEmailSendConfirmBy")
   assistantAuditEvents                                AssistantAuditEvent[]                        @relation("AssistantAuditEventActor")
   assistantEvidenceRecordsCreated                     AssistantEvidenceRecord[]                    @relation("AssistantEvidenceRecordCreator")
@@ -5698,6 +5700,38 @@ model WmsOutboundLuSerial {
   @@unique([outboundOrderId, serialId])
   @@unique([logisticsUnitId, serialId])
   @@index([tenantId, outboundOrderId])
+}
+
+/// BF-73 — named recall scope (warehouse × product × optional lots); materialize applies BF-58 freeze to balances.
+enum WmsRecallCampaignStatus {
+  DRAFT
+  MATERIALIZED
+  CLOSED
+}
+
+model WmsRecallCampaign {
+  id                  String                  @id @default(cuid())
+  tenantId            String
+  /// Stable operator-facing reference (unique per tenant), e.g. RECALL-2026-A.
+  campaignCode        String                  @db.VarChar(80)
+  title               String                  @db.VarChar(500)
+  note                String?                 @db.VarChar(2000)
+  status              WmsRecallCampaignStatus @default(DRAFT)
+  /// bf73.v1 document: schemaVersion, productIds, warehouseIds, optional lotCodes.
+  scopeJson           Json
+  holdReasonCode      String                  @default("RECALL") @db.VarChar(32)
+  holdReleaseGrant    String?                 @db.VarChar(128)
+  materializedAt      DateTime?
+  frozenBalanceCount  Int?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  createdById         String
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("WmsRecallCampaignCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, campaignCode])
+  @@index([tenantId, status])
 }
 
 /// BF-44 — outbound webhook event kinds (tenant subscriptions choose a subset).

@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped wave: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md).
 
-**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** … **`BF-100`** remain draft IDs until each capsule ships.
+**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** … **`BF-100`** remain draft IDs until each capsule ships.
 
 **Rules:**
 
@@ -20,7 +20,7 @@
 |----|-------------------|----------------------------------------|---------------------|
 | **BF-71** | Aggregated serial closure at ship/pack | SKU / serial row (🔗 [`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)) | **BF-13** registry, **BF-57** LU closure |
 | **BF-72** | Dangerous goods checklist + DG manifest JSON | Packing / trade compliance row ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)) | **BF-68** customs stub, **BF-29** scans |
-| **BF-73** | Recall campaign workflow stub | Holds / compliance row | **BF-58** freeze matrix, **BF-02** lot metadata |
+| **BF-73** | Recall campaign workflow stub | Holds / compliance row (🔗 [`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)) | **BF-58** freeze matrix, **BF-02** lot metadata |
 | **BF-74** | Yard geofence arrival webhook stub | Dock / yard row | **BF-05**, **BF-54** detention |
 | **BF-75** | Inbound ASN EDI normalize stub | Inbound ASN row | **BF-59** pre-advise, **BF-31** tolerance |
 | **BF-76** | Pick path sequence export | Pick execution row | **BF-56** batch waves, **BF-50** topology |
@@ -81,7 +81,7 @@
 
 **Objective:** Named **recall campaign** scopes (lot/product/warehouse) that enqueue **`apply_inventory_freeze`** / tasks — extends **BF-58**.
 
-**Exit sketch:** `WmsRecallCampaign` (or JSON campaign doc) + POST **`create_recall_campaign`** + dashboard list row.
+**Exit (landed):** **`WmsRecallCampaign`** + **`create_recall_campaign_bf73`** / **`materialize_recall_campaign_bf73`** / **`close_recall_campaign_bf73`** + **`GET /api/wms`** **`recallCampaigns`** + Stock workspace panel — see [`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md).
 
 **Out of scope:** FDA/regulatory filing portals.
 
