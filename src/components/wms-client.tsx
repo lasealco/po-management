@@ -284,23 +284,35 @@ type WmsData = {
     maxTasksPerRun: number | null;
     exceptionQueue: boolean;
   }>;
-  /** BF-61 — persisted weekly demand stubs. */
+  /** BF-61 — persisted weekly demand stubs */
   demandForecastStubs?: Array<{
     id: string;
     warehouse: { id: string; code: string | null; name: string };
     product: WmsProductRef;
     weekStart: string;
+    /** Stored administrative forecast qty (before BF-84 uplift). */
     forecastQty: string;
+    /** BF-84 × BF-61 effective qty driving replenishment gap / hints. */
+    forecastQtyEffective: string;
+    promoUpliftBf84: {
+      schemaVersion: "bf84.v1";
+      upliftMultiplier: number;
+      promoNote: string | null;
+      parseNotice?: string;
+    };
     note: string | null;
     updatedAt: string;
   }>;
-  /** BF-61 — pick-face vs forecast gap hints for current UTC week. */
+  /** BF-61 — pick-face vs forecast gap hints for current UTC week (forecast qty is BF-84 effective when uplift present). */
   forecastGapHints?: Array<{
     replenishmentRuleId: string;
     warehouseId: string;
     warehouse: { id: string; code: string | null; name: string };
     product: WmsProductRef;
     weekStart: string;
+    forecastQtyBase: string;
+    promoUpliftMultiplier: number;
+    promoUpliftParseNotice: string | null;
     forecastQty: string;
     pickFaceEffectiveQty: string;
     forecastGapQty: string;
@@ -1395,6 +1407,9 @@ export function WmsClient({
   const [fcWeekStart, setFcWeekStart] = useState("");
   const [fcQty, setFcQty] = useState("");
   const [fcNote, setFcNote] = useState("");
+  const [fcPromoMult, setFcPromoMult] = useState("");
+  const [fcPromoNoteBf84, setFcPromoNoteBf84] = useState("");
+  const [fcPromoClearBf84, setFcPromoClearBf84] = useState(false);
   const [bf42TplCode, setBf42TplCode] = useState("");
   const [bf42TplTitle, setBf42TplTitle] = useState("");
   const [bf42TplNote, setBf42TplNote] = useState("");
@@ -4759,7 +4774,9 @@ export function WmsClient({
           <span className="font-medium">BF-61:</span> Weekly demand units per SKU lift automated{" "}
           <span className="font-medium">create_replenishment_tasks</span> ordering on top of BF-35 priority (exception tier
           unchanged). Hints compare forecast to fungible pick-face availability (soft reservations included). Saving stubs
-          requires <span className="font-medium">org.wms.operations → edit</span> or legacy full WMS edit.
+          requires <span className="font-medium">org.wms.operations → edit</span> or legacy full WMS edit.{" "}
+          <span className="font-medium">BF-84</span> optionally applies a promo uplift multiplier to the stored qty for gap /
+          boost math only (stored base qty unchanged).
         </p>
         <div className="mt-3 max-h-40 overflow-auto rounded border border-zinc-200">
           <table className="min-w-full text-xs">
@@ -4767,7 +4784,9 @@ export function WmsClient({
               <tr>
                 <th className="px-2 py-1">SKU</th>
                 <th className="px-2 py-1">Week</th>
-                <th className="px-2 py-1">Forecast</th>
+                <th className="px-2 py-1">Base</th>
+                <th className="px-2 py-1">×</th>
+                <th className="px-2 py-1">Eff.</th>
                 <th className="px-2 py-1">Pick eff.</th>
                 <th className="px-2 py-1">Gap</th>
                 <th className="px-2 py-1">Boost</th>
@@ -4777,7 +4796,7 @@ export function WmsClient({
             <tbody className="divide-y divide-zinc-100">
               {forecastGapHintsForWarehouse.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-2 py-2 text-zinc-500">
+                  <td colSpan={9} className="px-2 py-2 text-zinc-500">
                     No active replenishment rules for this warehouse (or no data yet).
                   </td>
                 </tr>
@@ -4788,6 +4807,8 @@ export function WmsClient({
                       {h.product.productCode || h.product.sku || "—"} · {h.product.name}
                     </td>
                     <td className="whitespace-nowrap px-2 py-1 font-mono text-zinc-600">{h.weekStart}</td>
+                    <td className="px-2 py-1 font-mono text-zinc-700">{h.forecastQtyBase}</td>
+                    <td className="px-2 py-1 font-mono text-zinc-700">{h.promoUpliftMultiplier}</td>
                     <td className="px-2 py-1 font-mono text-zinc-700">{h.forecastQty}</td>
                     <td className="px-2 py-1 font-mono text-zinc-700">{h.pickFaceEffectiveQty}</td>
                     <td className="px-2 py-1 font-mono text-zinc-700">{h.forecastGapQty}</td>
@@ -4806,14 +4827,16 @@ export function WmsClient({
               <tr>
                 <th className="px-2 py-1">SKU</th>
                 <th className="px-2 py-1">Week</th>
-                <th className="px-2 py-1">Qty</th>
+                <th className="px-2 py-1">Base</th>
+                <th className="px-2 py-1">×</th>
+                <th className="px-2 py-1">Eff.</th>
                 <th className="px-2 py-1">Updated</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {demandForecastStubsForWarehouse.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-2 py-2 text-zinc-500">
+                  <td colSpan={6} className="px-2 py-2 text-zinc-500">
                     No stubs for this warehouse in the current UTC week.
                   </td>
                 </tr>
@@ -4825,6 +4848,8 @@ export function WmsClient({
                     </td>
                     <td className="whitespace-nowrap px-2 py-1 font-mono text-zinc-600">{s.weekStart}</td>
                     <td className="px-2 py-1 font-mono">{s.forecastQty}</td>
+                    <td className="px-2 py-1 font-mono">{s.promoUpliftBf84.upliftMultiplier}</td>
+                    <td className="px-2 py-1 font-mono">{s.forecastQtyEffective}</td>
                     <td className="whitespace-nowrap px-2 py-1 text-zinc-600">{s.updatedAt.slice(0, 19)}</td>
                   </tr>
                 ))
@@ -4832,7 +4857,7 @@ export function WmsClient({
             </tbody>
           </table>
         </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-5">
+        <div className="mt-3 grid gap-2 sm:grid-cols-6">
           <select
             value={fcProductId}
             onChange={(e) => setFcProductId(e.target.value)}
@@ -4858,6 +4883,14 @@ export function WmsClient({
             inputMode="decimal"
             className="rounded border border-zinc-300 px-3 py-2 text-sm"
           />
+          <input
+            value={fcPromoMult}
+            onChange={(e) => setFcPromoMult(e.target.value)}
+            placeholder="BF-84 × (1–5)"
+            inputMode="decimal"
+            disabled={fcPromoClearBf84}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm disabled:bg-zinc-100"
+          />
           <ActionButton
             disabled={
               !canEdit ||
@@ -4865,7 +4898,13 @@ export function WmsClient({
               !selectedWarehouseId ||
               !fcProductId ||
               !Number.isFinite(Number(fcQty)) ||
-              Number(fcQty) < 0
+              Number(fcQty) < 0 ||
+              (() => {
+                const trimmed = fcPromoMult.trim();
+                if (fcPromoClearBf84 || trimmed === "") return false;
+                const n = Number(trimmed);
+                return !Number.isFinite(n) || n < 1 || n > 5;
+              })()
             }
             onClick={() =>
               void runAction({
@@ -4875,12 +4914,39 @@ export function WmsClient({
                 forecastQty: Number(fcQty),
                 ...(fcWeekStart.trim() ? { weekStart: fcWeekStart.trim() } : {}),
                 ...(fcNote.trim() ? { note: fcNote.trim() } : {}),
+                ...(fcPromoClearBf84 ? { promoUpliftBf84Clear: true } : {}),
+                ...(fcPromoMult.trim() &&
+                !fcPromoClearBf84 &&
+                Number.isFinite(Number(fcPromoMult.trim()))
+                  ? {
+                      promoUpliftBf84: {
+                        upliftMultiplier: Number(fcPromoMult.trim()),
+                        ...(fcPromoNoteBf84.trim() ? { promoNote: fcPromoNoteBf84.trim() } : {}),
+                      },
+                    }
+                  : {}),
               })
             }
           >
             Save stub
           </ActionButton>
         </div>
+        <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-zinc-700">
+          <input
+            type="checkbox"
+            checked={fcPromoClearBf84}
+            onChange={(e) => setFcPromoClearBf84(e.target.checked)}
+            className="rounded border-zinc-300"
+          />
+          Clear BF-84 promo uplift on save (base qty unchanged)
+        </label>
+        <input
+          value={fcPromoNoteBf84}
+          onChange={(e) => setFcPromoNoteBf84(e.target.value)}
+          placeholder="BF-84 promo note (optional, sent only when × is set)"
+          disabled={fcPromoClearBf84 || !fcPromoMult.trim()}
+          className="mt-2 w-full rounded border border-zinc-300 px-3 py-2 text-sm disabled:bg-zinc-100"
+        />
         <input
           value={fcNote}
           onChange={(e) => setFcNote(e.target.value)}

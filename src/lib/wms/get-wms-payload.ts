@@ -39,6 +39,10 @@ import {
 } from "@/lib/wms/rfid-scan-bridge-bf81";
 import { parseStoredLandedCostNotesBf78Json } from "@/lib/wms/landed-cost-notes-bf78";
 import {
+  effectiveForecastQtyBf84,
+  promoUpliftBf84PayloadFromDb,
+} from "@/lib/wms/promo-uplift-bf84";
+import {
   echoInventoryOwnershipBf79Filter,
   inventoryOwnershipBf79FilterToWhere,
   type ParsedInventoryOwnershipBf79BalanceFilter,
@@ -772,13 +776,21 @@ export async function getWmsDashboardPayload(
   });
 
   const forecastStubQtyByKey = new Map<string, number>();
+  const forecastStubRowByKey = new Map<string, (typeof demandForecastStubsRaw)[number]>();
   for (const s of demandForecastStubsRaw) {
-    forecastStubQtyByKey.set(`${s.warehouseId}\t${s.productId}`, Number(s.forecastQty));
+    const key = `${s.warehouseId}\t${s.productId}`;
+    forecastStubRowByKey.set(key, s);
+    const base = Number(s.forecastQty);
+    const eff = effectiveForecastQtyBf84(base, s.promoUpliftBf84Json);
+    forecastStubQtyByKey.set(key, eff);
   }
   const forecastWeekStartIso = forecastWeekStart.toISOString().slice(0, 10);
   const forecastGapHints = rules
     .filter((r) => r.isActive)
     .map((r) => {
+      const stubRow = forecastStubRowByKey.get(`${r.warehouseId}\t${r.productId}`);
+      const forecastQtyBase = stubRow ? Number(stubRow.forecastQty) : 0;
+      const promo = promoUpliftBf84PayloadFromDb(stubRow?.promoUpliftBf84Json ?? null);
       const forecastQty = forecastStubQtyByKey.get(`${r.warehouseId}\t${r.productId}`) ?? 0;
       const pick = pickFaceEffectiveOnHandForReplenRule(balances, r, softByBalanceId);
       const gap = forecastGapQty(forecastQty, pick);
@@ -789,6 +801,9 @@ export async function getWmsDashboardPayload(
         warehouse: r.warehouse,
         product: mapWmsProductJson(r.product),
         weekStart: forecastWeekStartIso,
+        forecastQtyBase: forecastQtyBase.toFixed(3),
+        promoUpliftMultiplier: promo.upliftMultiplier,
+        promoUpliftParseNotice: promo.parseNotice ?? null,
         forecastQty: forecastQty.toFixed(3),
         pickFaceEffectiveQty: pick.toFixed(3),
         forecastGapQty: gap.toFixed(3),
@@ -1053,15 +1068,27 @@ export async function getWmsDashboardPayload(
       maxTasksPerRun: r.maxTasksPerRun,
       exceptionQueue: r.exceptionQueue,
     })),
-    demandForecastStubs: demandForecastStubsRaw.map((s) => ({
-      id: s.id,
-      warehouse: s.warehouse,
-      product: mapWmsProductJson(s.product),
-      weekStart: s.weekStart.toISOString().slice(0, 10),
-      forecastQty: s.forecastQty.toString(),
-      note: s.note ?? null,
-      updatedAt: s.updatedAt.toISOString(),
-    })),
+    demandForecastStubs: demandForecastStubsRaw.map((s) => {
+      const base = Number(s.forecastQty);
+      const eff = effectiveForecastQtyBf84(base, s.promoUpliftBf84Json);
+      const promo = promoUpliftBf84PayloadFromDb(s.promoUpliftBf84Json);
+      return {
+        id: s.id,
+        warehouse: s.warehouse,
+        product: mapWmsProductJson(s.product),
+        weekStart: s.weekStart.toISOString().slice(0, 10),
+        forecastQty: base.toFixed(3),
+        forecastQtyEffective: eff.toFixed(3),
+        promoUpliftBf84: {
+          schemaVersion: promo.schemaVersion,
+          upliftMultiplier: promo.upliftMultiplier,
+          promoNote: promo.promoNote,
+          ...(promo.parseNotice ? { parseNotice: promo.parseNotice } : {}),
+        },
+        note: s.note ?? null,
+        updatedAt: s.updatedAt.toISOString(),
+      };
+    }),
     forecastGapHints,
     receivingDispositionTemplates: receivingDispositionTemplates.map((t) => ({
       id: t.id,

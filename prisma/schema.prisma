@@ -4852,6 +4852,8 @@ model WmsDemandForecastStub {
   weekStart   DateTime @db.Date
   /// Forecasted demand units for the week (administrative stub — not statistical forecasting).
   forecastQty Decimal  @db.Decimal(14, 3)
+  /// BF-84 — optional promo uplift (`bf84.v1`); effective forecast for BF-61 gap = `forecastQty × upliftMultiplier` (clamped).
+  promoUpliftBf84Json Json?
   note        String?  @db.VarChar(500)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

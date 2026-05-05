@@ -38,6 +38,10 @@ import {
   parseWeekStartDateInput,
   utcIsoWeekMonday,
 } from "./demand-forecast-replenish";
+import {
+  effectiveForecastQtyBf84,
+  validatePromoUpliftBf84Post,
+} from "./promo-uplift-bf84";
 import { softReservedQtyByBalanceIds } from "./soft-reservation";
 import { orderPickSlotsSolverPrototype } from "./pick-wave-solver-prototype";
 import { batchPickVisitBinOrder, cloneWavePickSlotPools } from "./pick-wave-batch";
@@ -1136,6 +1140,19 @@ export async function handleWmsPost(
           ? null
           : String(input.note).trim().slice(0, 500) || null;
     }
+
+    let promoUpliftBf84Json:
+      | Prisma.NullableJsonNullValueInput
+      | Prisma.InputJsonValue
+      | undefined = undefined;
+    if (input.promoUpliftBf84Clear === true) {
+      promoUpliftBf84Json = Prisma.JsonNull;
+    } else if (input.promoUpliftBf84 !== undefined) {
+      const v = validatePromoUpliftBf84Post(input.promoUpliftBf84 as unknown);
+      if (!v.ok) return toApiErrorResponseFromStatus(v.error, 400);
+      promoUpliftBf84Json = v.stored === null ? Prisma.JsonNull : (v.stored as Prisma.InputJsonValue);
+    }
+
     await prisma.wmsDemandForecastStub.upsert({
       where: {
         tenantId_warehouseId_productId_weekStart: {
@@ -1153,10 +1170,12 @@ export async function handleWmsPost(
         forecastQty: forecastQty.toString(),
         note: note ?? null,
         createdById: actorId,
+        ...(promoUpliftBf84Json !== undefined ? { promoUpliftBf84Json } : {}),
       },
       update: {
         forecastQty: forecastQty.toString(),
         ...(note !== undefined ? { note } : {}),
+        ...(promoUpliftBf84Json !== undefined ? { promoUpliftBf84Json } : {}),
       },
     });
     return NextResponse.json({ ok: true });
@@ -1176,12 +1195,15 @@ export async function handleWmsPost(
       }),
       prisma.wmsDemandForecastStub.findMany({
         where: { tenantId, warehouseId, weekStart },
-        select: { productId: true, forecastQty: true },
+        select: { productId: true, forecastQty: true, promoUpliftBf84Json: true },
       }),
     ]);
     const forecastQtyByWarehouseProduct = new Map<string, number>();
     for (const s of stubRows) {
-      forecastQtyByWarehouseProduct.set(`${warehouseId}\t${s.productId}`, Number(s.forecastQty));
+      forecastQtyByWarehouseProduct.set(
+        `${warehouseId}\t${s.productId}`,
+        effectiveForecastQtyBf84(Number(s.forecastQty), s.promoUpliftBf84Json),
+      );
     }
     const replenSoftMap = await softReservedQtyByBalanceIds(
       prisma,

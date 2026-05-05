@@ -104,6 +104,10 @@ export type WmsBody = {
   weekStart?: string;
   /** BF-61 — `upsert_wms_demand_forecast_stub` weekly demand units (>= 0). */
   forecastQty?: number;
+  /** BF-84 — optional `{ schemaVersion?: "bf84.v1", upliftMultiplier, promoNote? }` on forecast stub (omit = leave unchanged). */
+  promoUpliftBf84?: Record<string, unknown>;
+  /** BF-84 — clears stored promo JSON on stub upsert. */
+  promoUpliftBf84Clear?: boolean;
   lines?: Array<{ productId: string; quantity: number }>;
   quantity?: number;
   note?: string | null;
