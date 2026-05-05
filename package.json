@@ -23,6 +23,7 @@
     "test:sctwin": "vitest run src/lib/supply-chain-twin src/app/api/supply-chain-twin",
     "test:sctwin:contracts": "vitest run src/app/api/supply-chain-twin/happy-path.contract.test.ts src/app/api/supply-chain-twin/schema-conformance.contract.test.ts src/app/api/supply-chain-twin/contract-snapshot-baseline.contract.test.ts",
     "smoke:sctwin:e2e": "node scripts/sctwin-smoke-pack.mjs",
+    "check:wms-blueprint": "node scripts/wms-blueprint-self-check.mjs",
     "verify:sctwin:prerelease": "npx tsc --noEmit && npm run test:sctwin && npm run test:sctwin:contracts && npm run check:sctwin:lint",
     "verify:sctwin:program": "node scripts/sctwin-verify-program.mjs",
     "verify:sctwin": "npx tsc --noEmit && npm run test:sctwin",

@@ -4,12 +4,12 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped wave: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md).
 
-**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** — **minimal slice landed** ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)). **`BF-75`** — **minimal slice landed** ([`WMS_INBOUND_ASN_NORMALIZE_BF75.md`](./WMS_INBOUND_ASN_NORMALIZE_BF75.md)). **`BF-76`** — **minimal slice landed** ([`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md)). **`BF-77`** — **minimal slice landed** ([`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md)). **`BF-78`** — **minimal slice landed** ([`WMS_STO_LANDED_COST_BF78.md`](./WMS_STO_LANDED_COST_BF78.md)). **`BF-79`** — **minimal slice landed** ([`WMS_VMI_CONSIGNMENT_BF79.md`](./WMS_VMI_CONSIGNMENT_BF79.md)). **`BF-80`** — **minimal slice landed** ([`WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md`](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md)). **`BF-81`** — **minimal slice landed** ([`WMS_RFID_COMMISSIONING_BF81.md`](./WMS_RFID_COMMISSIONING_BF81.md)). **`BF-82`** — **minimal slice landed** ([`WMS_MOVEMENT_AUDIT_CHAIN_BF82.md`](./WMS_MOVEMENT_AUDIT_CHAIN_BF82.md)). **`BF-83`** — **minimal slice landed** ([`WMS_SUPPLIER_RECEIVING_SCORECARD_BF83.md`](./WMS_SUPPLIER_RECEIVING_SCORECARD_BF83.md)). **`BF-84`** — **minimal slice landed** ([`WMS_PROMO_UPLIFT_BF84.md`](./WMS_PROMO_UPLIFT_BF84.md)). **`BF-85`** — **minimal slice landed** ([`WMS_RMA_DISPOSITION_RULES_BF85.md`](./WMS_RMA_DISPOSITION_RULES_BF85.md)). **`BF-86`** — **minimal slice landed** ([`WMS_CAPACITY_UTILIZATION_BF86.md`](./WMS_CAPACITY_UTILIZATION_BF86.md)). **`BF-98`** — **minimal slice landed** ([`WMS_PARTNER_API_BF45.md`](./WMS_PARTNER_API_BF45.md)). **`BF-99`** — **minimal slice landed** ([`WMS_SEARCH_SNAPSHOT_BF99.md`](./WMS_SEARCH_SNAPSHOT_BF99.md)). **`BF-87`** … **`BF-100`** not marked landed above remain draft until shipped.
+**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** — **minimal slice landed** ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)). **`BF-75`** — **minimal slice landed** ([`WMS_INBOUND_ASN_NORMALIZE_BF75.md`](./WMS_INBOUND_ASN_NORMALIZE_BF75.md)). **`BF-76`** — **minimal slice landed** ([`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md)). **`BF-77`** — **minimal slice landed** ([`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md)). **`BF-78`** — **minimal slice landed** ([`WMS_STO_LANDED_COST_BF78.md`](./WMS_STO_LANDED_COST_BF78.md)). **`BF-79`** — **minimal slice landed** ([`WMS_VMI_CONSIGNMENT_BF79.md`](./WMS_VMI_CONSIGNMENT_BF79.md)). **`BF-80`** — **minimal slice landed** ([`WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md`](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md)). **`BF-81`** — **minimal slice landed** ([`WMS_RFID_COMMISSIONING_BF81.md`](./WMS_RFID_COMMISSIONING_BF81.md)). **`BF-82`** — **minimal slice landed** ([`WMS_MOVEMENT_AUDIT_CHAIN_BF82.md`](./WMS_MOVEMENT_AUDIT_CHAIN_BF82.md)). **`BF-83`** — **minimal slice landed** ([`WMS_SUPPLIER_RECEIVING_SCORECARD_BF83.md`](./WMS_SUPPLIER_RECEIVING_SCORECARD_BF83.md)). **`BF-84`** — **minimal slice landed** ([`WMS_PROMO_UPLIFT_BF84.md`](./WMS_PROMO_UPLIFT_BF84.md)). **`BF-85`** — **minimal slice landed** ([`WMS_RMA_DISPOSITION_RULES_BF85.md`](./WMS_RMA_DISPOSITION_RULES_BF85.md)). **`BF-86`** — **minimal slice landed** ([`WMS_CAPACITY_UTILIZATION_BF86.md`](./WMS_CAPACITY_UTILIZATION_BF86.md)). **`BF-98`** — **minimal slice landed** ([`WMS_PARTNER_API_BF45.md`](./WMS_PARTNER_API_BF45.md)). **`BF-99`** — **minimal slice landed** ([`WMS_SEARCH_SNAPSHOT_BF99.md`](./WMS_SEARCH_SNAPSHOT_BF99.md)). **`BF-100`** — **minimal slice landed** ([`WMS_BLUEPRINT_SELF_CHECK_BF100.md`](./WMS_BLUEPRINT_SELF_CHECK_BF100.md)). Capsules **`BF-87`** … **`BF-97`** in the rollup table below remain **draft** until each ships (**`BF-98`**, **`BF-99`**, **`BF-100`** landed in-repo as listed).
 
 **Rules:**
 
 1. **Do not** bundle **`BF-71` … `BF-100`** into one prompt unless product explicitly funds a program sprint — each ID is a separate thematic capsule.
-2. Ship → update **[`GAP_MAP.md`](./GAP_MAP.md)** → refresh **[`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md)** → add **`docs/wms/WMS_*_BFxx.md`** (or ADR) when a capsule lands.
+2. Ship → update **[`GAP_MAP.md`](./GAP_MAP.md)** → refresh **[`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md)** → add **`docs/wms/WMS_*_BFxx.md`** (or ADR) when a capsule lands; new **`POST /api/wms`** actions → extend **`GAP_MAP`** action paragraph and run **`npm run check:wms-blueprint`** (**BF-100**).
 3. Stay inside **`src/app/wms/**`, **`src/app/api/wms/**`, **`src/lib/wms/**`** unless the row explicitly names CRM/CT/platform/integrations — then touch shared surfaces minimally.
 
 ---
@@ -47,7 +47,7 @@
 | **BF-97** | Scope-3 upstream CO₂e factor stub | Sustainability row | **BF-69**, **`Product`** / supplier attrs |
 | **BF-98** | Partner API scoped mutation pilot | Integrations row | **BF-45** reads + keys |
 | **BF-99** | WMS entity search snapshot export | Integrations row | **`GET /api/wms`** payloads stable |
-| **BF-100** | Blueprint self-check gap report | Meta / QA row | **`GAP_MAP.md`**, action manifest |
+| **BF-100** | Blueprint self-check gap report | Meta / QA row | **`GAP_MAP.md`**, **[`WMS_BLUEPRINT_SELF_CHECK_BF100.md`](./WMS_BLUEPRINT_SELF_CHECK_BF100.md)** |
 
 **Suggested dependency-aware sequence (not mandatory):** serialization depth (**BF-71**, **BF-94**) after **BF-13** maturity; **BF-75** after **BF-59**; **BF-76**/**BF-89** after wave + topology reads stable; **BF-92** after **BF-68** parties snapshot; **BF-100** anytime as documentation tooling.
 
@@ -360,6 +360,8 @@
 
 **Exit sketch:** `scripts/wms-blueprint-self-check.mjs` (or doc checklist) run in CI optional.
 
+**Shipped (minimal):** **`scripts/wms-blueprint-self-check.mjs`** + **`npm run check:wms-blueprint`** — compares **`handleWmsPost`** `if (action === "…")` set vs lowercase snake_case tokens in **`GAP_MAP.md`** §Existing API actions (paragraph excludes the BF-100 helper note); **`--json`** output **`bf100.v1`**; **[`WMS_BLUEPRINT_SELF_CHECK_BF100.md`](./WMS_BLUEPRINT_SELF_CHECK_BF100.md)**; **`GAP_MAP`** paragraph extended with previously missing action ids so the check passes at ship.
+
 **Out of scope:** Formal ISO certification tooling.
 
 ---
@@ -370,4 +372,4 @@
 
 ---
 
-_Last updated: **2026-04-29** — **BF-99** minimal landed (**`GET /api/wms/search-snapshot`** NDJSON — [`WMS_SEARCH_SNAPSHOT_BF99.md`](./WMS_SEARCH_SNAPSHOT_BF99.md)); **BF-98** minimal landed; initial draft program (**BF-71** … **BF-100**) seeded._
+_Last updated: **2026-04-29** — **BF-100** minimal landed (**`npm run check:wms-blueprint`** — [`WMS_BLUEPRINT_SELF_CHECK_BF100.md`](./WMS_BLUEPRINT_SELF_CHECK_BF100.md)); **BF-99** minimal landed (**`GET /api/wms/search-snapshot`** NDJSON — [`WMS_SEARCH_SNAPSHOT_BF99.md`](./WMS_SEARCH_SNAPSHOT_BF99.md)); **BF-98** minimal landed; initial draft program (**BF-71** … **BF-100**) seeded._
