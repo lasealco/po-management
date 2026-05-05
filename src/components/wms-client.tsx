@@ -1715,6 +1715,8 @@ export function WmsClient({
   const [pickBinId, setPickBinId] = useState("");
   const [pickLotCode, setPickLotCode] = useState("");
   const [putawayLotByTaskId, setPutawayLotByTaskId] = useState<Record<string, string>>({});
+  /** BF-94 optional `{ outputSerialNos?, consumedSerials? }` JSON per open `KIT_BUILD` task (complete_kit_build_task). */
+  const [kitBuildBf94JsonByTaskId, setKitBuildBf94JsonByTaskId] = useState<Record<string, string>>({});
   const [replProductId, setReplProductId] = useState("");
   const [replSourceZoneId, setReplSourceZoneId] = useState("");
   const [replTargetZoneId, setReplTargetZoneId] = useState("");
@@ -12286,6 +12288,20 @@ export function WmsClient({
                     />
                   </label>
                 ) : null}
+                {t.taskType === "KIT_BUILD" ? (
+                  <label className="flex min-w-[180px] max-w-full flex-1 flex-col gap-0.5 text-[11px] text-zinc-600 lg:min-w-[240px]">
+                    BF-94 genealogy JSON (optional)
+                    <textarea
+                      rows={2}
+                      value={kitBuildBf94JsonByTaskId[t.id] ?? ""}
+                      onChange={(e) =>
+                        setKitBuildBf94JsonByTaskId((m) => ({ ...m, [t.id]: e.target.value }))
+                      }
+                      placeholder='{"outputSerialNos":["FG-1"],"consumedSerials":[{"bomLineId":"…","serialNo":"C1"}]}'
+                      className="rounded border border-zinc-300 px-2 py-1 font-mono text-[11px] text-zinc-800"
+                    />
+                  </label>
+                ) : null}
                 {(t.taskType === "VALUE_ADD" || t.taskType === "KIT_BUILD") && t.referenceId ? (
                   <span className="text-zinc-500">
                     WO{" "}
@@ -12354,7 +12370,37 @@ export function WmsClient({
                         return;
                       }
                       if (t.taskType === "KIT_BUILD") {
-                        void runAction({ action: "complete_kit_build_task", taskId: t.id });
+                        const extras: Record<string, unknown> = {};
+                        const rawBf94 = kitBuildBf94JsonByTaskId[t.id]?.trim();
+                        if (rawBf94) {
+                          let parsed: unknown;
+                          try {
+                            parsed = JSON.parse(rawBf94);
+                          } catch {
+                            window.alert("BF-94 JSON is invalid — fix or clear before completing.");
+                            return;
+                          }
+                          if (!parsed || typeof parsed !== "object") {
+                            window.alert("BF-94 JSON must be an object.");
+                            return;
+                          }
+                          const o = parsed as Record<string, unknown>;
+                          if ("outputSerialNos" in o) {
+                            if (!Array.isArray(o.outputSerialNos)) {
+                              window.alert("BF-94 outputSerialNos must be an array.");
+                              return;
+                            }
+                            extras.kitBuildBf94OutputSerialNos = o.outputSerialNos;
+                          }
+                          if ("consumedSerials" in o) {
+                            if (!Array.isArray(o.consumedSerials)) {
+                              window.alert("BF-94 consumedSerials must be an array.");
+                              return;
+                            }
+                            extras.kitBuildBf94ConsumedSerials = o.consumedSerials;
+                          }
+                        }
+                        void runAction({ action: "complete_kit_build_task", taskId: t.id, ...extras });
                         return;
                       }
                       const raw = cycleCountQtyByTask[t.id] ?? t.quantity;

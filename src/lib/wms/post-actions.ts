@@ -169,6 +169,7 @@ import {
   serializeKitBuildTaskPayload,
   validateKitBuildLinePicks,
 } from "./kit-build";
+import { parseKitBuildBf94BodyFields, validateBf94AgainstKitDeltas } from "./kit-build-serialization-bf94";
 
 import {
   customerReturnApplyQuarantineHold,
@@ -7932,9 +7933,13 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus("KIT_BUILD task missing output product or bin.", 400);
     }
 
-    const kitQty = Number(task.quantity);
-    if (!Number.isFinite(kitQty) || kitQty <= 0) {
+    const kitQtyDec = new Prisma.Decimal(task.quantity);
+    if (!kitQtyDec.isFinite() || kitQtyDec.lte(0)) {
       return toApiErrorResponseFromStatus("Invalid kit task quantity.", 400);
+    }
+    const kitQty = kitQtyDec.toNumber();
+    if (!Number.isFinite(kitQty)) {
+      return toApiErrorResponseFromStatus("Kit task quantity out of numeric range.", 400);
     }
 
     const payload = parseKitBuildTaskNote(task.note);
@@ -7963,8 +7968,22 @@ export async function handleWmsPost(
     const pickVal = validateKitBuildLinePicks(deltaRes.deltas, payload.lines);
     if (!pickVal.ok) return toApiErrorResponseFromStatus(pickVal.message, 400);
 
+    const bf94Parsed = parseKitBuildBf94BodyFields(input);
+    if (!bf94Parsed.ok) return toApiErrorResponseFromStatus(bf94Parsed.message, 400);
+    const bf94 = bf94Parsed.value;
+    const bf94Active = bf94.outputSerialNos.length > 0 || bf94.consumedSerials.length > 0;
+    if (bf94Active) {
+      const bf94Val = validateBf94AgainstKitDeltas({
+        kitQty: kitQtyDec,
+        deltas: deltaRes.deltas,
+        bf94,
+      });
+      if (!bf94Val.ok) return toApiErrorResponseFromStatus(bf94Val.message, 400);
+    }
+
     const bomLineById = new Map(wo.bomLines.map((l) => [l.id, l]));
     const pickByLine = new Map(payload.lines.map((l) => [l.bomLineId, l]));
+    const balanceIdByBomLineId = new Map<string, string>();
 
     for (const line of wo.bomLines) {
       const delta = deltaRes.deltas.get(line.id)!;
@@ -7978,10 +7997,61 @@ export async function handleWmsPost(
           productId: line.componentProductId,
           lotCode: p.lotCode,
         },
-        select: { onHandQty: true, onHold: true },
+        select: { id: true, onHandQty: true, onHold: true },
       });
       if (!bal || bal.onHold || new Prisma.Decimal(bal.onHandQty).lt(delta)) {
         return toApiErrorResponseFromStatus("Insufficient component stock to complete kit build.", 400);
+      }
+      balanceIdByBomLineId.set(line.id, bal.id);
+    }
+
+    const serialByProductAndSn = new Map<string, { id: string; currentBalanceId: string | null }>();
+    if (bf94.consumedSerials.length > 0) {
+      const uniq = new Map<string, { componentProductId: string; serialNo: string }>();
+      for (const row of bf94.consumedSerials) {
+        const bl = bomLineById.get(row.bomLineId);
+        if (!bl) continue;
+        const k = `${bl.componentProductId}\x00${row.serialNo}`;
+        if (!uniq.has(k)) uniq.set(k, { componentProductId: bl.componentProductId, serialNo: row.serialNo });
+      }
+      for (const { componentProductId, serialNo } of uniq.values()) {
+        const sr = await prisma.wmsInventorySerial.findFirst({
+          where: { tenantId, productId: componentProductId, serialNo },
+          select: { id: true, currentBalanceId: true },
+        });
+        if (!sr) {
+          return toApiErrorResponseFromStatus(
+            `Component serial ${serialNo} is not registered for this SKU.`,
+            404,
+          );
+        }
+        serialByProductAndSn.set(`${componentProductId}\x00${serialNo}`, sr);
+      }
+      for (const row of bf94.consumedSerials) {
+        const bl = bomLineById.get(row.bomLineId)!;
+        const sr = serialByProductAndSn.get(`${bl.componentProductId}\x00${row.serialNo}`)!;
+        const expectedBalId = balanceIdByBomLineId.get(row.bomLineId);
+        if (!expectedBalId || sr.currentBalanceId !== expectedBalId) {
+          return toApiErrorResponseFromStatus(
+            `Serial ${row.serialNo} is not on the picked balance for this BOM line.`,
+            400,
+          );
+        }
+      }
+    }
+
+    if (bf94.outputSerialNos.length > 0) {
+      for (const sn of bf94.outputSerialNos) {
+        const exists = await prisma.wmsInventorySerial.findFirst({
+          where: { tenantId, productId: kitOutProductId, serialNo: sn },
+          select: { id: true },
+        });
+        if (exists) {
+          return toApiErrorResponseFromStatus(
+            `Output serial ${sn} is already registered for this finished good SKU.`,
+            409,
+          );
+        }
       }
     }
 
@@ -8000,6 +8070,8 @@ export async function handleWmsPost(
     }
 
     await prisma.$transaction(async (tx) => {
+      const consumptionMovementIdByLineId = new Map<string, string>();
+
       for (const line of wo.bomLines) {
         const delta = deltaRes.deltas.get(line.id)!;
         if (delta.lte(0)) continue;
@@ -8015,7 +8087,7 @@ export async function handleWmsPost(
           },
           data: { onHandQty: { decrement: qtyStr } },
         });
-        await tx.inventoryMovement.create({
+        const consMov = await tx.inventoryMovement.create({
           data: {
             tenantId,
             warehouseId: wo.warehouseId,
@@ -8028,14 +8100,17 @@ export async function handleWmsPost(
             note: "Kit build component consumption",
             createdById: actorId,
           },
+          select: { id: true },
         });
+        consumptionMovementIdByLineId.set(line.id, consMov.id);
         await tx.wmsWorkOrderBomLine.update({
           where: { id: line.id },
           data: { consumedQty: { increment: qtyStr } },
         });
       }
 
-      await tx.inventoryBalance.upsert({
+      const kitQtyOutStr = kitQtyDec.toFixed();
+      const outBal = await tx.inventoryBalance.upsert({
         where: {
           warehouseId_binId_productId_lotCode: {
             warehouseId: task.warehouseId,
@@ -8050,24 +8125,88 @@ export async function handleWmsPost(
           binId: kitOutBinId,
           productId: kitOutProductId,
           lotCode: FUNGIBLE_LOT_CODE,
-          onHandQty: kitQty.toString(),
+          onHandQty: kitQtyOutStr,
         },
-        update: { onHandQty: { increment: kitQty.toString() } },
+        update: { onHandQty: { increment: kitQtyOutStr } },
+        select: { id: true },
       });
-      await tx.inventoryMovement.create({
+      const outMov = await tx.inventoryMovement.create({
         data: {
           tenantId,
           warehouseId: task.warehouseId,
           binId: kitOutBinId,
           productId: kitOutProductId,
           movementType: "ADJUSTMENT",
-          quantity: kitQty.toString(),
+          quantity: kitQtyOutStr,
           referenceType: "KIT_BUILD_TASK",
           referenceId: task.id,
           note: "Kit build output",
           createdById: actorId,
         },
+        select: { id: true },
       });
+
+      if (bf94.outputSerialNos.length > 0) {
+        for (const sn of bf94.outputSerialNos) {
+          const createdSerial = await tx.wmsInventorySerial.create({
+            data: {
+              tenantId,
+              productId: kitOutProductId,
+              serialNo: sn,
+              currentBalanceId: outBal.id,
+            },
+            select: { id: true, serialNo: true },
+          });
+          await tx.wmsInventorySerialMovement.create({
+            data: { serialId: createdSerial.id, inventoryMovementId: outMov.id },
+          });
+          await tx.ctAuditLog.create({
+            data: {
+              tenantId,
+              entityType: "WMS_INVENTORY_SERIAL",
+              entityId: createdSerial.id,
+              action: "inventory_serial_registered",
+              payload: { productId: kitOutProductId, serialNo: createdSerial.serialNo, kitBuildTaskId: task.id },
+              actorUserId: actorId,
+            },
+          });
+          await tx.ctAuditLog.create({
+            data: {
+              tenantId,
+              entityType: "WMS_INVENTORY_SERIAL",
+              entityId: createdSerial.id,
+              action: "inventory_serial_movement_linked",
+              payload: { inventoryMovementId: outMov.id },
+              actorUserId: actorId,
+            },
+          });
+        }
+      }
+
+      if (bf94.consumedSerials.length > 0) {
+        for (const row of bf94.consumedSerials) {
+          const bl = bomLineById.get(row.bomLineId)!;
+          const movId = consumptionMovementIdByLineId.get(row.bomLineId)!;
+          const sr = serialByProductAndSn.get(`${bl.componentProductId}\x00${row.serialNo}`)!;
+          await tx.wmsInventorySerialMovement.create({
+            data: { serialId: sr.id, inventoryMovementId: movId },
+          });
+          await tx.wmsInventorySerial.update({
+            where: { id: sr.id },
+            data: { currentBalanceId: null },
+          });
+          await tx.ctAuditLog.create({
+            data: {
+              tenantId,
+              entityType: "WMS_INVENTORY_SERIAL",
+              entityId: sr.id,
+              action: "inventory_serial_movement_linked",
+              payload: { inventoryMovementId: movId },
+              actorUserId: actorId,
+            },
+          });
+        }
+      }
 
       await tx.wmsTask.update({
         where: { id: task.id },
@@ -8094,7 +8233,19 @@ export async function handleWmsPost(
           entityType: "WMS_WORK_ORDER",
           entityId: woId,
           action: "kit_build_task_completed",
-          payload: { taskId: task.id, kitQty, outputProductId: kitOutProductId },
+          payload: {
+            taskId: task.id,
+            kitQty,
+            outputProductId: kitOutProductId,
+            ...(bf94Active
+              ? {
+                  kitBuildBf94: {
+                    outputCount: bf94.outputSerialNos.length,
+                    consumedCount: bf94.consumedSerials.length,
+                  },
+                }
+              : {}),
+          },
           actorUserId: actorId,
         },
       });

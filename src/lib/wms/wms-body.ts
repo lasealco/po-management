@@ -363,6 +363,14 @@ export type WmsBody = {
   /** BF-62 — one pick per BOM line with positive scaled consumption (`bomLineId`, component `binId`, optional `lotCode`). */
   kitBuildLines?: Array<{ bomLineId: string; binId: string; lotCode?: string | null }>;
 
+  /**
+   * BF-94 — optional on `complete_kit_build_task`: register finished-good serial numbers and attach component serials
+   * to consumption movements (genealogy / trace expansion via `WmsInventorySerialMovement`).
+   */
+  kitBuildBf94OutputSerialNos?: string[];
+  /** BF-94 — `{ bomLineId, serialNo }` rows; counts per BOM line must match integer consumption for this completion. */
+  kitBuildBf94ConsumedSerials?: Array<{ bomLineId: string; serialNo: string }>;
+
   /** BF-33 — master carton dimensions / units for cube-aware greedy waves (`set_product_carton_cube_hints`). */
   cartonLengthMm?: number | null;
   cartonWidthMm?: number | null;
