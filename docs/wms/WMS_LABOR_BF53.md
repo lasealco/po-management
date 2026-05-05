@@ -16,6 +16,10 @@
 
 All **`wmsTask.create`** paths (putaway, pick, wave picks, replenishment automation, legacy cycle count task, value-add) copy **`standardMinutes`** when a row exists for that type.
 
+## GET (`GET /api/wms`)
+
+**`laborVarianceBf77`** — BF-77 variance exception queue when tenant policy is enabled ([`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md)).
+
 ## Home KPIs (`GET /api/wms?homeKpis=1`)
 
 **`laborTiming`** — among **DONE** tasks in the last **7 days** with **`startedAt`** and **`completedAt`**, warehouse-scoped like other task counts:
@@ -26,8 +30,8 @@ All **`wmsTask.create`** paths (putaway, pick, wave picks, replenishment automat
 
 ## UI
 
-- **`/wms/setup`** — Labor standards (BF-53) table + save form.
-- **`/wms/operations`** — **Start timer** per open task; **Std Nm** badge when snapshot present.
+- **`/wms/setup`** — Labor standards (BF-53) table + save form; **Labor variance (BF-77)** policy panel below when tenant config allows setup mutations.
+- **`/wms/operations`** — **Start timer** per open task; **Std Nm** badge when snapshot present; **Labor variance exceptions** table when BF-77 policy is enabled.
 - **`/wms`** — Executive card **Labor timing (7d, BF-53)**.
 
 ## Out of scope
@@ -36,4 +40,4 @@ LMS/WFM, engineered labor routing, payroll gross pay, per-operator productivity 
 
 ---
 
-_Last updated: 2026-05-04 — BF-53 minimal slice._
+_Last updated: 2026-04-29 — BF-53 minimal slice + **BF-77** variance queue cross-ref._

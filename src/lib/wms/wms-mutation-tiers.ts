@@ -14,6 +14,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_wms_labor_task_standard: "setup",
   /** BF-54 — yard detention thresholds on `Tenant.wmsDockDetentionPolicyJson`. */
   set_wms_dock_detention_policy: "setup",
+  /** BF-77 — labor variance queue thresholds (`Tenant.wmsLaborVariancePolicyJson`). */
+  set_wms_labor_variance_policy: "setup",
   create_bin: "setup",
   update_bin_profile: "setup",
   set_product_carton_cube_hints: "setup",

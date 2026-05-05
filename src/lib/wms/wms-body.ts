@@ -196,6 +196,16 @@ export type WmsBody = {
   dockDetentionEnabled?: boolean;
   dockDetentionFreeGateToDockMinutes?: number;
   dockDetentionFreeDockToDepartMinutes?: number;
+  /** BF-77 — `set_wms_labor_variance_policy`: clears stored thresholds (`Tenant.wmsLaborVariancePolicyJson`). */
+  laborVariancePolicyClear?: boolean;
+  /** BF-77 — enable DONE-task variance queue materialization on `GET /api/wms`. */
+  laborVarianceEnabled?: boolean;
+  laborVarianceExcessPercentThreshold?: number;
+  laborVarianceMinActualMinutes?: number;
+  laborVarianceMinStandardMinutes?: number;
+  laborVarianceLookbackDays?: number;
+  laborVarianceMaxRows?: number;
+  laborVarianceTaskTypes?: string[];
   /** Target allocation strategy for `set_warehouse_pick_allocation_strategy`. */
   pickAllocationStrategy?:
     | "MAX_AVAILABLE_FIRST"

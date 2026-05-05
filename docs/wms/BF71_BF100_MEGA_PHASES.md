@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped wave: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md).
 
-**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** — **minimal slice landed** ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)). **`BF-75`** — **minimal slice landed** ([`WMS_INBOUND_ASN_NORMALIZE_BF75.md`](./WMS_INBOUND_ASN_NORMALIZE_BF75.md)). **`BF-76`** — **minimal slice landed** ([`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md)). **`BF-77`** … **`BF-100`** remain draft IDs until each capsule ships.
+**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** — **minimal slice landed** ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)). **`BF-75`** — **minimal slice landed** ([`WMS_INBOUND_ASN_NORMALIZE_BF75.md`](./WMS_INBOUND_ASN_NORMALIZE_BF75.md)). **`BF-76`** — **minimal slice landed** ([`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md)). **`BF-77`** — **minimal slice landed** ([`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md)). **`BF-78`** … **`BF-100`** remain draft IDs until each capsule ships.
 
 **Rules:**
 
@@ -121,7 +121,7 @@
 
 **Objective:** Flag **`WmsTask`** rows where actual duration vs **`standardMinutes`** exceeds tenant thresholds; Operations queue JSON on **`GET /api/wms`**.
 
-**Exit sketch:** Tenant policy JSON + cron or on-complete evaluator.
+**Shipped (minimal):** **`Tenant.wmsLaborVariancePolicyJson`** + **`set_wms_labor_variance_policy`** + **`laborVarianceBf77`** on **`GET /api/wms`** — [`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md).
 
 **Out of scope:** Payroll gross pay export.
 

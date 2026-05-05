@@ -84,6 +84,10 @@ import {
   collectDockDetentionAlerts,
   parseDockDetentionPolicy,
 } from "./dock-detention";
+import {
+  laborVariancePolicyToStoredJson,
+  validateLaborVariancePolicyDraftFromPost,
+} from "./labor-variance-bf77";
 import { persistDockYardMilestoneWithDetentionAudit } from "./dock-yard-milestone-tx";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
@@ -5199,6 +5203,39 @@ export async function handleWmsPost(
           freeMinutesDockToDepart: parsed.value.freeMinutesDockToDepart,
         },
       },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_wms_labor_variance_policy") {
+    if (input.laborVariancePolicyClear === true) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { wmsLaborVariancePolicyJson: Prisma.JsonNull },
+      });
+      return NextResponse.json({ ok: true });
+    }
+    if (typeof input.laborVarianceEnabled !== "boolean") {
+      return toApiErrorResponseFromStatus(
+        "laborVarianceEnabled (boolean) required, or laborVariancePolicyClear true.",
+        400,
+      );
+    }
+    const validated = validateLaborVariancePolicyDraftFromPost({
+      enabled: input.laborVarianceEnabled,
+      excessPercentThreshold: input.laborVarianceExcessPercentThreshold,
+      minActualMinutes: input.laborVarianceMinActualMinutes,
+      minStandardMinutes: input.laborVarianceMinStandardMinutes,
+      lookbackDays: input.laborVarianceLookbackDays,
+      maxRows: input.laborVarianceMaxRows,
+      taskTypes: input.laborVarianceTaskTypes,
+    });
+    if (!validated.ok) {
+      return toApiErrorResponseFromStatus(validated.error, 400);
+    }
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: { wmsLaborVariancePolicyJson: laborVariancePolicyToStoredJson(validated.policy) },
     });
     return NextResponse.json({ ok: true });
   }

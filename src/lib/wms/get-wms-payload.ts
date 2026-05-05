@@ -28,6 +28,11 @@ import {
   evaluateDangerousGoodsReadinessBf72,
   parseDgChecklistJsonFromDb,
 } from "@/lib/wms/dangerous-goods-bf72";
+import {
+  LABOR_VARIANCE_POLICY_SCHEMA_VERSION,
+  loadLaborVarianceExceptionsBf77,
+  parseLaborVariancePolicyBf77Json,
+} from "@/lib/wms/labor-variance-bf77";
 
 const WMS_PRODUCT_REF_SELECT = {
   id: true,
@@ -160,7 +165,7 @@ export async function getWmsDashboardPayload(
     recentMovements,
     recentMovementMatchedCount,
     laborStandards,
-    tenantDockPolicy,
+    tenantPolicyJsonRow,
     demandForecastStubsRaw,
   ] = await Promise.all([
     prisma.warehouse.findMany({
@@ -447,7 +452,7 @@ export async function getWmsDashboardPayload(
     }),
     prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { wmsDockDetentionPolicyJson: true },
+      select: { wmsDockDetentionPolicyJson: true, wmsLaborVariancePolicyJson: true },
     }),
     prisma.wmsDemandForecastStub.findMany({
       where: {
@@ -604,7 +609,7 @@ export async function getWmsDashboardPayload(
     },
   });
 
-  const dockDetentionPolicyRes = parseDockDetentionPolicy(tenantDockPolicy?.wmsDockDetentionPolicyJson);
+  const dockDetentionPolicyRes = parseDockDetentionPolicy(tenantPolicyJsonRow?.wmsDockDetentionPolicyJson);
   const dockDetentionPolicy = dockDetentionPolicyRes.ok
     ? dockDetentionPolicyRes.value
     : { enabled: false, freeMinutesGateToDock: 120, freeMinutesDockToDepart: 240 };
@@ -623,6 +628,14 @@ export async function getWmsDashboardPayload(
     dockDetentionNow,
   );
   const dockDetentionAlertByApptId = new Map(dockDetentionAlerts.map((x) => [x.appointmentId, x]));
+
+  const laborVarParsed = parseLaborVariancePolicyBf77Json(tenantPolicyJsonRow?.wmsLaborVariancePolicyJson);
+  const laborVarianceExceptions = await loadLaborVarianceExceptionsBf77(
+    prisma,
+    tenantId,
+    laborVarParsed.policy,
+    viewScope.wmsTask,
+  );
 
   const workOrdersRaw = await prisma.wmsWorkOrder.findMany({
     where: { tenantId },
@@ -912,6 +925,13 @@ export async function getWmsDashboardPayload(
       freeMinutesDockToDepart: dockDetentionPolicy.freeMinutesDockToDepart,
     },
     dockDetentionAlerts,
+    laborVarianceBf77: {
+      schemaVersion: LABOR_VARIANCE_POLICY_SCHEMA_VERSION,
+      evaluatedAt: new Date().toISOString(),
+      policy: laborVarParsed.policy,
+      policyNotice: laborVarParsed.notice ?? null,
+      exceptions: laborVarianceExceptions,
+    },
     stockTransfers: stockTransfersRaw.map((st) => ({
       id: st.id,
       referenceCode: st.referenceCode,

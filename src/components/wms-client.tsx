@@ -158,6 +158,34 @@ type WmsData = {
     limitMinutes: number;
     phaseStartedAt: string;
   }>;
+  /** BF-77 — DONE tasks exceeding actual vs engineered standard (`Tenant.wmsLaborVariancePolicyJson`). */
+  laborVarianceBf77?: {
+    schemaVersion: string;
+    evaluatedAt: string;
+    policy: {
+      schemaVersion: string;
+      enabled: boolean;
+      excessPercentThreshold: number;
+      minActualMinutes: number;
+      minStandardMinutes: number;
+      lookbackDays: number;
+      maxRows: number;
+      taskTypes: string[] | null;
+    };
+    policyNotice: string | null;
+    exceptions: Array<{
+      taskId: string;
+      taskType: string;
+      warehouseCode: string | null;
+      warehouseName: string;
+      actualMinutes: number;
+      standardMinutes: number;
+      excessMinutes: number;
+      variancePctVsStandard: number;
+      completedAt: string;
+      completedBy: { id: string; name: string | null } | null;
+    }>;
+  };
   /** BF-55 — stock transfer orders (inter-warehouse). */
   stockTransfers?: Array<{
     id: string;
@@ -1092,6 +1120,13 @@ export function WmsClient({
   const [dockDetentionGateMin, setDockDetentionGateMin] = useState("120");
   const [dockDetentionDwellMin, setDockDetentionDwellMin] = useState("240");
   const [dockDetentionBusy, setDockDetentionBusy] = useState(false);
+  const [laborVarianceEnabledBf77, setLaborVarianceEnabledBf77] = useState(false);
+  const [laborVarianceExcessPctBf77, setLaborVarianceExcessPctBf77] = useState("25");
+  const [laborVarianceMinActualBf77, setLaborVarianceMinActualBf77] = useState("3");
+  const [laborVarianceMinStdBf77, setLaborVarianceMinStdBf77] = useState("1");
+  const [laborVarianceLookbackBf77, setLaborVarianceLookbackBf77] = useState("14");
+  const [laborVarianceMaxRowsBf77, setLaborVarianceMaxRowsBf77] = useState("40");
+  const [laborVarianceBusyBf77, setLaborVarianceBusyBf77] = useState(false);
   const [stoFromWh, setStoFromWh] = useState("");
   const [stoToWh, setStoToWh] = useState("");
   const [stoSourceBalanceId, setStoSourceBalanceId] = useState("");
@@ -1309,6 +1344,24 @@ export function WmsClient({
     data?.dockDetentionPolicy?.enabled,
     data?.dockDetentionPolicy?.freeMinutesGateToDock,
     data?.dockDetentionPolicy?.freeMinutesDockToDepart,
+  ]);
+
+  useEffect(() => {
+    if (!data?.laborVarianceBf77?.policy) return;
+    const p = data.laborVarianceBf77.policy;
+    setLaborVarianceEnabledBf77(p.enabled);
+    setLaborVarianceExcessPctBf77(String(p.excessPercentThreshold));
+    setLaborVarianceMinActualBf77(String(p.minActualMinutes));
+    setLaborVarianceMinStdBf77(String(p.minStandardMinutes));
+    setLaborVarianceLookbackBf77(String(p.lookbackDays));
+    setLaborVarianceMaxRowsBf77(String(p.maxRows));
+  }, [
+    data?.laborVarianceBf77?.policy?.enabled,
+    data?.laborVarianceBf77?.policy?.excessPercentThreshold,
+    data?.laborVarianceBf77?.policy?.minActualMinutes,
+    data?.laborVarianceBf77?.policy?.minStandardMinutes,
+    data?.laborVarianceBf77?.policy?.lookbackDays,
+    data?.laborVarianceBf77?.policy?.maxRows,
   ]);
   const [ledgerSince, setLedgerSince] = useState("");
   const [ledgerUntil, setLedgerUntil] = useState("");
@@ -3424,6 +3477,165 @@ export function WmsClient({
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/35 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Labor variance queue (BF-77)
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Flags recent <span className="font-medium">DONE</span> tasks where{" "}
+                <span className="font-mono text-[11px]">completedAt − startedAt</span> exceeds the snapshotted{" "}
+                <span className="font-mono text-[11px]">standardMinutes</span> by a tenant threshold. Exceptions are
+                listed on Operations below and refreshed on each{" "}
+                <span className="font-mono text-[11px]">GET /api/wms</span> (
+                <span className="font-medium">org.wms.setup → edit</span>). See{" "}
+                <span className="font-medium">docs/wms/WMS_LABOR_VARIANCE_BF77.md</span>.
+              </p>
+              {data?.laborVarianceBf77?.policyNotice ? (
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                  {data.laborVarianceBf77.policyNotice}
+                </p>
+              ) : null}
+              <label className="mt-3 flex items-center gap-2 text-xs text-zinc-700">
+                <input
+                  type="checkbox"
+                  checked={laborVarianceEnabledBf77}
+                  onChange={(e) => setLaborVarianceEnabledBf77(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                Enable variance queue on dashboard
+              </label>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <label className="text-[11px] text-zinc-600">
+                  Excess vs std %
+                  <input
+                    type="number"
+                    min={0}
+                    max={500}
+                    value={laborVarianceExcessPctBf77}
+                    onChange={(e) => setLaborVarianceExcessPctBf77(e.target.value)}
+                    className="ml-1 w-16 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label className="text-[11px] text-zinc-600">
+                  Min actual min
+                  <input
+                    type="number"
+                    min={0}
+                    max={180}
+                    value={laborVarianceMinActualBf77}
+                    onChange={(e) => setLaborVarianceMinActualBf77(e.target.value)}
+                    className="ml-1 w-14 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label className="text-[11px] text-zinc-600">
+                  Min std min
+                  <input
+                    type="number"
+                    min={1}
+                    max={10080}
+                    value={laborVarianceMinStdBf77}
+                    onChange={(e) => setLaborVarianceMinStdBf77(e.target.value)}
+                    className="ml-1 w-14 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label className="text-[11px] text-zinc-600">
+                  Lookback days
+                  <input
+                    type="number"
+                    min={1}
+                    max={90}
+                    value={laborVarianceLookbackBf77}
+                    onChange={(e) => setLaborVarianceLookbackBf77(e.target.value)}
+                    className="ml-1 w-14 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label className="text-[11px] text-zinc-600">
+                  Max rows
+                  <input
+                    type="number"
+                    min={5}
+                    max={200}
+                    value={laborVarianceMaxRowsBf77}
+                    onChange={(e) => setLaborVarianceMaxRowsBf77(e.target.value)}
+                    className="ml-1 w-14 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={laborVarianceBusyBf77 || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        setLaborVarianceBusyBf77(true);
+                        const excess = Math.floor(Number(laborVarianceExcessPctBf77));
+                        const minAct = Math.floor(Number(laborVarianceMinActualBf77));
+                        const minStd = Math.floor(Number(laborVarianceMinStdBf77));
+                        const lb = Math.floor(Number(laborVarianceLookbackBf77));
+                        const mx = Math.floor(Number(laborVarianceMaxRowsBf77));
+                        if (
+                          !Number.isFinite(excess) ||
+                          excess < 0 ||
+                          excess > 500 ||
+                          !Number.isFinite(minAct) ||
+                          minAct < 0 ||
+                          minAct > 180 ||
+                          !Number.isFinite(minStd) ||
+                          minStd < 1 ||
+                          minStd > 10080 ||
+                          !Number.isFinite(lb) ||
+                          lb < 1 ||
+                          lb > 90 ||
+                          !Number.isFinite(mx) ||
+                          mx < 5 ||
+                          mx > 200
+                        ) {
+                          window.alert("Check BF-77 numeric limits (see docs).");
+                          return;
+                        }
+                        await runAction({
+                          action: "set_wms_labor_variance_policy",
+                          laborVarianceEnabled: laborVarianceEnabledBf77,
+                          laborVarianceExcessPercentThreshold: excess,
+                          laborVarianceMinActualMinutes: minAct,
+                          laborVarianceMinStandardMinutes: minStd,
+                          laborVarianceLookbackDays: lb,
+                          laborVarianceMaxRows: mx,
+                        });
+                      } finally {
+                        setLaborVarianceBusyBf77(false);
+                      }
+                    })()
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {laborVarianceBusyBf77 ? "Saving…" : "Save BF-77 policy"}
+                </button>
+                <button
+                  type="button"
+                  disabled={laborVarianceBusyBf77 || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      if (!window.confirm("Clear labor variance policy for this tenant?")) return;
+                      try {
+                        setLaborVarianceBusyBf77(true);
+                        await runAction({
+                          action: "set_wms_labor_variance_policy",
+                          laborVariancePolicyClear: true,
+                        });
+                        setLaborVarianceEnabledBf77(false);
+                      } finally {
+                        setLaborVarianceBusyBf77(false);
+                      }
+                    })()
+                  }
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Clear
+                </button>
               </div>
             </div>
             <div className="rounded-xl border border-amber-100 bg-amber-50/35 p-4">
@@ -10223,6 +10435,59 @@ export function WmsClient({
             })
           )}
         </div>
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Labor variance (BF-77)</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Recent <span className="font-medium">DONE</span> tasks where actual elapsed minutes exceed standard by the
+          tenant excess threshold. Policy under Setup (
+          <span className="font-medium">org.wms.setup → edit</span>).
+        </p>
+        {!data?.laborVarianceBf77 ? (
+          <p className="mt-2 text-xs text-zinc-500">Loading…</p>
+        ) : !data.laborVarianceBf77.policy.enabled ? (
+          <p className="mt-2 text-xs text-zinc-500">Variance queue is disabled — enable BF-77 under Setup.</p>
+        ) : data.laborVarianceBf77.exceptions.length === 0 ? (
+          <p className="mt-2 text-xs text-zinc-500">No exceptions in the configured lookback.</p>
+        ) : (
+          <div className="mt-2 overflow-x-auto">
+            <p className="text-[11px] text-zinc-500">
+              Evaluated <span className="font-mono">{data.laborVarianceBf77.evaluatedAt.slice(0, 19)}</span> ·{" "}
+              {data.laborVarianceBf77.exceptions.length} row(s)
+            </p>
+            <table className="mt-2 min-w-full text-left text-xs">
+              <thead className="bg-zinc-100 text-[10px] uppercase text-zinc-600">
+                <tr>
+                  <th className="px-2 py-1">Task</th>
+                  <th className="px-2 py-1">Type</th>
+                  <th className="px-2 py-1">Warehouse</th>
+                  <th className="px-2 py-1">Actual min</th>
+                  <th className="px-2 py-1">Std min</th>
+                  <th className="px-2 py-1">Δ%</th>
+                  <th className="px-2 py-1">Completed</th>
+                  <th className="px-2 py-1">By</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200">
+                {data.laborVarianceBf77.exceptions.map((x) => (
+                  <tr key={x.taskId}>
+                    <td className="px-2 py-1 font-mono text-[11px]">{x.taskId.slice(0, 12)}…</td>
+                    <td className="px-2 py-1">{x.taskType}</td>
+                    <td className="px-2 py-1">{x.warehouseCode ?? x.warehouseName}</td>
+                    <td className="px-2 py-1 tabular-nums">{x.actualMinutes}</td>
+                    <td className="px-2 py-1 tabular-nums">{x.standardMinutes}</td>
+                    <td className="px-2 py-1 tabular-nums text-amber-800">
+                      +{x.variancePctVsStandard.toFixed(1)}%
+                    </td>
+                    <td className="px-2 py-1 text-zinc-600">{x.completedAt.slice(0, 19)}</td>
+                    <td className="px-2 py-1 text-zinc-600">{x.completedBy?.name ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">

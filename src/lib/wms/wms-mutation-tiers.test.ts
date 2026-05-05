@@ -75,6 +75,7 @@ describe("wmsMutationTierForPostAction", () => {
 
   it("maps BF-54 dock detention policy to setup tier", () => {
     expect(wmsMutationTierForPostAction("set_wms_dock_detention_policy")).toBe("setup");
+    expect(wmsMutationTierForPostAction("set_wms_labor_variance_policy")).toBe("setup");
   });
 
   it("maps BF-55 stock transfer actions to operations tier", () => {

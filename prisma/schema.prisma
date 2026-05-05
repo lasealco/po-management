@@ -48,6 +48,8 @@ model Tenant {
   updatedAt          DateTime @updatedAt
   /// BF-54 — optional yard detention thresholds: `{ "enabled": true, "freeMinutesGateToDock": 120, "freeMinutesDockToDepart": 240 }`.
   wmsDockDetentionPolicyJson                  Json?
+  /// BF-77 — optional labor variance queue thresholds (`excessPercentThreshold`, `lookbackDays`, etc.).
+  wmsLaborVariancePolicyJson                  Json?
 
   users                                       User[]
   orgUnits                                    OrgUnit[]
