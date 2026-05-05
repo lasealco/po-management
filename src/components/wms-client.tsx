@@ -2251,6 +2251,24 @@ export function WmsClient({
     balanceOwnershipBf79SupplierId,
   ]);
 
+  const inventoryAgingBf91ExportHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (selectedWarehouseId) params.set("warehouseId", selectedWarehouseId);
+    if (balanceOwnershipBf79Mode !== "all") params.set("balanceOwnership", balanceOwnershipBf79Mode);
+    const ownSid = balanceOwnershipBf79SupplierId.trim();
+    if (ownSid) params.set("balanceOwnershipSupplierId", ownSid);
+    const qs = params.toString();
+    return qs ? `/api/wms/inventory-aging-export?${qs}` : "/api/wms/inventory-aging-export";
+  }, [selectedWarehouseId, balanceOwnershipBf79Mode, balanceOwnershipBf79SupplierId]);
+
+  const inventoryAgingBf91CsvHref = useMemo(
+    () =>
+      `${inventoryAgingBf91ExportHref}${
+        inventoryAgingBf91ExportHref.includes("?") ? "&" : "?"
+      }format=csv`,
+    [inventoryAgingBf91ExportHref],
+  );
+
   useEffect(() => {
     startTransition(() => {
       void load();
@@ -13544,7 +13562,29 @@ export function WmsClient({
 
       <section className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-sm font-semibold text-zinc-900">Stock balances</h2>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <h2 className="text-sm font-semibold text-zinc-900">Stock balances</h2>
+            <span className="text-[11px] text-zinc-600">
+              <span className="font-medium text-zinc-700">BF-91</span> aging export{" "}
+              <a
+                href={inventoryAgingBf91ExportHref}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-[11px] text-[var(--arscmp-primary)] underline"
+              >
+                JSON
+              </a>
+              {" · "}
+              <a
+                href={inventoryAgingBf91CsvHref}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-[11px] text-[var(--arscmp-primary)] underline"
+              >
+                CSV
+              </a>
+            </span>
+          </div>
           <div className="flex min-w-[12rem] flex-1 flex-wrap items-end justify-end gap-2 sm:max-w-2xl">
             <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs text-zinc-600 sm:max-w-sm">
               Filter by product or bin
