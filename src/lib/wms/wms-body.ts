@@ -322,6 +322,12 @@ export type WmsBody = {
   co2eStubJson?: unknown | null;
   /** BF-69 — `set_product_wms_co2e_factor_bf69`: g CO₂e per kg·km planning factor; `null` clears. */
   wmsCo2eFactorGramsPerKgKm?: number | string | null;
+  /** BF-97 — `Supplier.id` for `set_supplier_scope3_upstream_co2e_bf97`. */
+  supplierId?: string;
+  /** BF-97 — upstream Scope 3 grams CO₂e per kg (`set_supplier_scope3_upstream_co2e_bf97` / `set_product_scope3_upstream_co2e_bf97`); `null` clears. */
+  wmsScope3UpstreamCo2eGramsPerKgBf97?: number | string | null;
+  /** BF-97 — manual rollup grams on `set_inventory_movement_scope3_upstream_hint_bf97`; `null` clears. */
+  co2eScope3UpstreamHintGramsBf97?: number | string | null;
   /** BF-65 — `create_wms_damage_report_bf65` — RECEIVING uses `shipmentId`; PACKING uses `outboundOrderId`. */
   damageReportContext?: "RECEIVING" | "PACKING";
   /** BF-65 — defaults DRAFT. */
@@ -341,7 +347,7 @@ export type WmsBody = {
   inventorySerialId?: string;
   /** BF-13 — raw serial token with `productId` when `inventorySerialId` omitted. */
   inventorySerialNo?: string;
-  /** BF-13 — `InventoryMovement.id` for `attach_inventory_serial_to_movement`; BF-64 — `set_inventory_movement_custody_segment_bf64`; BF-69 — `set_inventory_movement_co2e_hint_bf69`. */
+  /** BF-13 — `InventoryMovement.id` for `attach_inventory_serial_to_movement`; BF-64 — `set_inventory_movement_custody_segment_bf64`; BF-69 — `set_inventory_movement_co2e_hint_bf69`; BF-97 — scope 3 upstream hint mutations. */
   inventoryMovementId?: string;
   /** BF-13 — `InventoryBalance.id` for `set_inventory_serial_balance`; `null` clears pointer. */
   serialBalanceId?: string | null;

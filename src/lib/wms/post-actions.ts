@@ -66,6 +66,12 @@ import {
   parseCo2eStubJsonForPatch,
   parseProductWmsCo2eFactorGramsPerKgKmForPatch,
 } from "./carbon-intensity-bf69";
+import {
+  multiplyQtyByUpstreamGramsPerKgBf97,
+  parseMovementScope3UpstreamHintGramsBf97ForPatch,
+  parseScope3UpstreamGramsPerKgBf97ForPatch,
+  resolveScope3UpstreamGramsPerKgBf97,
+} from "./scope3-upstream-bf97";
 import { custodySegmentIndicatesBreach, parseCustodySegmentJsonForPatch } from "./custody-segment-bf64";
 import {
   DAMAGE_CARRIER_CLAIM_REF_MAX,
@@ -1011,6 +1017,86 @@ export async function handleWmsPost(
     await prisma.product.updateMany({
       where: { id: productId, tenantId },
       data: { wmsCo2eFactorGramsPerKgKm: factor },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_supplier_scope3_upstream_co2e_bf97") {
+    const supplierId = input.supplierId?.trim();
+    if (!supplierId) {
+      return toApiErrorResponseFromStatus("supplierId required.", 400);
+    }
+    if (input.wmsScope3UpstreamCo2eGramsPerKgBf97 === undefined) {
+      return toApiErrorResponseFromStatus(
+        "wmsScope3UpstreamCo2eGramsPerKgBf97 required — send a non-negative number or null to clear.",
+        400,
+      );
+    }
+    const row = await prisma.supplier.findFirst({
+      where: { id: supplierId, tenantId },
+      select: { id: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Supplier not found.", 404);
+    }
+    const parsed = parseScope3UpstreamGramsPerKgBf97ForPatch(input.wmsScope3UpstreamCo2eGramsPerKgBf97);
+    if (!parsed.ok) {
+      return toApiErrorResponseFromStatus(parsed.message, 400);
+    }
+    let factor: Prisma.Decimal | null;
+    if (parsed.mode === "clear") {
+      factor = null;
+    } else if (parsed.mode === "set") {
+      factor = parsed.value;
+    } else {
+      return toApiErrorResponseFromStatus(
+        "wmsScope3UpstreamCo2eGramsPerKgBf97 required — send a non-negative number or null to clear.",
+        400,
+      );
+    }
+    await prisma.supplier.updateMany({
+      where: { id: supplierId, tenantId },
+      data: { wmsScope3UpstreamCo2eGramsPerKgBf97: factor },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_product_scope3_upstream_co2e_bf97") {
+    const productId = input.productId?.trim();
+    if (!productId) {
+      return toApiErrorResponseFromStatus("productId required.", 400);
+    }
+    if (input.wmsScope3UpstreamCo2eGramsPerKgBf97 === undefined) {
+      return toApiErrorResponseFromStatus(
+        "wmsScope3UpstreamCo2eGramsPerKgBf97 required — send a non-negative number or null to clear.",
+        400,
+      );
+    }
+    const row = await prisma.product.findFirst({
+      where: { id: productId, tenantId },
+      select: { id: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Product not found.", 404);
+    }
+    const parsed = parseScope3UpstreamGramsPerKgBf97ForPatch(input.wmsScope3UpstreamCo2eGramsPerKgBf97);
+    if (!parsed.ok) {
+      return toApiErrorResponseFromStatus(parsed.message, 400);
+    }
+    let factor: Prisma.Decimal | null;
+    if (parsed.mode === "clear") {
+      factor = null;
+    } else if (parsed.mode === "set") {
+      factor = parsed.value;
+    } else {
+      return toApiErrorResponseFromStatus(
+        "wmsScope3UpstreamCo2eGramsPerKgBf97 required — send a non-negative number or null to clear.",
+        400,
+      );
+    }
+    await prisma.product.updateMany({
+      where: { id: productId, tenantId },
+      data: { wmsScope3UpstreamCo2eGramsPerKgBf97: factor },
     });
     return NextResponse.json({ ok: true });
   }
@@ -5511,6 +5597,96 @@ export async function handleWmsPost(
     });
 
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_inventory_movement_scope3_upstream_hint_bf97") {
+    const movementId = input.inventoryMovementId?.trim();
+    if (!movementId) {
+      return toApiErrorResponseFromStatus("inventoryMovementId required.", 400);
+    }
+    const gramsPatch = parseMovementScope3UpstreamHintGramsBf97ForPatch(input.co2eScope3UpstreamHintGramsBf97);
+    if (!gramsPatch.ok) {
+      return toApiErrorResponseFromStatus(gramsPatch.message, 400);
+    }
+    if (gramsPatch.mode === "omit") {
+      return toApiErrorResponseFromStatus(
+        "co2eScope3UpstreamHintGramsBf97 required — send a non-negative number or null to clear.",
+        400,
+      );
+    }
+
+    const row = await prisma.inventoryMovement.findFirst({
+      where: { id: movementId, tenantId },
+      select: { id: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Inventory movement not found.", 404);
+    }
+
+    const grams =
+      gramsPatch.mode === "clear" ? null : gramsPatch.mode === "set" ? gramsPatch.value : null;
+
+    await prisma.inventoryMovement.update({
+      where: { id: row.id },
+      data: { co2eScope3UpstreamHintGramsBf97: grams },
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "refresh_inventory_movement_scope3_upstream_hint_bf97") {
+    const movementId = input.inventoryMovementId?.trim();
+    if (!movementId) {
+      return toApiErrorResponseFromStatus("inventoryMovementId required.", 400);
+    }
+
+    const row = await prisma.inventoryMovement.findFirst({
+      where: { id: movementId, tenantId },
+      select: {
+        id: true,
+        quantity: true,
+        product: {
+          select: {
+            wmsScope3UpstreamCo2eGramsPerKgBf97: true,
+            supplierOffice: {
+              select: {
+                supplier: { select: { wmsScope3UpstreamCo2eGramsPerKgBf97: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Inventory movement not found.", 404);
+    }
+
+    const gramsPerKg = resolveScope3UpstreamGramsPerKgBf97({
+      productGramsPerKg: row.product.wmsScope3UpstreamCo2eGramsPerKgBf97 ?? undefined,
+      supplierGramsPerKgViaOffice:
+        row.product.supplierOffice?.supplier?.wmsScope3UpstreamCo2eGramsPerKgBf97 ?? undefined,
+    });
+    if (gramsPerKg == null) {
+      return toApiErrorResponseFromStatus(
+        "No Scope 3 upstream factor on product or linked supplier office supplier.",
+        400,
+      );
+    }
+
+    const hintGrams = multiplyQtyByUpstreamGramsPerKgBf97(row.quantity, gramsPerKg);
+    if (hintGrams == null) {
+      return toApiErrorResponseFromStatus("Could not compute rollup grams from quantity × factor.", 400);
+    }
+
+    await prisma.inventoryMovement.update({
+      where: { id: row.id },
+      data: { co2eScope3UpstreamHintGramsBf97: hintGrams },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      co2eScope3UpstreamHintGramsBf97: hintGrams.toString(),
+    });
   }
 
   if (action === "create_wms_damage_report_bf65") {

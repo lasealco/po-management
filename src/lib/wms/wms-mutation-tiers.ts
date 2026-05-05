@@ -28,6 +28,10 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_product_catch_weight_bf63: "setup",
   /** BF-69 — optional product g·(kg·km)⁻¹ planning factor for CO₂e narratives. */
   set_product_wms_co2e_factor_bf69: "setup",
+  /** BF-97 — optional upstream Scope 3 grams CO₂e per kg on supplier master data. */
+  set_supplier_scope3_upstream_co2e_bf97: "setup",
+  /** BF-97 — optional upstream Scope 3 grams CO₂e per kg override on product. */
+  set_product_scope3_upstream_co2e_bf97: "setup",
   set_replenishment_rule: "setup",
   create_wms_receiving_disposition_template: "setup",
   update_wms_receiving_disposition_template: "setup",
@@ -116,6 +120,10 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   /** BF-64 — cold-chain custody segment on ledger movement. */
   set_inventory_movement_custody_segment_bf64: "inventory",
   set_inventory_movement_co2e_hint_bf69: "inventory",
+  /** BF-97 — manual upstream Scope 3 rollup grams on ledger movement. */
+  set_inventory_movement_scope3_upstream_hint_bf97: "inventory",
+  /** BF-97 — sets rollup from quantity × resolved supplier/product factor (kg-equivalent qty). */
+  refresh_inventory_movement_scope3_upstream_hint_bf97: "inventory",
 
   create_dock_appointment: "operations",
   cancel_dock_appointment: "operations",

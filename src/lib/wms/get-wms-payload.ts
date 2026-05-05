@@ -23,6 +23,10 @@ import {
   CO2E_HINT_METHODOLOGY,
   CO2E_HINT_SCHEMA_VERSION,
 } from "@/lib/wms/carbon-intensity-bf69";
+import {
+  SCOPE3_UPSTREAM_BF97_METHODOLOGY_APPEND,
+  SCOPE3_UPSTREAM_BF97_SCHEMA_NOTE,
+} from "@/lib/wms/scope3-upstream-bf97";
 import { externalPdpBf70DashboardMeta } from "@/lib/wms/external-pdp-bf70";
 import { deniedPartyScreeningBf92DashboardMeta } from "@/lib/wms/denied-party-screening-bf92";
 import { mapWmsFeatureFlagsBf93ForPayload } from "@/lib/wms/wms-feature-flags-bf93";
@@ -70,6 +74,7 @@ const WMS_PRODUCT_REF_SELECT = {
   isCatchWeight: true,
   catchWeightLabelHint: true,
   wmsCo2eFactorGramsPerKgKm: true,
+  wmsScope3UpstreamCo2eGramsPerKgBf97: true,
   isDangerousGoods: true,
   dangerousGoodsClass: true,
   unNumber: true,
@@ -92,6 +97,7 @@ function mapWmsProductJson(p: {
   isCatchWeight: boolean;
   catchWeightLabelHint: string | null;
   wmsCo2eFactorGramsPerKgKm: Prisma.Decimal | null;
+  wmsScope3UpstreamCo2eGramsPerKgBf97: Prisma.Decimal | null;
   isDangerousGoods: boolean;
   dangerousGoodsClass: string | null;
   unNumber: string | null;
@@ -115,6 +121,10 @@ function mapWmsProductJson(p: {
     catchWeightLabelHint: p.catchWeightLabelHint,
     wmsCo2eFactorGramsPerKgKm:
       p.wmsCo2eFactorGramsPerKgKm != null ? p.wmsCo2eFactorGramsPerKgKm.toString() : null,
+    wmsScope3UpstreamCo2eGramsPerKgBf97:
+      p.wmsScope3UpstreamCo2eGramsPerKgBf97 != null
+        ? p.wmsScope3UpstreamCo2eGramsPerKgBf97.toString()
+        : null,
     isDangerousGoods: p.isDangerousGoods,
     dangerousGoodsClass: p.dangerousGoodsClass,
     unNumber: p.unNumber,
@@ -548,7 +558,12 @@ export async function getWmsDashboardPayload(
     where: { tenantId, isActive: true },
     orderBy: { name: "asc" },
     take: 400,
-    select: { id: true, code: true, name: true },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      wmsScope3UpstreamCo2eGramsPerKgBf97: true,
+    },
   });
 
   const inboundAsnAdvises = await prisma.wmsInboundAsnAdvise.findMany({
@@ -1030,13 +1045,22 @@ export async function getWmsDashboardPayload(
     packShipScanPolicy,
     movementCo2eHintMeta: {
       schemaVersion: CO2E_HINT_SCHEMA_VERSION,
-      methodology: CO2E_HINT_METHODOLOGY,
+      methodology: `${CO2E_HINT_METHODOLOGY}${SCOPE3_UPSTREAM_BF97_METHODOLOGY_APPEND}`,
+      scope3UpstreamBf97SchemaNote: SCOPE3_UPSTREAM_BF97_SCHEMA_NOTE,
     },
     externalPdpBf70: externalPdpBf70DashboardMeta(),
     deniedPartyScreeningBf92: deniedPartyScreeningBf92DashboardMeta(),
     wmsFeatureFlagsBf93,
     inventoryOwnershipBalanceFilterBf79: echoInventoryOwnershipBf79Filter(inventoryOwnershipBalanceFilterBf79 ?? null),
-    suppliersBf79: suppliersBf79.map((s) => ({ id: s.id, code: s.code, name: s.name })),
+    suppliersBf79: suppliersBf79.map((s) => ({
+      id: s.id,
+      code: s.code,
+      name: s.name,
+      wmsScope3UpstreamCo2eGramsPerKgBf97:
+        s.wmsScope3UpstreamCo2eGramsPerKgBf97 != null
+          ? s.wmsScope3UpstreamCo2eGramsPerKgBf97.toString()
+          : null,
+    })),
     atpByWarehouseProduct,
     softReservations: softReservationRows.map((r) => ({
       id: r.id,
@@ -1588,6 +1612,10 @@ export async function getWmsDashboardPayload(
       note: m.note,
       custodySegmentJson: m.custodySegmentJson ?? null,
       co2eEstimateGrams: m.co2eEstimateGrams != null ? m.co2eEstimateGrams.toString() : null,
+      co2eScope3UpstreamHintGramsBf97:
+        m.co2eScope3UpstreamHintGramsBf97 != null
+          ? m.co2eScope3UpstreamHintGramsBf97.toString()
+          : null,
       co2eStubJson: m.co2eStubJson ?? null,
       createdAt: m.createdAt.toISOString(),
       warehouse: m.warehouse,

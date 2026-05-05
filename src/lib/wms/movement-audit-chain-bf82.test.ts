@@ -24,6 +24,7 @@ const baseRow = (over: Partial<InventoryMovementBf82CanonInput> = {}): Inventory
   custodySegmentJson: null,
   co2eEstimateGrams: null,
   co2eStubJson: null,
+  co2eScope3UpstreamHintGramsBf97: null,
   createdById: "u1",
   createdAt: new Date("2026-01-15T12:00:00.000Z"),
   ...over,
@@ -79,5 +80,15 @@ describe("movement-audit-chain-bf82", () => {
     const dA = movementEntryDigestHexBf82(baseRow({ quantity: new Prisma.Decimal("1") }));
     const dB = movementEntryDigestHexBf82(baseRow({ quantity: new Prisma.Decimal("2") }));
     expect(dA).not.toBe(dB);
+  });
+
+  it("includes BF-97 upstream hint grams only when set (digest stability)", () => {
+    const without = movementEntryDigestHexBf82(baseRow());
+    const withNull = movementEntryDigestHexBf82(baseRow({ co2eScope3UpstreamHintGramsBf97: null }));
+    expect(without).toBe(withNull);
+    const withVal = movementEntryDigestHexBf82(
+      baseRow({ co2eScope3UpstreamHintGramsBf97: new Prisma.Decimal("12.5") }),
+    );
+    expect(withVal).not.toBe(without);
   });
 });

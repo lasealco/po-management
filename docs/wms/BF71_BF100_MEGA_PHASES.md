@@ -324,6 +324,8 @@
 
 **Exit sketch:** Nullable supplier attrs + movement rollup hint field.
 
+**Shipped (minimal):** Prisma columns **`Supplier.wmsScope3UpstreamCo2eGramsPerKgBf97`**, **`Product.wmsScope3UpstreamCo2eGramsPerKgBf97`**, **`InventoryMovement.co2eScope3UpstreamHintGramsBf97`**; **`GET /api/wms`** exposes factors + rollup + **`movementCo2eHintMeta`** methodology append; **`set_supplier_scope3_upstream_co2e_bf97`** / **`set_product_scope3_upstream_co2e_bf97`** / **`set_inventory_movement_scope3_upstream_hint_bf97`** / **`refresh_inventory_movement_scope3_upstream_hint_bf97`**; BF-82 audit chain folds BF-97 grams; Setup + Stock ledger UI next to BF-69.
+
 **Out of scope:** CDP assurance audits.
 
 ---

@@ -74,13 +74,15 @@ export type InventoryMovementBf82CanonInput = {
   custodySegmentJson: Prisma.JsonValue | null;
   co2eEstimateGrams: Prisma.Decimal | null;
   co2eStubJson: Prisma.JsonValue | null;
+  /** BF-97 — indicative upstream Scope 3 rollup grams for this movement line. */
+  co2eScope3UpstreamHintGramsBf97: Prisma.Decimal | null;
   createdById: string;
   createdAt: Date;
 };
 
 /** Canonical JSON string for hashing — deterministic across Node versions for fixed payloads. */
 export function canonicalMovementJsonBf82(row: InventoryMovementBf82CanonInput): string {
-  const canon = {
+  const canon: Record<string, unknown> = {
     binId: row.binId,
     co2eEstimateGrams: row.co2eEstimateGrams ? row.co2eEstimateGrams.toString() : null,
     co2eStubJson: row.co2eStubJson,
@@ -97,6 +99,9 @@ export function canonicalMovementJsonBf82(row: InventoryMovementBf82CanonInput):
     tenantId: row.tenantId,
     warehouseId: row.warehouseId,
   };
+  if (row.co2eScope3UpstreamHintGramsBf97 != null) {
+    canon.co2eScope3UpstreamHintGramsBf97 = row.co2eScope3UpstreamHintGramsBf97.toString();
+  }
   return JSON.stringify(stableJsonValue(canon));
 }
 
@@ -197,6 +202,7 @@ export async function loadMovementAuditChainBf82(
       custodySegmentJson: true,
       co2eEstimateGrams: true,
       co2eStubJson: true,
+      co2eScope3UpstreamHintGramsBf97: true,
       createdById: true,
       createdAt: true,
     },
@@ -219,6 +225,7 @@ export async function loadMovementAuditChainBf82(
       custodySegmentJson: r.custodySegmentJson,
       co2eEstimateGrams: r.co2eEstimateGrams,
       co2eStubJson: r.co2eStubJson,
+      co2eScope3UpstreamHintGramsBf97: r.co2eScope3UpstreamHintGramsBf97,
       createdById: r.createdById,
       createdAt: r.createdAt,
     };

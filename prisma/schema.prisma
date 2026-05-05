@@ -3049,6 +3049,9 @@ model Supplier {
   defaultIncoterm   String?
   internalNotes     String?  @db.Text
 
+  /// BF-97 — optional Scope 3 upstream cradle-to-gate factor (grams CO₂e per kg of moved SKU qty); indicative stub.
+  wmsScope3UpstreamCo2eGramsPerKgBf97 Decimal? @db.Decimal(18, 6)
+
   /// Hours allowed for booking confirmation after send (logistics partners). Null = tenant default (24h).
   bookingConfirmationSlaHours Int?
   /// AMP2: durable assistant-generated supplier performance brief for buyer review.
@@ -3393,6 +3396,9 @@ model Product {
 
   /// BF-69 — optional planning factor (grams CO₂e per kg·km) for sustainability handoffs; not GLEC-certified.
   wmsCo2eFactorGramsPerKgKm Decimal? @db.Decimal(18, 6)
+
+  /// BF-97 — optional Scope 3 upstream factor override (grams CO₂e per kg); wins over linked supplier office’s supplier default.
+  wmsScope3UpstreamCo2eGramsPerKgBf97 Decimal? @db.Decimal(18, 6)
 
   supplierOfficeId String?
   supplierOffice   SupplierOffice? @relation(fields: [supplierOfficeId], references: [id], onDelete: SetNull)
@@ -5011,6 +5017,8 @@ model InventoryMovement {
   co2eEstimateGrams Decimal? @db.Decimal(18, 4)
   /// BF-69 — optional transport/distance stubs supporting the estimate (plain JSON object).
   co2eStubJson Json?
+  /// BF-97 — optional upstream Scope 3 rollup hint for this movement (grams CO₂e); qty × factor handoffs assume qty is kg-equivalent unless tenant defines otherwise.
+  co2eScope3UpstreamHintGramsBf97 Decimal? @db.Decimal(18, 4)
   createdById   String
   createdAt     DateTime              @default(now())
 

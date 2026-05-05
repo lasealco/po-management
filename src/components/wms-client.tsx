@@ -99,6 +99,8 @@ type WmsProductRef = {
   catchWeightLabelHint: string | null;
   /** BF-69 — grams CO₂e per kg·km planning factor (nullable). */
   wmsCo2eFactorGramsPerKgKm?: string | null;
+  /** BF-97 — upstream Scope 3 grams CO₂e per kg (nullable product override). */
+  wmsScope3UpstreamCo2eGramsPerKgBf97?: string | null;
   /** BF-72 — dangerous goods master data snapshot from catalog (informational on outbound lines). */
   isDangerousGoods?: boolean;
   dangerousGoodsClass?: string | null;
@@ -460,8 +462,12 @@ type WmsData = {
     packScanRequired: boolean;
     shipScanRequired: boolean;
   };
-  /** BF-69 — methodology string for movement / product CO₂e hint fields (indicative only). */
-  movementCo2eHintMeta?: { schemaVersion: string; methodology: string };
+  /** BF-69 + BF-97 — methodology text for movement / master-data CO₂e hint fields (indicative only). */
+  movementCo2eHintMeta?: {
+    schemaVersion: string;
+    methodology: string;
+    scope3UpstreamBf97SchemaNote?: string;
+  };
   /** BF-70 — external HTTP PDP hook status (URL is not exposed). */
   externalPdpBf70?: {
     schemaVersion: string;
@@ -490,7 +496,12 @@ type WmsData = {
     supplierId: string | null;
   };
   /** BF-79 — supplier selector options for VMI / consignment tagging (active suppliers). */
-  suppliersBf79?: Array<{ id: string; code: string | null; name: string }>;
+  suppliersBf79?: Array<{
+    id: string;
+    code: string | null;
+    name: string;
+    wmsScope3UpstreamCo2eGramsPerKgBf97?: string | null;
+  }>;
   /** BF-36 — ATP aggregates per warehouse × SKU (soft reservations reduce ATP). */
   atpByWarehouseProduct?: Array<{
     warehouseId: string;
@@ -815,6 +826,7 @@ type WmsData = {
     note: string | null;
     custodySegmentJson: unknown | null;
     co2eEstimateGrams?: string | null;
+    co2eScope3UpstreamHintGramsBf97?: string | null;
     co2eStubJson?: unknown | null;
     createdAt: string;
     warehouse: { id: string; code: string | null; name: string };
@@ -1065,6 +1077,7 @@ function downloadMovementLedgerCsv(
     "note",
     "custodySegmentJson",
     "co2eEstimateGrams",
+    "co2eScope3UpstreamHintGramsBf97",
     "co2eStubJson",
     "createdBy",
   ];
@@ -1089,6 +1102,7 @@ function downloadMovementLedgerCsv(
         esc(m.note ?? ""),
         esc(custody),
         esc(m.co2eEstimateGrams ?? ""),
+        esc(m.co2eScope3UpstreamHintGramsBf97 ?? ""),
         esc(co2eStub),
         esc(m.createdBy.name),
       ].join(","),
@@ -1683,6 +1697,11 @@ export function WmsClient({
   const [bf69MovementId, setBf69MovementId] = useState("");
   const [bf69Co2eGrams, setBf69Co2eGrams] = useState("");
   const [bf69StubJson, setBf69StubJson] = useState("");
+  const [bf97SupplierUpstreamId, setBf97SupplierUpstreamId] = useState("");
+  const [bf97SupplierUpstreamGrams, setBf97SupplierUpstreamGrams] = useState("");
+  const [bf97ProductUpstreamId, setBf97ProductUpstreamId] = useState("");
+  const [bf97ProductUpstreamGrams, setBf97ProductUpstreamGrams] = useState("");
+  const [bf97MovementScope3Grams, setBf97MovementScope3Grams] = useState("");
   const [bf73RecallCode, setBf73RecallCode] = useState("");
   const [bf73RecallTitle, setBf73RecallTitle] = useState("");
   const [bf73RecallNote, setBf73RecallNote] = useState("");
@@ -3844,6 +3863,160 @@ export function WmsClient({
                 className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-medium text-emerald-950 disabled:opacity-40"
               >
                 Clear factor
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50/40 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-teal-950">
+              BF-97 — Scope 3 upstream (grams CO₂e per kg)
+            </p>
+            <p className="mt-1 text-[11px] text-teal-950/85">
+              Supplier default plus optional product override; movement rollup uses quantity × resolved factor when you treat quantity as kg-equivalent — indicative only.
+            </p>
+            <div className="mt-3 grid gap-3 border-b border-teal-100 pb-3 sm:grid-cols-2">
+              <label className="block sm:col-span-2">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Supplier</span>
+                <select
+                  disabled={!canEdit || busy}
+                  value={bf97SupplierUpstreamId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setBf97SupplierUpstreamId(id);
+                    const s = (data?.suppliersBf79 ?? []).find((x) => x.id === id);
+                    setBf97SupplierUpstreamGrams(s?.wmsScope3UpstreamCo2eGramsPerKgBf97?.trim() ?? "");
+                  }}
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Select supplier…</option>
+                  {(data?.suppliersBf79 ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.code || s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">g CO₂e per kg (upstream)</span>
+                <input
+                  value={bf97SupplierUpstreamGrams}
+                  onChange={(e) => setBf97SupplierUpstreamGrams(e.target.value)}
+                  inputMode="decimal"
+                  disabled={!canEdit || busy || !bf97SupplierUpstreamId}
+                  placeholder="e.g. 420"
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                />
+              </label>
+              <div className="flex flex-wrap gap-2 sm:col-span-2">
+                <button
+                  type="button"
+                  disabled={
+                    !canEdit ||
+                    busy ||
+                    !bf97SupplierUpstreamId ||
+                    !bf97SupplierUpstreamGrams.trim() ||
+                    !Number.isFinite(Number(bf97SupplierUpstreamGrams.trim())) ||
+                    Number(bf97SupplierUpstreamGrams.trim()) < 0
+                  }
+                  onClick={() =>
+                    void runAction({
+                      action: "set_supplier_scope3_upstream_co2e_bf97",
+                      supplierId: bf97SupplierUpstreamId,
+                      wmsScope3UpstreamCo2eGramsPerKgBf97: Number(bf97SupplierUpstreamGrams.trim()),
+                    })
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                >
+                  Save supplier factor
+                </button>
+                <button
+                  type="button"
+                  disabled={!canEdit || busy || !bf97SupplierUpstreamId}
+                  onClick={() => {
+                    setBf97SupplierUpstreamGrams("");
+                    void runAction({
+                      action: "set_supplier_scope3_upstream_co2e_bf97",
+                      supplierId: bf97SupplierUpstreamId,
+                      wmsScope3UpstreamCo2eGramsPerKgBf97: null,
+                    });
+                  }}
+                  className="rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-[11px] font-medium text-teal-950 disabled:opacity-40"
+                >
+                  Clear supplier factor
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="block sm:col-span-2">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Product override</span>
+                <select
+                  disabled={!canEdit || busy}
+                  value={bf97ProductUpstreamId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setBf97ProductUpstreamId(id);
+                    const p = productPickOptionsForWarehouse.find((x) => x.id === id);
+                    setBf97ProductUpstreamGrams(p?.wmsScope3UpstreamCo2eGramsPerKgBf97?.trim() ?? "");
+                  }}
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Select product…</option>
+                  {productPickOptionsForWarehouse.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.sku || p.productCode || p.id.slice(0, 8)} · {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">
+                  g CO₂e per kg on SKU (overrides supplier chain)
+                </span>
+                <input
+                  value={bf97ProductUpstreamGrams}
+                  onChange={(e) => setBf97ProductUpstreamGrams(e.target.value)}
+                  inputMode="decimal"
+                  disabled={!canEdit || busy || !bf97ProductUpstreamId}
+                  placeholder="e.g. 380"
+                  className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={
+                  !canEdit ||
+                  busy ||
+                  !bf97ProductUpstreamId ||
+                  !bf97ProductUpstreamGrams.trim() ||
+                  !Number.isFinite(Number(bf97ProductUpstreamGrams.trim())) ||
+                  Number(bf97ProductUpstreamGrams.trim()) < 0
+                }
+                onClick={() =>
+                  void runAction({
+                    action: "set_product_scope3_upstream_co2e_bf97",
+                    productId: bf97ProductUpstreamId,
+                    wmsScope3UpstreamCo2eGramsPerKgBf97: Number(bf97ProductUpstreamGrams.trim()),
+                  })
+                }
+                className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+              >
+                Save product override
+              </button>
+              <button
+                type="button"
+                disabled={!canEdit || busy || !bf97ProductUpstreamId}
+                onClick={() => {
+                  setBf97ProductUpstreamGrams("");
+                  void runAction({
+                    action: "set_product_scope3_upstream_co2e_bf97",
+                    productId: bf97ProductUpstreamId,
+                    wmsScope3UpstreamCo2eGramsPerKgBf97: null,
+                  });
+                }}
+                className="rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-[11px] font-medium text-teal-950 disabled:opacity-40"
+              >
+                Clear product override
               </button>
             </div>
           </div>
@@ -13453,6 +13626,11 @@ export function WmsClient({
               <p className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50/60 px-2 py-1.5 text-[11px] text-emerald-950/90">
                 <span className="font-semibold">{data.movementCo2eHintMeta.schemaVersion}</span> —{" "}
                 {data.movementCo2eHintMeta.methodology}
+                {data.movementCo2eHintMeta.scope3UpstreamBf97SchemaNote ? (
+                  <span className="mt-1 block text-[10px] font-semibold text-emerald-900/85">
+                    BF-97 tag: {data.movementCo2eHintMeta.scope3UpstreamBf97SchemaNote}
+                  </span>
+                ) : null}
               </p>
             ) : null}
           </div>
@@ -13731,6 +13909,73 @@ export function WmsClient({
                 Clear all CO₂e
               </button>
             </div>
+            <div className="mt-4 border-t border-emerald-200/70 pt-3">
+              <h4 className="text-[11px] font-semibold text-emerald-950">BF-97 — Scope 3 upstream rollup</h4>
+              <p className="mt-1 max-w-3xl text-[11px] text-emerald-950/85">
+                Uses the same movement id. Manual grams or compute quantity × upstream factor (product overrides supplier
+                linked via supplier office).
+              </p>
+              <label className="mt-2 block max-w-sm text-[11px] font-medium text-zinc-700">
+                Scope 3 hint (grams)
+                <input
+                  value={bf97MovementScope3Grams}
+                  onChange={(e) => setBf97MovementScope3Grams(e.target.value)}
+                  disabled={busy}
+                  inputMode="decimal"
+                  className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1 font-mono text-[11px]"
+                  placeholder="e.g. 2400"
+                />
+              </label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={
+                    busy ||
+                    !bf69MovementId.trim() ||
+                    !bf97MovementScope3Grams.trim() ||
+                    !Number.isFinite(Number(bf97MovementScope3Grams.trim())) ||
+                    Number(bf97MovementScope3Grams.trim()) < 0
+                  }
+                  onClick={() =>
+                    void runAction({
+                      action: "set_inventory_movement_scope3_upstream_hint_bf97",
+                      inventoryMovementId: bf69MovementId.trim(),
+                      co2eScope3UpstreamHintGramsBf97: Number(bf97MovementScope3Grams.trim()),
+                    })
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                >
+                  Apply Scope 3 grams
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !bf69MovementId.trim()}
+                  onClick={() =>
+                    void runAction({
+                      action: "set_inventory_movement_scope3_upstream_hint_bf97",
+                      inventoryMovementId: bf69MovementId.trim(),
+                      co2eScope3UpstreamHintGramsBf97: null,
+                    })
+                  }
+                  className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-medium text-emerald-950 disabled:opacity-40"
+                >
+                  Clear Scope 3 hint
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !bf69MovementId.trim()}
+                  onClick={() =>
+                    void runAction({
+                      action: "refresh_inventory_movement_scope3_upstream_hint_bf97",
+                      inventoryMovementId: bf69MovementId.trim(),
+                    })
+                  }
+                  className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-medium text-emerald-950 disabled:opacity-40"
+                >
+                  Refresh qty × factor
+                </button>
+              </div>
+            </div>
           </div>
         ) : null}
         <div className="overflow-x-auto">
@@ -13746,13 +13991,14 @@ export function WmsClient({
                 <th className="px-2 py-1">Ref</th>
                 <th className="px-2 py-1">Custody</th>
                 <th className="px-2 py-1">CO₂e (g)</th>
+                <th className="px-2 py-1">Scope 3 (↑)</th>
                 <th className="px-2 py-1">By</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {movementsShown.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={11} className="px-2 py-3 text-zinc-500">
                     {ledgerEmptyNoMatch
                       ? "No movements match these filters. Reset filters or broaden date range."
                       : "No movements yet in this view."}
@@ -13815,9 +14061,27 @@ export function WmsClient({
                             setBf69StubJson(
                               m.co2eStubJson != null ? JSON.stringify(m.co2eStubJson, null, 0) : "",
                             );
+                            setBf97MovementScope3Grams(m.co2eScope3UpstreamHintGramsBf97 ?? "");
                           }}
                         >
                           {m.co2eEstimateGrams != null ? m.co2eEstimateGrams : "stub"}
+                        </button>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-2 py-1 text-xs text-zinc-600">
+                      {m.co2eScope3UpstreamHintGramsBf97 != null ? (
+                        <button
+                          type="button"
+                          className="rounded-full bg-teal-50 px-1.5 py-0.5 font-medium text-teal-950 hover:bg-teal-100"
+                          title={`Scope 3 upstream hint: ${m.co2eScope3UpstreamHintGramsBf97} g`}
+                          onClick={() => {
+                            setBf69MovementId(m.id);
+                            setBf97MovementScope3Grams(m.co2eScope3UpstreamHintGramsBf97 ?? "");
+                          }}
+                        >
+                          {m.co2eScope3UpstreamHintGramsBf97}
                         </button>
                       ) : (
                         "—"
