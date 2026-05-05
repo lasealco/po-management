@@ -413,6 +413,18 @@ export type WmsBody = {
   softReservationRefType?: string | null;
   softReservationRefId?: string | null;
   softReservationNote?: string | null;
+  /** BF-88 — optional tier tag for tenant ATP reservation policy matching. */
+  softReservationTierTagBf88?: string | null;
+  /** BF-88 — explicit priority on create (else tier / default from policy). */
+  softReservationPriorityBf88?: number;
+
+  /** BF-88 — `set_wms_atp_reservation_policy_bf88`. */
+  atpReservationPolicyBf88Clear?: boolean;
+  atpReservationDefaultTtlSecondsBf88?: number;
+  atpReservationDefaultPriorityBf88?: number;
+  /** Omit / null: every soft reservation counts toward allocation ATP; else only priority ≥ floor. */
+  atpReservationPickFloorPriorityBf88?: number | string | null;
+  atpReservationTiersBf88?: unknown[];
 
   /** BF-55 — source site for `create_wms_stock_transfer`. */
   fromWarehouseId?: string;

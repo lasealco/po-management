@@ -209,6 +209,26 @@ type WmsData = {
       completedBy: { id: string; name: string | null } | null;
     }>;
   };
+  /** BF-88 — ATP soft-reservation tiers + pick-allocation priority floor (`Tenant.wmsAtpReservationPolicyJsonBf88`). */
+  atpReservationPolicyBf88?: {
+    schemaVersion: string;
+    evaluatedAt: string;
+    policy: {
+      schemaVersion: string;
+      defaultTtlSeconds: number;
+      defaultPriorityBf88: number;
+      pickAllocationSoftReservationPriorityFloorBf88: number | null;
+      tiers: Array<{
+        ttlSeconds: number;
+        priorityBf88: number;
+        matchTierTag?: string | null;
+        matchReferenceType?: string | null;
+        matchReferenceTypePrefix?: string | null;
+        matchReferenceIdPrefix?: string | null;
+      }>;
+    };
+    policyNotice: string | null;
+  };
   /** BF-81 — RFID commissioning bridge (`Tenant.wmsRfidEncodingTableJsonBf81`). */
   rfidEncodingBf81?: {
     schemaVersion: string;
@@ -451,6 +471,8 @@ type WmsData = {
     id: string;
     quantity: string;
     expiresAt: string;
+    /** BF-88 — priority tier used for pick-allocation ATP floor filtering. */
+    priorityBf88: number;
     referenceType: string | null;
     referenceId: string | null;
     note: string | null;
@@ -1648,6 +1670,11 @@ export function WmsClient({
   const [laborVarianceLookbackBf77, setLaborVarianceLookbackBf77] = useState("14");
   const [laborVarianceMaxRowsBf77, setLaborVarianceMaxRowsBf77] = useState("40");
   const [laborVarianceBusyBf77, setLaborVarianceBusyBf77] = useState(false);
+  const [bf88DefaultTtl, setBf88DefaultTtl] = useState("3600");
+  const [bf88DefaultPri, setBf88DefaultPri] = useState("100");
+  const [bf88PickFloor, setBf88PickFloor] = useState("");
+  const [bf88TiersJson, setBf88TiersJson] = useState("[]");
+  const [bf88Busy, setBf88Busy] = useState(false);
   const [rfidEncodingDraftBf81, setRfidEncodingDraftBf81] = useState("");
   const [rfidEncodingBusyBf81, setRfidEncodingBusyBf81] = useState(false);
   const [stoFromWh, setStoFromWh] = useState("");
@@ -1826,6 +1853,7 @@ export function WmsClient({
   const [bf36SoftBalanceId, setBf36SoftBalanceId] = useState("");
   const [bf36SoftQty, setBf36SoftQty] = useState("");
   const [bf36SoftTtl, setBf36SoftTtl] = useState("3600");
+  const [bf36SoftTierTag, setBf36SoftTierTag] = useState("");
   const [woEstDraft, setWoEstDraft] = useState<Record<string, { m: string; l: string }>>({});
   /** BF-26 — draft CRM quote line id for link action (initialized from payload). */
   const [woQuoteLineLinkDraft, setWoQuoteLineLinkDraft] = useState<Record<string, string>>({});
@@ -1902,6 +1930,19 @@ export function WmsClient({
     data?.laborVarianceBf77?.policy?.lookbackDays,
     data?.laborVarianceBf77?.policy?.maxRows,
   ]);
+
+  useEffect(() => {
+    const p = data?.atpReservationPolicyBf88?.policy;
+    if (!p) return;
+    setBf88DefaultTtl(String(p.defaultTtlSeconds));
+    setBf88DefaultPri(String(p.defaultPriorityBf88));
+    setBf88PickFloor(
+      p.pickAllocationSoftReservationPriorityFloorBf88 == null
+        ? ""
+        : String(p.pickAllocationSoftReservationPriorityFloorBf88),
+    );
+    setBf88TiersJson(JSON.stringify(p.tiers ?? [], null, 2));
+  }, [data?.atpReservationPolicyBf88?.evaluatedAt]);
 
   useEffect(() => {
     if (!data?.rfidEncodingBf81) return;
@@ -4188,6 +4229,156 @@ export function WmsClient({
                         setLaborVarianceEnabledBf77(false);
                       } finally {
                         setLaborVarianceBusyBf77(false);
+                      }
+                    })()
+                  }
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="rounded-xl border border-teal-100 bg-teal-50/35 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                ATP reservation tiers (BF-88)
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Tier rules set default TTL and <span className="font-medium">priority</span> on soft reservations from{" "}
+                <span className="font-mono text-[11px]">referenceType</span> /{" "}
+                <span className="font-mono text-[11px]">referenceId</span> / optional tier tag. Optional{" "}
+                <span className="font-medium">pick floor</span> ignores low-priority reservations when allocating picks,
+                waves, replen moves, and STO ships — dashboard ATP stays strict (all soft qty).
+              </p>
+              {data?.atpReservationPolicyBf88?.policyNotice ? (
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                  {data.atpReservationPolicyBf88.policyNotice}
+                </p>
+              ) : null}
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <label className="text-[11px] text-zinc-600">
+                  Default TTL (sec)
+                  <input
+                    type="number"
+                    min={1}
+                    value={bf88DefaultTtl}
+                    onChange={(e) => setBf88DefaultTtl(e.target.value)}
+                    className="ml-1 w-24 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label className="text-[11px] text-zinc-600">
+                  Default priority
+                  <input
+                    type="number"
+                    min={0}
+                    max={100000}
+                    value={bf88DefaultPri}
+                    onChange={(e) => setBf88DefaultPri(e.target.value)}
+                    className="ml-1 w-24 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label className="text-[11px] text-zinc-600">
+                  Pick ATP floor (priority ≥)
+                  <input
+                    type="number"
+                    min={0}
+                    max={100000}
+                    placeholder="empty = all soft qty"
+                    value={bf88PickFloor}
+                    onChange={(e) => setBf88PickFloor(e.target.value)}
+                    className="ml-1 w-28 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+              </div>
+              <p className="mt-2 text-[11px] text-zinc-500">
+                Tiers JSON (first match wins). Example:{" "}
+                <span className="font-mono text-[10px]">
+                  {`[{"ttlSeconds":7200,"priorityBf88":400,"matchReferenceTypePrefix":"CHANNEL:"}]`}
+                </span>
+              </p>
+              <textarea
+                value={bf88TiersJson}
+                onChange={(e) => setBf88TiersJson(e.target.value)}
+                rows={6}
+                spellCheck={false}
+                disabled={bf88Busy || !canEdit}
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white p-2 font-mono text-[11px] text-zinc-900"
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={bf88Busy || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        setBf88Busy(true);
+                        const dt = Math.floor(Number(bf88DefaultTtl));
+                        const dp = Math.floor(Number(bf88DefaultPri));
+                        if (
+                          !Number.isFinite(dt) ||
+                          dt <= 0 ||
+                          dt > 86400 * 366 ||
+                          !Number.isFinite(dp) ||
+                          dp < 0 ||
+                          dp > 100000
+                        ) {
+                          window.alert("Check default TTL (1–366d) and priority (0–100000).");
+                          return;
+                        }
+                        let tiersParsed: unknown;
+                        try {
+                          tiersParsed = JSON.parse(bf88TiersJson || "[]") as unknown;
+                        } catch {
+                          window.alert("Tiers must be valid JSON array.");
+                          return;
+                        }
+                        if (!Array.isArray(tiersParsed)) {
+                          window.alert("Tiers JSON must be an array.");
+                          return;
+                        }
+                        const floorRaw = bf88PickFloor.trim();
+                        let floorArg: number | null = null;
+                        if (floorRaw !== "") {
+                          const fl = Math.floor(Number(floorRaw));
+                          if (!Number.isFinite(fl) || fl < 0 || fl > 100000) {
+                            window.alert("Pick floor must be empty or 0–100000.");
+                            return;
+                          }
+                          floorArg = fl;
+                        }
+                        await runAction({
+                          action: "set_wms_atp_reservation_policy_bf88",
+                          atpReservationDefaultTtlSecondsBf88: dt,
+                          atpReservationDefaultPriorityBf88: dp,
+                          atpReservationPickFloorPriorityBf88: floorArg,
+                          atpReservationTiersBf88: tiersParsed,
+                        });
+                      } finally {
+                        setBf88Busy(false);
+                      }
+                    })()
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {bf88Busy ? "Saving…" : "Save BF-88 policy"}
+                </button>
+                <button
+                  type="button"
+                  disabled={bf88Busy || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      if (!window.confirm("Clear ATP reservation policy for this tenant?")) return;
+                      try {
+                        setBf88Busy(true);
+                        await runAction({
+                          action: "set_wms_atp_reservation_policy_bf88",
+                          atpReservationPolicyBf88Clear: true,
+                        });
+                        setBf88DefaultTtl("3600");
+                        setBf88DefaultPri("100");
+                        setBf88PickFloor("");
+                        setBf88TiersJson("[]");
+                      } finally {
+                        setBf88Busy(false);
                       }
                     })()
                   }
@@ -12279,7 +12470,8 @@ export function WmsClient({
         <h2 className="mt-2 text-sm font-semibold text-zinc-900">ATP & soft reservations (BF-36)</h2>
         <p className="mt-1 text-xs text-zinc-600">
           Soft reservations reduce ATP for picks, waves, and replenishment moves until they expire or are released.
-          Default TTL is 3600s when omitted.
+          Default TTL is 3600s when omitted. BF-88 tiers adjust TTL/priority; optional pick floor lets allocation ignore
+          low-priority holds while this ATP grid stays conservative (strict soft sum).
         </p>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -12346,6 +12538,12 @@ export function WmsClient({
             inputMode="numeric"
             className="w-28 rounded border border-zinc-300 px-3 py-2 text-sm"
           />
+          <input
+            value={bf36SoftTierTag}
+            onChange={(e) => setBf36SoftTierTag(e.target.value)}
+            placeholder="BF-88 tier tag (opt)"
+            className="min-w-[10rem] rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
           <button
             type="button"
             disabled={
@@ -12362,6 +12560,9 @@ export function WmsClient({
                 balanceId: bf36SoftBalanceId,
                 quantity: Number(bf36SoftQty),
                 ...(ttlRaw !== "" ? { softReservationTtlSeconds: Number(ttlRaw) } : {}),
+                ...(bf36SoftTierTag.trim()
+                  ? { softReservationTierTagBf88: bf36SoftTierTag.trim() }
+                  : {}),
               });
             }}
             className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
@@ -12376,6 +12577,7 @@ export function WmsClient({
               <tr>
                 <th className="px-2 py-1">Expires</th>
                 <th className="px-2 py-1">Qty</th>
+                <th className="px-2 py-1">Pri</th>
                 <th className="px-2 py-1">Bin</th>
                 <th className="px-2 py-1">Product</th>
                 <th className="px-2 py-1" />
@@ -12384,7 +12586,7 @@ export function WmsClient({
             <tbody className="divide-y divide-zinc-200">
               {softReservationsShown.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-2 py-2 text-zinc-500">
+                  <td colSpan={6} className="px-2 py-2 text-zinc-500">
                     No active soft reservations.
                   </td>
                 </tr>
@@ -12395,6 +12597,7 @@ export function WmsClient({
                       {new Date(r.expiresAt).toLocaleString()}
                     </td>
                     <td className="px-2 py-1">{r.quantity}</td>
+                    <td className="px-2 py-1 font-mono text-xs">{r.priorityBf88}</td>
                     <td className="px-2 py-1">{r.bin.code}</td>
                     <td className="px-2 py-1 text-xs">
                       {r.product.productCode || r.product.sku || "—"} · {r.product.name}

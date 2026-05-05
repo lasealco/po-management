@@ -52,6 +52,8 @@ model Tenant {
   wmsLaborVariancePolicyJson                  Json?
   /// BF-81 — optional RFID commissioning bridge: TID/EPC normalization + mappings for pack/ship multiset scans (`schemaVersion` `bf81.v1`).
   wmsRfidEncodingTableJsonBf81                Json?
+  /// BF-88 — ATP soft-reservation tier TTL/priority + optional pick-allocation priority floor (`schemaVersion` `bf88.v1`).
+  wmsAtpReservationPolicyJsonBf88           Json?
 
   users                                       User[]
   orgUnits                                    OrgUnit[]
@@ -4966,6 +4968,8 @@ model WmsInventorySoftReservation {
   referenceType      String?  @db.VarChar(80)
   referenceId        String?  @db.VarChar(128)
   note               String?  @db.VarChar(500)
+  /// BF-88 — higher priority reservations constrain pick allocation ATP first; tier policy assigns default.
+  priorityBf88       Int      @default(100)
   createdById        String
   createdAt          DateTime @default(now())
 

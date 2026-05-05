@@ -42,6 +42,13 @@ import {
   effectiveForecastQtyBf84,
   validatePromoUpliftBf84Post,
 } from "./promo-uplift-bf84";
+import {
+  atpReservationPolicyBf88ToStoredJson,
+  loadPickAllocationSoftReservedQtyByBalanceIdsBf88,
+  parseAtpReservationPolicyBf88Json,
+  resolveTierForSoftReservationBf88,
+  validateAtpReservationPolicyDraftFromPost,
+} from "./atp-reservation-policy-bf88";
 import { softReservedQtyByBalanceIds } from "./soft-reservation";
 import { orderPickSlotsSolverPrototype } from "./pick-wave-solver-prototype";
 import { batchPickVisitBinOrder, cloneWavePickSlotPools } from "./pick-wave-batch";
@@ -1217,7 +1224,7 @@ export async function handleWmsPost(
         effectiveForecastQtyBf84(Number(s.forecastQty), s.promoUpliftBf84Json),
       );
     }
-    const replenSoftMap = await softReservedQtyByBalanceIds(
+    const replenSoftMap = await loadPickAllocationSoftReservedQtyByBalanceIdsBf88(
       prisma,
       tenantId,
       balances.map((b) => b.id),
@@ -1849,7 +1856,9 @@ export async function handleWmsPost(
     if (bal.onHold) {
       return toApiErrorResponseFromStatus("Cannot allocate pick: bin/product is on hold.", 400);
     }
-    const softPickMap = await softReservedQtyByBalanceIds(prisma, tenantId, [bal.id]);
+    const softPickMap = await loadPickAllocationSoftReservedQtyByBalanceIdsBf88(prisma, tenantId, [
+      bal.id,
+    ]);
     const softPick = softPickMap.get(bal.id) ?? 0;
     const effectivePick = Number(bal.onHandQty) - Number(bal.allocatedQty) - softPick;
     if (qty > effectivePick) {
@@ -2000,7 +2009,7 @@ export async function handleWmsPost(
         where: { tenantId, warehouseId },
         include: { bin: { select: { id: true, code: true, isPickFace: true, isCrossDockStaging: true, capacityCubeCubicMm: true } } },
       });
-      const softWaveMap = await softReservedQtyByBalanceIds(
+      const softWaveMap = await loadPickAllocationSoftReservedQtyByBalanceIdsBf88(
         prisma,
         tenantId,
         balancesAll.map((b) => b.id),
@@ -2049,7 +2058,7 @@ export async function handleWmsPost(
         where: { tenantId, warehouseId, lotCode: FUNGIBLE_LOT_CODE },
         include: { bin: { select: { id: true, code: true, isPickFace: true, isCrossDockStaging: true, capacityCubeCubicMm: true } } },
       });
-      const softWaveMap = await softReservedQtyByBalanceIds(
+      const softWaveMap = await loadPickAllocationSoftReservedQtyByBalanceIdsBf88(
         prisma,
         tenantId,
         balances.map((b) => b.id),
@@ -5798,6 +5807,32 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "set_wms_atp_reservation_policy_bf88") {
+    if (input.atpReservationPolicyBf88Clear === true) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { wmsAtpReservationPolicyJsonBf88: Prisma.JsonNull },
+      });
+      return NextResponse.json({ ok: true });
+    }
+    const validated = validateAtpReservationPolicyDraftFromPost({
+      defaultTtlSeconds: input.atpReservationDefaultTtlSecondsBf88,
+      defaultPriorityBf88: input.atpReservationDefaultPriorityBf88,
+      pickAllocationSoftReservationPriorityFloorBf88: input.atpReservationPickFloorPriorityBf88,
+      tiers: Array.isArray(input.atpReservationTiersBf88) ? input.atpReservationTiersBf88 : [],
+    });
+    if (!validated.ok) {
+      return toApiErrorResponseFromStatus(validated.error, 400);
+    }
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        wmsAtpReservationPolicyJsonBf88: atpReservationPolicyBf88ToStoredJson(validated.policy),
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "set_wms_rfid_encoding_table_bf81") {
     if (input.rfidEncodingTableBf81Clear === true) {
       await prisma.tenant.update({
@@ -6647,16 +6682,22 @@ export async function handleWmsPost(
     if (!balanceId || !Number.isFinite(qty) || qty <= 0) {
       return toApiErrorResponseFromStatus("balanceId and positive quantity required.", 400);
     }
-    const bal = await prisma.inventoryBalance.findFirst({
-      where: { id: balanceId, tenantId },
-      select: {
-        id: true,
-        warehouseId: true,
-        onHandQty: true,
-        allocatedQty: true,
-        onHold: true,
-      },
-    });
+    const [bal, tenantBf88] = await Promise.all([
+      prisma.inventoryBalance.findFirst({
+        where: { id: balanceId, tenantId },
+        select: {
+          id: true,
+          warehouseId: true,
+          onHandQty: true,
+          allocatedQty: true,
+          onHold: true,
+        },
+      }),
+      prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { wmsAtpReservationPolicyJsonBf88: true },
+      }),
+    ]);
     if (!bal) return toApiErrorResponseFromStatus("Balance row not found.", 404);
     if (bal.onHold) {
       return toApiErrorResponseFromStatus("Cannot soft-reserve: balance is on hold.", 400);
@@ -6671,6 +6712,18 @@ export async function handleWmsPost(
       );
     }
 
+    const bf88Policy = parseAtpReservationPolicyBf88Json(
+      tenantBf88?.wmsAtpReservationPolicyJsonBf88 ?? null,
+    ).policy;
+    const refType = input.softReservationRefType?.trim() || null;
+    const refId = input.softReservationRefId?.trim() || null;
+    const tierTag = input.softReservationTierTagBf88?.trim() || null;
+    const tierResolved = resolveTierForSoftReservationBf88(bf88Policy, {
+      referenceType: refType,
+      referenceId: refId,
+      tierTag,
+    });
+
     let expiresAt: Date;
     const iso = input.softReservationExpiresAt?.trim();
     if (iso) {
@@ -6684,11 +6737,8 @@ export async function handleWmsPost(
       if (expiresAt.getTime() <= Date.now()) {
         return toApiErrorResponseFromStatus("softReservationExpiresAt must be in the future.", 400);
       }
-    } else {
-      const ttl =
-        input.softReservationTtlSeconds !== undefined
-          ? Number(input.softReservationTtlSeconds)
-          : 3600;
+    } else if (input.softReservationTtlSeconds !== undefined) {
+      const ttl = Number(input.softReservationTtlSeconds);
       if (!Number.isFinite(ttl) || ttl <= 0 || ttl > 86400 * 366) {
         return toApiErrorResponseFromStatus(
           "softReservationTtlSeconds must be between 1 and 366 days.",
@@ -6696,10 +6746,19 @@ export async function handleWmsPost(
         );
       }
       expiresAt = new Date(Date.now() + ttl * 1000);
+    } else {
+      expiresAt = new Date(Date.now() + tierResolved.ttlSeconds * 1000);
     }
 
-    const refType = input.softReservationRefType?.trim() || null;
-    const refId = input.softReservationRefId?.trim() || null;
+    let priorityBf88 = tierResolved.priorityBf88;
+    if (input.softReservationPriorityBf88 !== undefined) {
+      const pr = Number(input.softReservationPriorityBf88);
+      if (!Number.isFinite(pr) || pr < 0 || pr > 100_000) {
+        return toApiErrorResponseFromStatus("softReservationPriorityBf88 must be 0–100000.", 400);
+      }
+      priorityBf88 = Math.floor(pr);
+    }
+
     const note = input.softReservationNote?.trim().slice(0, 500) || null;
 
     const row = await prisma.wmsInventorySoftReservation.create({
@@ -6712,6 +6771,7 @@ export async function handleWmsPost(
         referenceType: refType,
         referenceId: refId,
         note,
+        priorityBf88,
         createdById: actorId,
       },
       select: { id: true, expiresAt: true },
@@ -6720,6 +6780,7 @@ export async function handleWmsPost(
       ok: true,
       reservationId: row.id,
       expiresAt: row.expiresAt.toISOString(),
+      priorityBf88,
     });
   }
 
@@ -6772,7 +6833,9 @@ export async function handleWmsPost(
     if (!sourceBalPre) {
       return toApiErrorResponseFromStatus("Source bin has no balance row.", 400);
     }
-    const replenSoftSingle = await softReservedQtyByBalanceIds(prisma, tenantId, [sourceBalPre.id]);
+    const replenSoftSingle = await loadPickAllocationSoftReservedQtyByBalanceIdsBf88(prisma, tenantId, [
+      sourceBalPre.id,
+    ]);
     const softRepl = replenSoftSingle.get(sourceBalPre.id) ?? 0;
     const movable =
       Number(sourceBalPre.onHandQty) - Number(sourceBalPre.allocatedQty) - softRepl;
@@ -8399,7 +8462,9 @@ export async function handleWmsPost(
       if (!bal || bal.onHold) {
         return toApiErrorResponseFromStatus(`Line ${i + 1}: no balance row or on hold.`, 400);
       }
-      const softMap = await softReservedQtyByBalanceIds(prisma, tenantId, [bal.id]);
+      const softMap = await loadPickAllocationSoftReservedQtyByBalanceIdsBf88(prisma, tenantId, [
+        bal.id,
+      ]);
       const soft = softMap.get(bal.id) ?? 0;
       const eff = new Prisma.Decimal(bal.onHandQty).minus(bal.allocatedQty).minus(soft);
       if (eff.lt(ln.quantity)) {
@@ -8548,7 +8613,9 @@ export async function handleWmsPost(
             select: { id: true, onHandQty: true, allocatedQty: true, onHold: true },
           });
           if (!bal || bal.onHold) throw new Error("__STO__:BAD_BAL");
-          const softMap = await softReservedQtyByBalanceIds(tx, tenantId, [bal.id]);
+          const softMap = await loadPickAllocationSoftReservedQtyByBalanceIdsBf88(tx, tenantId, [
+            bal.id,
+          ]);
           const soft = softMap.get(bal.id) ?? 0;
           const eff = new Prisma.Decimal(bal.onHandQty).minus(bal.allocatedQty).minus(soft);
           if (eff.lt(qtyOrd)) throw new Error("__STO__:SHORT");

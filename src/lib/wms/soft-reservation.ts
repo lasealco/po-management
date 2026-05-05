@@ -24,6 +24,38 @@ export async function softReservedQtyByBalanceIds(
   return m;
 }
 
+/**
+ * BF-88 — pick/replen/STO allocation ATP: only reservations with `priorityBf88 >= floor` count.
+ * When `priorityFloorInclusive` is null, delegates to strict {@link softReservedQtyByBalanceIds}.
+ */
+export async function softReservedQtyByBalanceIdsForPickAllocationBf88(
+  db: Pick<PrismaClient, "wmsInventorySoftReservation">,
+  tenantId: string,
+  balanceIds: string[],
+  priorityFloorInclusive: number | null,
+): Promise<Map<string, number>> {
+  if (balanceIds.length === 0) return new Map();
+  if (priorityFloorInclusive == null) {
+    return softReservedQtyByBalanceIds(db, tenantId, balanceIds);
+  }
+  const now = new Date();
+  const rows = await db.wmsInventorySoftReservation.groupBy({
+    by: ["inventoryBalanceId"],
+    where: {
+      tenantId,
+      inventoryBalanceId: { in: balanceIds },
+      expiresAt: { gt: now },
+      priorityBf88: { gte: priorityFloorInclusive },
+    },
+    _sum: { quantity: true },
+  });
+  const m = new Map<string, number>();
+  for (const r of rows) {
+    m.set(r.inventoryBalanceId, Number(r._sum.quantity ?? 0));
+  }
+  return m;
+}
+
 /** Units available for picks / moves after pick allocations and soft reservations. */
 export function effectiveAvailableUnits(onHand: number, allocated: number, softReserved: number): number {
   return Math.max(0, onHand - allocated - softReserved);

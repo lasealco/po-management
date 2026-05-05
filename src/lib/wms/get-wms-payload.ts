@@ -40,6 +40,10 @@ import {
 import { parseStoredLandedCostNotesBf78Json } from "@/lib/wms/landed-cost-notes-bf78";
 import { parseWmsCommercialTermsBf87FromDb } from "@/lib/wms/commercial-terms-bf87";
 import {
+  ATP_RESERVATION_POLICY_BF88_SCHEMA_VERSION,
+  parseAtpReservationPolicyBf88Json,
+} from "@/lib/wms/atp-reservation-policy-bf88";
+import {
   effectiveForecastQtyBf84,
   promoUpliftBf84PayloadFromDb,
 } from "@/lib/wms/promo-uplift-bf84";
@@ -507,7 +511,12 @@ export async function getWmsDashboardPayload(
     }),
     prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { wmsDockDetentionPolicyJson: true, wmsLaborVariancePolicyJson: true, wmsRfidEncodingTableJsonBf81: true },
+      select: {
+        wmsDockDetentionPolicyJson: true,
+        wmsLaborVariancePolicyJson: true,
+        wmsRfidEncodingTableJsonBf81: true,
+        wmsAtpReservationPolicyJsonBf88: true,
+      },
     }),
     prisma.wmsDemandForecastStub.findMany({
       where: {
@@ -692,6 +701,9 @@ export async function getWmsDashboardPayload(
   const dockDetentionAlertByApptId = new Map(dockDetentionAlerts.map((x) => [x.appointmentId, x]));
 
   const laborVarParsed = parseLaborVariancePolicyBf77Json(tenantPolicyJsonRow?.wmsLaborVariancePolicyJson);
+  const atpReservationBf88Parsed = parseAtpReservationPolicyBf88Json(
+    tenantPolicyJsonRow?.wmsAtpReservationPolicyJsonBf88 ?? null,
+  );
   const rfidBf81Parsed = parseRfidEncodingTableBf81Json(
     tenantPolicyJsonRow?.wmsRfidEncodingTableJsonBf81 ?? null,
   );
@@ -995,6 +1007,7 @@ export async function getWmsDashboardPayload(
       id: r.id,
       quantity: r.quantity.toString(),
       expiresAt: r.expiresAt.toISOString(),
+      priorityBf88: r.priorityBf88,
       referenceType: r.referenceType,
       referenceId: r.referenceId,
       note: r.note,
@@ -1028,6 +1041,12 @@ export async function getWmsDashboardPayload(
       policy: laborVarParsed.policy,
       policyNotice: laborVarParsed.notice ?? null,
       exceptions: laborVarianceExceptions,
+    },
+    atpReservationPolicyBf88: {
+      schemaVersion: ATP_RESERVATION_POLICY_BF88_SCHEMA_VERSION,
+      evaluatedAt: new Date().toISOString(),
+      policy: atpReservationBf88Parsed.policy,
+      policyNotice: atpReservationBf88Parsed.notice ?? null,
     },
     rfidEncodingBf81: {
       schemaVersion: RFID_ENCODING_TABLE_SCHEMA_VERSION,
