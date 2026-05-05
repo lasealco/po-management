@@ -154,7 +154,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 66 | **BF-83** | A — Supplier scorecard | ✅ **Minimal landed** — **`GET /api/wms/supplier-receiving-scorecard`** ([`WMS_SUPPLIER_RECEIVING_SCORECARD_BF83.md`](./WMS_SUPPLIER_RECEIVING_SCORECARD_BF83.md)) |
 | 67 | **BF-84** | A — Promo forecast uplift | ✅ **Minimal landed** — **`promoUpliftBf84Json`** + hints ([`WMS_PROMO_UPLIFT_BF84.md`](./WMS_PROMO_UPLIFT_BF84.md)) |
 | 68 | **BF-85** | A — Bulk RMA rules | ✅ **Minimal landed** — **`WmsRmaDispositionRuleBf85`**, apply POST + Setup/Ops UI ([`WMS_RMA_DISPOSITION_RULES_BF85.md`](./WMS_RMA_DISPOSITION_RULES_BF85.md)) |
-| 69 | **BF-86** | D — Capacity snapshot | **Draft** — utilization JSON ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-86) |
+| 69 | **BF-86** | D — Capacity snapshot | ✅ **Minimal landed** — **`GET /api/wms/capacity-utilization-snapshot`** ([`WMS_CAPACITY_UTILIZATION_BF86.md`](./WMS_CAPACITY_UTILIZATION_BF86.md)) |
 | 70 | **BF-87** | E — Commercial terms export | **Draft** — Incoterms snapshot ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-87) |
 | 71 | **BF-88** | R3 — ATP tiers | **Draft** — reservation policies ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-88) |
 | 72 | **BF-89** | B — Product cube hints | **Draft** — carton heuristic inputs ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-89) |

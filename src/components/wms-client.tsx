@@ -57,6 +57,28 @@ type Bf52SlottingPreview = {
   }>;
 };
 
+/** BF-86 — `GET /api/wms/capacity-utilization-snapshot` JSON preview (subset). */
+type Bf86CapacityPreview = {
+  schemaVersion: string;
+  methodology: string;
+  warehouse: { id: string; code: string | null; name: string };
+  windowDays: number;
+  sort: string;
+  cap: { requestedMaxBins: number; returnedBins: number; binsInWarehouseActive: number };
+  warnings: string[];
+  bins: Array<{
+    binId: string;
+    binCode: string;
+    zoneCode: string | null;
+    pickVelocityUnits: number;
+    velocityHeatScore: number;
+    cubeUtilizationRatio: number | null;
+    balanceRowCount: number;
+    estimatedOccupiedCubeMm: number | null;
+    capacityCubeCubicMm: number | null;
+  }>;
+};
+
 const WMS_LABOR_TASK_TYPES = ["PUTAWAY", "PICK", "REPLENISH", "CYCLE_COUNT", "VALUE_ADD", "KIT_BUILD"] as const;
 
 /** Matches serialized product refs from `GET /api/wms` (including BF-33 carton hints). */
@@ -1375,6 +1397,8 @@ export function WmsClient({
   const [slottingWindowDays, setSlottingWindowDays] = useState("30");
   const [slottingPreview, setSlottingPreview] = useState<Bf52SlottingPreview | null>(null);
   const [slottingLoadBusy, setSlottingLoadBusy] = useState(false);
+  const [bf86CapPreview, setBf86CapPreview] = useState<Bf86CapacityPreview | null>(null);
+  const [bf86CapBusy, setBf86CapBusy] = useState(false);
   const [laborStdTaskType, setLaborStdTaskType] = useState<string>("PICK");
   const [laborStdMinutes, setLaborStdMinutes] = useState("12");
   const [laborStdBusy, setLaborStdBusy] = useState(false);
@@ -4313,6 +4337,156 @@ export function WmsClient({
                               <td className="px-2 py-1 text-zinc-600">
                                 {r.suggestedBin ? r.suggestedBin.code : "—"}
                               </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="rounded-xl border border-sky-100 bg-sky-50/40 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Capacity utilization snapshot (BF-86)
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Bin cohort with pick velocity (same <span className="font-medium">PICK</span> ledger window as slotting above) plus optional cube utilization vs{" "}
+                <span className="font-medium">capacityCubeCubicMm</span>.{" "}
+                <span className="font-mono text-[11px]">GET /api/wms/capacity-utilization-snapshot</span> · capped bins ·{" "}
+                <span className="font-medium">docs/wms/WMS_CAPACITY_UTILIZATION_BF86.md</span>.
+              </p>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <button
+                  type="button"
+                  disabled={bf86CapBusy || !selectedWarehouseId}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        setBf86CapBusy(true);
+                        const days = Math.min(365, Math.max(1, Math.floor(Number(slottingWindowDays) || 30)));
+                        const params = new URLSearchParams();
+                        params.set("warehouseId", selectedWarehouseId);
+                        params.set("days", String(days));
+                        params.set("limitBins", "200");
+                        params.set("sort", "velocity_desc");
+                        const res = await fetch(`/api/wms/capacity-utilization-snapshot?${params.toString()}`, {
+                          credentials: "include",
+                        });
+                        const parsed: unknown = await res.json().catch(() => null);
+                        if (!res.ok) throw new Error(apiClientErrorMessage(parsed, "Capacity snapshot failed."));
+                        setBf86CapPreview(parsed as Bf86CapacityPreview);
+                      } catch (e) {
+                        window.alert(e instanceof Error ? e.message : "Capacity snapshot failed.");
+                      } finally {
+                        setBf86CapBusy(false);
+                      }
+                    })()
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {bf86CapBusy ? "Loading…" : "Load preview"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedWarehouseId}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        const days = Math.min(365, Math.max(1, Math.floor(Number(slottingWindowDays) || 30)));
+                        const params = new URLSearchParams();
+                        params.set("warehouseId", selectedWarehouseId);
+                        params.set("days", String(days));
+                        params.set("limitBins", "200");
+                        const res = await fetch(`/api/wms/capacity-utilization-snapshot?${params.toString()}`, {
+                          credentials: "include",
+                        });
+                        const parsed: unknown = await res.json().catch(() => null);
+                        if (!res.ok) throw new Error(apiClientErrorMessage(parsed, "Capacity JSON export failed."));
+                        const blob = new Blob([JSON.stringify(parsed, null, 2)], { type: "application/json" });
+                        const href = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = href;
+                        a.download = `capacity-utilization-${selectedWarehouseId.slice(0, 8)}.json`;
+                        a.click();
+                        URL.revokeObjectURL(href);
+                      } catch (e) {
+                        window.alert(e instanceof Error ? e.message : "Capacity JSON export failed.");
+                      }
+                    })()
+                  }
+                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                >
+                  Download JSON
+                </button>
+                <a
+                  href={
+                    selectedWarehouseId
+                      ? (() => {
+                          const days = Math.min(365, Math.max(1, Math.floor(Number(slottingWindowDays) || 30)));
+                          const p = new URLSearchParams();
+                          p.set("warehouseId", selectedWarehouseId);
+                          p.set("days", String(days));
+                          p.set("limitBins", "200");
+                          return `/api/wms/capacity-utilization-snapshot?${p.toString()}`;
+                        })()
+                      : "#"
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => {
+                    if (!selectedWarehouseId) e.preventDefault();
+                  }}
+                  className={`inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-semibold text-zinc-800 ${
+                    selectedWarehouseId ? "" : "pointer-events-none opacity-40"
+                  }`}
+                >
+                  Open JSON (new tab)
+                </a>
+              </div>
+              {bf86CapPreview ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-[11px] leading-snug text-zinc-600">{bf86CapPreview.methodology}</p>
+                  <p className="text-[11px] text-zinc-600">
+                    {bf86CapPreview.warehouse.code ?? bf86CapPreview.warehouse.name} · sort{" "}
+                    <span className="font-mono">{bf86CapPreview.sort}</span> · returned {bf86CapPreview.cap.returnedBins}/
+                    {bf86CapPreview.cap.binsInWarehouseActive} bins (cap {bf86CapPreview.cap.requestedMaxBins})
+                  </p>
+                  {bf86CapPreview.warnings.length > 0 ? (
+                    <ul className="list-inside list-disc text-[11px] text-amber-900">
+                      {bf86CapPreview.warnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <div className="max-h-64 overflow-auto rounded border border-zinc-200 bg-white">
+                    <table className="min-w-full text-left text-xs">
+                      <thead className="sticky top-0 bg-zinc-100 text-[10px] uppercase text-zinc-600">
+                        <tr>
+                          <th className="px-2 py-1">Bin</th>
+                          <th className="px-2 py-1">Heat</th>
+                          <th className="px-2 py-1">Pick u</th>
+                          <th className="px-2 py-1">Cube %</th>
+                          <th className="px-2 py-1">Rows</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {bf86CapPreview.bins.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-2 py-2 text-zinc-500">
+                              No bins in cohort.
+                            </td>
+                          </tr>
+                        ) : (
+                          bf86CapPreview.bins.slice(0, 40).map((b) => (
+                            <tr key={b.binId}>
+                              <td className="whitespace-nowrap px-2 py-1 font-mono text-zinc-800">{b.binCode}</td>
+                              <td className="px-2 py-1">{b.velocityHeatScore}</td>
+                              <td className="whitespace-nowrap px-2 py-1 font-mono">{b.pickVelocityUnits}</td>
+                              <td className="whitespace-nowrap px-2 py-1 font-mono">
+                                {b.cubeUtilizationRatio == null ? "—" : `${(100 * b.cubeUtilizationRatio).toFixed(0)}%`}
+                              </td>
+                              <td className="px-2 py-1">{b.balanceRowCount}</td>
                             </tr>
                           ))
                         )}

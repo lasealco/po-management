@@ -20,7 +20,7 @@
 
 ## UI
 
-**`/wms/setup`** — **Slotting recommendations (BF-52)** panel: window days, **Load preview**, **Download JSON**, **Download CSV**.
+**`/wms/setup`** — **Slotting recommendations (BF-52)** panel: window days, **Load preview**, **Download JSON**, **Download CSV**. Adjacent **BF-86** panel (**Capacity utilization snapshot**) uses the same window for bin-level velocity heat — [`WMS_CAPACITY_UTILIZATION_BF86.md`](./WMS_CAPACITY_UTILIZATION_BF86.md).
 
 ## Out of scope (explicit)
 
