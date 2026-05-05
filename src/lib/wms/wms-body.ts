@@ -403,4 +403,14 @@ export type WmsBody = {
     fromBinId: string;
     lotCode?: string | null;
   }>;
+  /** BF-78 — optional landed-cost / FX narrative on create (`bf78.v1`). */
+  stockTransferLandedCostNotesBf78?: {
+    notes?: string | null;
+    fxBaseCurrency?: string | null;
+    fxQuoteCurrency?: string | null;
+    fxRate?: string | number | null;
+    fxRateSourceNarrative?: string | null;
+  };
+  /** BF-78 — `set_wms_stock_transfer_landed_cost_notes_bf78` clears JSON when true. */
+  landedCostNotesBf78Clear?: boolean;
 };

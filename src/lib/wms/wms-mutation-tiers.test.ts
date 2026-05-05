@@ -85,6 +85,7 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("set_wms_stock_transfer_line")).toBe("operations");
     expect(wmsMutationTierForPostAction("ship_wms_stock_transfer")).toBe("operations");
     expect(wmsMutationTierForPostAction("receive_wms_stock_transfer")).toBe("operations");
+    expect(wmsMutationTierForPostAction("set_wms_stock_transfer_landed_cost_notes_bf78")).toBe("operations");
   });
 
   it("maps BF-57 outbound LU hierarchy validate to operations tier", () => {

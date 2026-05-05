@@ -12,20 +12,20 @@
 |-------|---------|
 | **Schema** | `WmsStockTransfer` + `WmsStockTransferLine`; `InventoryMovementType` adds **`STO_SHIP`**, **`STO_RECEIVE`**. |
 | **Lifecycle** | `DRAFT` → `RELEASED` → `IN_TRANSIT` (after ship) → `RECEIVED`; `CANCELLED` from `DRAFT` / `RELEASED` only. |
-| **POST** | `create_wms_stock_transfer` ( **`fromWarehouseId`**, **`toWarehouseId`**, **`stockTransferLines`** `{ productId, fromBinId, quantity, lotCode? }` ); `release_wms_stock_transfer`; `cancel_wms_stock_transfer`; `set_wms_stock_transfer_line` ( **`stockTransferLineId`**, **`targetBinId`** ); `ship_wms_stock_transfer`; `receive_wms_stock_transfer` — all **operations** tier. |
+| **POST** | `create_wms_stock_transfer` ( **`fromWarehouseId`**, **`toWarehouseId`**, **`stockTransferLines`** `{ productId, fromBinId, quantity, lotCode? }`, optional **`stockTransferLandedCostNotesBf78`** — BF-78 ); `release_wms_stock_transfer`; `cancel_wms_stock_transfer`; `set_wms_stock_transfer_line` ( **`stockTransferLineId`**, **`targetBinId`** ); `ship_wms_stock_transfer`; `receive_wms_stock_transfer`; **`set_wms_stock_transfer_landed_cost_notes_bf78`** — all **operations** tier. |
 | **Ledger** | Movements use `referenceType: WMS_STOCK_TRANSFER`, `referenceId: transfer.id`. |
-| **Payload** | `GET /api/wms` includes **`stockTransfers`** (open + recent **RECEIVED**). |
+| **Payload** | `GET /api/wms` includes **`stockTransfers`** (open + recent **RECEIVED**); **BF-78** adds **`landedCostNotesBf78`** / **`landedCostNotesBf78Notice`** ([`WMS_STO_LANDED_COST_BF78.md`](./WMS_STO_LANDED_COST_BF78.md)). |
 | **Home KPIs** | `fetchWmsHomeKpis.stockTransfersInTransit` (count of **`IN_TRANSIT`** headers; warehouse scope = touches source or destination). |
 
 ## UI
 
-- **`/wms` operations** — **Stock transfer orders (BF-55)** workflow panel (create draft, release, ship, set receive bins, receive).
+- **`/wms` operations** — **Stock transfer orders (BF-55)** workflow panel (create draft, release, ship, set receive bins, receive); **BF-78** landed-cost / FX notes per STO + **Export STO CSV** link.
 - **`/wms` home** — **STOs in transit** executive card.
 
 ## Out of scope
 
-Multi-leg transfers, in-transit **inventory rows** (in-transit is the transfer document + movements, not a third balance bucket), landed cost, partial receive beyond the minimal single receive, carrier integration.
+Multi-leg transfers, in-transit **inventory rows** (in-transit is the transfer document + movements, not a third balance bucket), ERP landed-cost postings (**BF-78** covers narrative stub only), partial receive beyond the minimal single receive, carrier integration.
 
 ---
 
-_Last updated: 2026-04-29 — BF-55 minimal slice._
+_Last updated: 2026-04-29 — BF-55 minimal slice + **BF-78** STO landed-cost notes cross-ref._

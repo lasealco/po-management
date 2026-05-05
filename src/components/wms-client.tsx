@@ -192,6 +192,16 @@ type WmsData = {
     referenceCode: string;
     status: "DRAFT" | "RELEASED" | "IN_TRANSIT" | "RECEIVED" | "CANCELLED";
     note: string | null;
+    /** BF-78 — parsed `landedCostNotesBf78Json` (`bf78.v1`). */
+    landedCostNotesBf78?: {
+      schemaVersion: string;
+      notes: string | null;
+      fxBaseCurrency: string | null;
+      fxQuoteCurrency: string | null;
+      fxRate: string | null;
+      fxRateSourceNarrative: string | null;
+    } | null;
+    landedCostNotesBf78Notice?: string | null;
     releasedAt: string | null;
     shippedAt: string | null;
     receivedAt: string | null;
@@ -995,6 +1005,147 @@ function splitRecallIdList(raw: string): string[] {
     .split(/[\s,;\n]+/g)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+type StoLandedCostBf78Payload = {
+  schemaVersion: string;
+  notes: string | null;
+  fxBaseCurrency: string | null;
+  fxQuoteCurrency: string | null;
+  fxRate: string | null;
+  fxRateSourceNarrative: string | null;
+} | null;
+
+function StoLandedCostBf78Panel({
+  transferId,
+  landedCostNotesBf78,
+  landedCostNotesBf78Notice,
+  canEdit,
+  busy,
+  runAction,
+}: {
+  transferId: string;
+  landedCostNotesBf78: StoLandedCostBf78Payload;
+  landedCostNotesBf78Notice: string | null | undefined;
+  canEdit: boolean;
+  busy: boolean;
+  runAction: (body: Record<string, unknown>) => void | Promise<unknown>;
+}) {
+  const lc = landedCostNotesBf78;
+  const [notes, setNotes] = useState(() => lc?.notes ?? "");
+  const [fxBase, setFxBase] = useState(() => lc?.fxBaseCurrency ?? "");
+  const [fxQuote, setFxQuote] = useState(() => lc?.fxQuoteCurrency ?? "");
+  const [fxRate, setFxRate] = useState(() => lc?.fxRate ?? "");
+  const [fxSrc, setFxSrc] = useState(() => lc?.fxRateSourceNarrative ?? "");
+
+  useEffect(() => {
+    setNotes(lc?.notes ?? "");
+    setFxBase(lc?.fxBaseCurrency ?? "");
+    setFxQuote(lc?.fxQuoteCurrency ?? "");
+    setFxRate(lc?.fxRate ?? "");
+    setFxSrc(lc?.fxRateSourceNarrative ?? "");
+  }, [transferId, lc?.notes, lc?.fxBaseCurrency, lc?.fxQuoteCurrency, lc?.fxRate, lc?.fxRateSourceNarrative]);
+
+  return (
+    <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+        Landed cost / FX notes (BF-78)
+      </p>
+      {landedCostNotesBf78Notice ? (
+        <p className="mt-2 text-[11px] text-amber-800">{landedCostNotesBf78Notice}</p>
+      ) : null}
+      <label className="mt-2 block text-[11px] text-zinc-600">
+        Narrative (finance handoff)
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          disabled={!canEdit || busy}
+          rows={2}
+          className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs disabled:opacity-50"
+        />
+      </label>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <label className="text-[11px] text-zinc-600">
+          FX base (ISO)
+          <input
+            value={fxBase}
+            onChange={(e) => setFxBase(e.target.value)}
+            disabled={!canEdit || busy}
+            maxLength={3}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1 font-mono text-xs uppercase disabled:opacity-50"
+          />
+        </label>
+        <label className="text-[11px] text-zinc-600">
+          FX quote (ISO)
+          <input
+            value={fxQuote}
+            onChange={(e) => setFxQuote(e.target.value)}
+            disabled={!canEdit || busy}
+            maxLength={3}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1 font-mono text-xs uppercase disabled:opacity-50"
+          />
+        </label>
+      </div>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <label className="text-[11px] text-zinc-600">
+          FX rate (advisory)
+          <input
+            value={fxRate}
+            onChange={(e) => setFxRate(e.target.value)}
+            disabled={!canEdit || busy}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1 font-mono text-xs disabled:opacity-50"
+          />
+        </label>
+        <label className="text-[11px] text-zinc-600">
+          Rate source narrative
+          <input
+            value={fxSrc}
+            onChange={(e) => setFxSrc(e.target.value)}
+            disabled={!canEdit || busy}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1 text-xs disabled:opacity-50"
+          />
+        </label>
+      </div>
+      {canEdit ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void runAction({
+                action: "set_wms_stock_transfer_landed_cost_notes_bf78",
+                stockTransferId: transferId,
+                stockTransferLandedCostNotesBf78: {
+                  notes: notes.trim() || null,
+                  fxBaseCurrency: fxBase.trim() || null,
+                  fxQuoteCurrency: fxQuote.trim() || null,
+                  fxRate: fxRate.trim() || null,
+                  fxRateSourceNarrative: fxSrc.trim() || null,
+                },
+              })
+            }
+            className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            Save landed-cost notes
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void runAction({
+                action: "set_wms_stock_transfer_landed_cost_notes_bf78",
+                stockTransferId: transferId,
+                landedCostNotesBf78Clear: true,
+              })
+            }
+            className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Clear
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function WmsClient({
@@ -9928,7 +10079,15 @@ export function WmsClient({
 
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
-        <h2 className="mt-2 text-sm font-semibold text-zinc-900">Stock transfer orders (BF-55)</h2>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <h2 className="text-sm font-semibold text-zinc-900">Stock transfer orders (BF-55)</h2>
+          <a
+            href={`/api/wms/stock-transfer-export?format=csv${selectedWarehouseId ? `&warehouseId=${encodeURIComponent(selectedWarehouseId)}` : ""}`}
+            className="text-xs font-medium text-[var(--arscmp-primary)] underline"
+          >
+            Export STO CSV (BF-78)
+          </a>
+        </div>
         <p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-600">
           Inter-site moves: <span className="font-medium">DRAFT</span> → <span className="font-medium">RELEASED</span> →{" "}
           <span className="font-medium">Ship</span> posts <span className="font-medium">STO_SHIP</span> and marks{" "}
@@ -10059,6 +10218,14 @@ export function WmsClient({
                     </li>
                   ))}
                 </ul>
+                <StoLandedCostBf78Panel
+                  transferId={st.id}
+                  landedCostNotesBf78={st.landedCostNotesBf78 ?? null}
+                  landedCostNotesBf78Notice={st.landedCostNotesBf78Notice ?? null}
+                  canEdit={canEdit}
+                  busy={busy}
+                  runAction={runAction}
+                />
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {st.status === "DRAFT" && canEdit ? (
                     <>

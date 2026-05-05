@@ -33,6 +33,7 @@ import {
   loadLaborVarianceExceptionsBf77,
   parseLaborVariancePolicyBf77Json,
 } from "@/lib/wms/labor-variance-bf77";
+import { parseStoredLandedCostNotesBf78Json } from "@/lib/wms/landed-cost-notes-bf78";
 
 const WMS_PRODUCT_REF_SELECT = {
   id: true,
@@ -932,29 +933,34 @@ export async function getWmsDashboardPayload(
       policyNotice: laborVarParsed.notice ?? null,
       exceptions: laborVarianceExceptions,
     },
-    stockTransfers: stockTransfersRaw.map((st) => ({
-      id: st.id,
-      referenceCode: st.referenceCode,
-      status: st.status,
-      note: st.note,
-      releasedAt: st.releasedAt?.toISOString() ?? null,
-      shippedAt: st.shippedAt?.toISOString() ?? null,
-      receivedAt: st.receivedAt?.toISOString() ?? null,
-      updatedAt: st.updatedAt.toISOString(),
-      fromWarehouse: st.fromWarehouse,
-      toWarehouse: st.toWarehouse,
-      lines: st.lines.map((ln) => ({
-        id: ln.id,
-        lineNo: ln.lineNo,
-        product: mapWmsProductJson(ln.product),
-        lotCode: ln.lotCode,
-        quantityOrdered: ln.quantityOrdered.toString(),
-        quantityShipped: ln.quantityShipped.toString(),
-        quantityReceived: ln.quantityReceived.toString(),
-        fromBin: ln.fromBin,
-        toBin: ln.toBin,
-      })),
-    })),
+    stockTransfers: stockTransfersRaw.map((st) => {
+      const lc = parseStoredLandedCostNotesBf78Json(st.landedCostNotesBf78Json);
+      return {
+        id: st.id,
+        referenceCode: st.referenceCode,
+        status: st.status,
+        note: st.note,
+        landedCostNotesBf78: lc.doc,
+        landedCostNotesBf78Notice: lc.notice,
+        releasedAt: st.releasedAt?.toISOString() ?? null,
+        shippedAt: st.shippedAt?.toISOString() ?? null,
+        receivedAt: st.receivedAt?.toISOString() ?? null,
+        updatedAt: st.updatedAt.toISOString(),
+        fromWarehouse: st.fromWarehouse,
+        toWarehouse: st.toWarehouse,
+        lines: st.lines.map((ln) => ({
+          id: ln.id,
+          lineNo: ln.lineNo,
+          product: mapWmsProductJson(ln.product),
+          lotCode: ln.lotCode,
+          quantityOrdered: ln.quantityOrdered.toString(),
+          quantityShipped: ln.quantityShipped.toString(),
+          quantityReceived: ln.quantityReceived.toString(),
+          fromBin: ln.fromBin,
+          toBin: ln.toBin,
+        })),
+      };
+    }),
     zones: zones.map((z) => ({
       id: z.id,
       code: z.code,

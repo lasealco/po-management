@@ -43,6 +43,7 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_wms_stock_transfer_line: "operations",
   ship_wms_stock_transfer: "operations",
   receive_wms_stock_transfer: "operations",
+  set_wms_stock_transfer_landed_cost_notes_bf78: "operations",
 
   /** BF-53 — optional floor clock on OPEN tasks before complete. */
   start_wms_task: "operations",

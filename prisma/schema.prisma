@@ -4981,6 +4981,8 @@ model WmsStockTransfer {
   toWarehouseId   String
   status          WmsStockTransferStatus @default(DRAFT)
   note            String?                @db.VarChar(500)
+  /// BF-78 — optional landed-cost / FX narrative (`bf78.v1`) for finance handoff; not ERP postings.
+  landedCostNotesBf78Json Json?
   createdById     String
   releasedAt      DateTime?
   shippedAt       DateTime?

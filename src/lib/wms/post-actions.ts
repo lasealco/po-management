@@ -88,6 +88,11 @@ import {
   laborVariancePolicyToStoredJson,
   validateLaborVariancePolicyDraftFromPost,
 } from "./labor-variance-bf77";
+import {
+  landedCostNotesBf78DraftFromUnknown,
+  landedCostNotesBf78ToStoredJson,
+  validateLandedCostNotesBf78Draft,
+} from "./landed-cost-notes-bf78";
 import { persistDockYardMilestoneWithDetentionAudit } from "./dock-yard-milestone-tx";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
@@ -7741,6 +7746,18 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus("stockTransferReferenceCode max 64 chars.", 400);
     }
 
+    let landedCostNotesBf78CreateJson: Prisma.InputJsonValue | undefined;
+    if (input.stockTransferLandedCostNotesBf78 != null) {
+      if (typeof input.stockTransferLandedCostNotesBf78 !== "object" || Array.isArray(input.stockTransferLandedCostNotesBf78)) {
+        return toApiErrorResponseFromStatus("stockTransferLandedCostNotesBf78 must be an object when provided.", 400);
+      }
+      const lcVal = validateLandedCostNotesBf78Draft(
+        landedCostNotesBf78DraftFromUnknown(input.stockTransferLandedCostNotesBf78),
+      );
+      if (!lcVal.ok) return toApiErrorResponseFromStatus(lcVal.message, 400);
+      landedCostNotesBf78CreateJson = landedCostNotesBf78ToStoredJson(lcVal.value);
+    }
+
     const [fromWh, toWh] = await Promise.all([
       prisma.warehouse.findFirst({ where: { id: fromWarehouseId, tenantId }, select: { id: true } }),
       prisma.warehouse.findFirst({ where: { id: toWarehouseId, tenantId }, select: { id: true } }),
@@ -7799,6 +7816,9 @@ export async function handleWmsPost(
             status: "DRAFT",
             note,
             createdById: actorId,
+            ...(landedCostNotesBf78CreateJson !== undefined
+              ? { landedCostNotesBf78Json: landedCostNotesBf78CreateJson }
+              : {}),
           },
         });
         for (let i = 0; i < parsedLines.length; i++) {
@@ -8031,6 +8051,39 @@ export async function handleWmsPost(
         where: { id: tr.id },
         data: { status: "RECEIVED", receivedAt: new Date() },
       });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_wms_stock_transfer_landed_cost_notes_bf78") {
+    const sid = input.stockTransferId?.trim();
+    if (!sid) return toApiErrorResponseFromStatus("stockTransferId required.", 400);
+    const existing = await prisma.wmsStockTransfer.findFirst({
+      where: { id: sid, tenantId },
+      select: { id: true },
+    });
+    if (!existing) return toApiErrorResponseFromStatus("Stock transfer not found.", 404);
+
+    if (input.landedCostNotesBf78Clear === true) {
+      await prisma.wmsStockTransfer.update({
+        where: { id: sid },
+        data: { landedCostNotesBf78Json: Prisma.JsonNull },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    const frag = input.stockTransferLandedCostNotesBf78;
+    if (frag == null || typeof frag !== "object" || Array.isArray(frag)) {
+      return toApiErrorResponseFromStatus(
+        "stockTransferLandedCostNotesBf78 object required (or landedCostNotesBf78Clear: true).",
+        400,
+      );
+    }
+    const lcVal = validateLandedCostNotesBf78Draft(landedCostNotesBf78DraftFromUnknown(frag));
+    if (!lcVal.ok) return toApiErrorResponseFromStatus(lcVal.message, 400);
+    await prisma.wmsStockTransfer.update({
+      where: { id: sid },
+      data: { landedCostNotesBf78Json: landedCostNotesBf78ToStoredJson(lcVal.value) },
     });
     return NextResponse.json({ ok: true });
   }
