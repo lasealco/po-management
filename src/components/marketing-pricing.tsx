@@ -75,7 +75,7 @@ export function MarketingPricingPage() {
     <div className="min-h-screen bg-white text-slate-800 antialiased">
       <div className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <BrandMarkLink href="/" className="py-1" aria-label="AR SCMP home" />
+          <BrandMarkLink href="/" className="py-1" aria-label="NEOLINK home" />
           <nav className="flex items-center gap-5 text-sm font-semibold text-slate-600">
             <Link href="/" className="transition hover:text-slate-900">
               Home
@@ -183,7 +183,7 @@ export function MarketingPricingPage() {
                     "Cross-module navigation and role model",
                     "Single tenant context for procurement + logistics + commercial",
                     "Roadmap alignment for integrations and advanced modules",
-                    "Priority onboarding with AR SCMP solutions contact",
+                    "Priority onboarding with NEOLINK solutions contact",
                   ].map((line) => (
                     <li key={line} className="flex gap-2 text-sm text-slate-700">
                       <span className="text-[var(--arscmp-primary)]">
@@ -273,7 +273,7 @@ export function MarketingPricingPage() {
 
         <p className="pb-8 text-center text-[11px] leading-relaxed text-slate-400">
           Prices shown are indicative for marketing and investor discussions and do not constitute an offer
-          or binding quote. Features and availability vary by deployment. AR SCMP reserves the right to
+          or binding quote. Features and availability vary by deployment. NEOLINK reserves the right to
           update packaging and pricing prior to contract.
         </p>
       </main>

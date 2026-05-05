@@ -23,7 +23,7 @@ function greeting(fromAddress: string) {
 }
 
 function signature() {
-  return ["", "Best,", "AR SCMP Team"].join("\n");
+  return ["", "Best,", "NEOLINK Team"].join("\n");
 }
 
 function evidenceLine(evidence: Array<{ label: string; href: string }>) {

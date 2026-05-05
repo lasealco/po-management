@@ -5,8 +5,8 @@ import { LegalSiteFooter, LegalSiteNav } from "@/components/legal-site-chrome";
 import { LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
 
 export const metadata: Metadata = {
-  title: "Terms of Use | AR SCMP",
-  description: "Terms governing access to the AR SCMP research and evaluation environment.",
+  title: "Terms of Use | NEOLINK",
+  description: "Terms governing access to the NEOLINK research and evaluation environment.",
   alternates: { canonical: LEGAL_TERMS_PATH },
 };
 
@@ -34,7 +34,7 @@ export default function TermsPage() {
             className="mb-12 flex gap-3 rounded-r-xl border-l-4 p-6"
             style={{
               borderLeftColor: SITE_BRAND_HEX,
-              backgroundColor: "rgba(22, 91, 103, 0.06)",
+              backgroundColor: "rgba(232, 145, 45, 0.08)",
             }}
           >
             <svg
@@ -52,7 +52,7 @@ export default function TermsPage() {
               />
             </svg>
             <p className="text-sm leading-relaxed text-slate-700">
-              <strong>Evaluation &amp; Testing:</strong> These terms cover the use of AR SCMP as a
+              <strong>Evaluation &amp; Testing:</strong> These terms cover the use of NEOLINK as a
               personal research project. Access is provided for evaluation and feedback purposes during
               this pre-release phase.
             </p>
@@ -61,15 +61,15 @@ export default function TermsPage() {
           <article className="[&_h2]:mb-4 [&_h2]:mt-10 [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:first:mt-0 [&_li]:mb-2 [&_p]:mb-5 [&_p]:leading-relaxed [&_p]:text-slate-600 [&_ul]:mb-5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_ul]:text-slate-600">
             <h2>1. Agreement to these Terms</h2>
             <p>
-              These Terms of Use govern access to and use of the AR SCMP website and any related
+              These Terms of Use govern access to and use of the NEOLINK website and any related
               demonstration, testing, preview, sandbox, or pre-release platform environment made
-              available by the <strong>AR SCMP Research Initiative</strong>. By accessing or using the
+              available by the <strong>NEOLINK Research Initiative</strong>. By accessing or using the
               website or platform, you agree to these Terms.
             </p>
 
             <h2>2. Development and testing status</h2>
             <p>
-              AR SCMP is currently under development. Features, content, interfaces, and workflows may
+              NEOLINK is currently under development. Features, content, interfaces, and workflows may
               change at any time. The platform may be incomplete, unavailable, or reset without notice.
               Access is provided on a trial, evaluation, or testing basis.
             </p>
@@ -108,7 +108,7 @@ export default function TermsPage() {
 
             <h2>7. Intellectual property</h2>
             <p>
-              We own the AR SCMP website, software, and design. No rights are granted to you except for
+              We own the NEOLINK website, software, and design. No rights are granted to you except for
               the limited right to use the platform for evaluation as described in these Terms.
             </p>
 
@@ -133,7 +133,7 @@ export default function TermsPage() {
 
             <h2>11. Limitation of liability</h2>
             <p>
-              To the fullest extent permitted by law, the AR SCMP project team will not be liable for
+              To the fullest extent permitted by law, the NEOLINK project team will not be liable for
               any indirect, special, or consequential damages resulting from your use of the platform.
             </p>
 

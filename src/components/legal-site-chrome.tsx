@@ -11,7 +11,7 @@ export function LegalSiteNav() {
         <div className="flex shrink-0 items-center gap-3 sm:gap-8">
           <Link
             href="/"
-            className="text-sm font-medium text-slate-700 transition-colors hover:text-[#165B67]"
+            className="text-sm font-medium text-slate-700 transition-colors hover:text-[var(--arscmp-primary)]"
           >
             Back to Home
           </Link>
@@ -29,9 +29,9 @@ export function LegalSiteNav() {
 }
 
 const legalFooterLink =
-  "text-slate-400 transition-colors hover:text-[#165B67] text-sm";
+  "text-slate-400 transition-colors hover:text-[var(--arscmp-primary)] text-sm";
 const legalFooterActive =
-  "text-sm font-bold text-slate-900 underline decoration-[#165B67] underline-offset-4";
+  "text-sm font-bold text-slate-900 underline decoration-[var(--arscmp-primary)] underline-offset-4";
 
 export function LegalSiteFooter({
   highlight,
@@ -43,7 +43,7 @@ export function LegalSiteFooter({
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-8 px-4 md:flex-row sm:px-6 lg:px-8">
         <BrandMark />
         <div className="text-center text-sm italic text-slate-400 md:text-left">
-          AR SCMP Research Initiative
+          NEOLINK
         </div>
         <div className="flex max-w-md flex-wrap justify-center gap-x-6 gap-y-2 text-sm sm:max-w-none sm:gap-x-8">
           <Link href="/" className={legalFooterLink}>

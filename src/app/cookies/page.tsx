@@ -5,8 +5,8 @@ import { LegalSiteFooter, LegalSiteNav } from "@/components/legal-site-chrome";
 import { LEGAL_COOKIES_PATH } from "@/lib/legal-public-paths";
 
 export const metadata: Metadata = {
-  title: "Cookie Notice | AR SCMP",
-  description: "How AR SCMP uses cookies and similar technologies during the research phase.",
+  title: "Cookie Notice | NEOLINK",
+  description: "How NEOLINK uses cookies and similar technologies during the research phase.",
   alternates: { canonical: LEGAL_COOKIES_PATH },
 };
 
@@ -34,7 +34,7 @@ export default function CookiesPage() {
             className="mb-12 flex gap-3 rounded-r-xl border-l-4 p-6"
             style={{
               borderLeftColor: SITE_BRAND_HEX,
-              backgroundColor: "rgba(22, 91, 103, 0.06)",
+              backgroundColor: "rgba(232, 145, 45, 0.08)",
             }}
           >
             <svg
@@ -53,14 +53,14 @@ export default function CookiesPage() {
             </svg>
             <p className="text-sm leading-relaxed text-slate-700">
               <strong>Personal Research Project:</strong> This notice explains how cookies are used on
-              the AR SCMP project website during this research and testing phase.
+              the NEOLINK project website during this research and testing phase.
             </p>
           </div>
 
           <article className="[&_h2]:mb-4 [&_h2]:mt-10 [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:first:mt-0 [&_li]:mb-2 [&_p]:mb-5 [&_p]:leading-relaxed [&_p]:text-slate-600 [&_ul]:mb-5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_ul]:text-slate-600">
             <h2>1. What this notice covers</h2>
             <p>
-              This Cookie Notice explains how the <strong>AR SCMP Research Initiative</strong>{" "}
+              This Cookie Notice explains how the <strong>NEOLINK Research Initiative</strong>{" "}
               (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) uses cookies and similar technologies
               on our website and testing pages.
             </p>

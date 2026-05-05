@@ -18,7 +18,7 @@ const README_BLOB =
   "https://github.com/lasealco/po-management/blob/main/docs/sctwin/README.md";
 
 export const metadata: Metadata = {
-  title: "Supply Chain Twin — AR SCMP",
+  title: "Supply Chain Twin — NEOLINK",
   description:
     "Preview shell for the AI-driven Supply Chain Twin — cross-module intelligence over POs, logistics, warehouse, and commercial data.",
 };

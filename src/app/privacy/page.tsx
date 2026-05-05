@@ -5,8 +5,8 @@ import { LegalSiteFooter, LegalSiteNav } from "@/components/legal-site-chrome";
 import { LEGAL_PRIVACY_PATH } from "@/lib/legal-public-paths";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | AR SCMP",
-  description: "How AR SCMP handles personal data during the research and development phase.",
+  title: "Privacy Policy | NEOLINK",
+  description: "How NEOLINK handles personal data during the research and development phase.",
   alternates: { canonical: LEGAL_PRIVACY_PATH },
 };
 
@@ -34,7 +34,7 @@ export default function PrivacyPage() {
             className="mb-12 flex gap-3 rounded-r-xl border-l-4 p-6"
             style={{
               borderLeftColor: SITE_BRAND_HEX,
-              backgroundColor: "rgba(22, 91, 103, 0.06)",
+              backgroundColor: "rgba(232, 145, 45, 0.08)",
             }}
           >
             <svg
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
               />
             </svg>
             <p className="text-sm leading-relaxed text-slate-700">
-              <strong>Project Status:</strong> AR SCMP is currently a personal research project. This
+              <strong>Project Status:</strong> NEOLINK is currently a personal research project. This
               privacy policy describes our current data practices during the development and testing
               phase.
             </p>
@@ -61,10 +61,10 @@ export default function PrivacyPage() {
           <article className="[&_h2]:mb-4 [&_h2]:mt-10 [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:first:mt-0 [&_li]:mb-2 [&_p]:mb-5 [&_p]:leading-relaxed [&_p]:text-slate-600 [&_ul]:mb-5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_ul]:text-slate-600">
             <h2>1. Who we are</h2>
             <p>
-              The <strong>AR SCMP Project</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;)
+              The <strong>NEOLINK Project</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;)
               is a personal research initiative developing a modular supply chain management platform.
               As this is currently a research project and not a commercial entity, the project is operated
-              by the AR SCMP project team. Our contact email for privacy-related questions is{" "}
+              by the NEOLINK project team. Our contact email for privacy-related questions is{" "}
               <a
                 href={`mailto:${privacyEmail}`}
                 className="font-bold underline-offset-2 hover:underline"
@@ -78,7 +78,7 @@ export default function PrivacyPage() {
             <h2>2. Scope</h2>
             <p>
               This Privacy Policy explains how we collect, use, store, and share personal data when you
-              visit the AR SCMP website, request a demo, contact us, create a test account, or otherwise
+              visit the NEOLINK website, request a demo, contact us, create a test account, or otherwise
               interact with the site during this current research and development phase.
             </p>
 
@@ -118,7 +118,7 @@ export default function PrivacyPage() {
             <h2>5. Legal basis</h2>
             <p>
               We process your data based on your <strong>consent</strong> (e.g., when you sign up for a
-              demo) and our <strong>legitimate interest</strong> in developing and testing the AR SCMP
+              demo) and our <strong>legitimate interest</strong> in developing and testing the NEOLINK
               platform.
             </p>
 

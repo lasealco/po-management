@@ -29,11 +29,11 @@ type CtReportCoverage = {
 };
 
 /**
- * Category colors — teal / cyan / emerald family aligned with `--arscmp-primary`.
+ * Category colors — warm tones anchored on `--arscmp-primary` (NEOLINK orange).
  * Avoids generic “rainbow SaaS” purples for a more premium, on-brand analytics feel.
  */
 export const CHART_CATEGORY_FILLS = [
-  "#165b67",
+  "#e8912d",
   "#0e7490",
   "#0f766e",
   "#0d9488",
@@ -101,7 +101,7 @@ export function colorFor(i: number): string {
   return CHART_CATEGORY_FILLS[i % CHART_CATEGORY_FILLS.length]!;
 }
 
-const CHART_STROKE_PRIMARY = "#165b67";
+const CHART_STROKE_PRIMARY = "#e8912d";
 const CHART_GRID = "#e7e5e4";
 
 function usePrefersReducedMotion(): boolean {
@@ -387,7 +387,7 @@ export function MiniBarChart({
               height={h}
               rx={barRx}
               fill={`url(#ct-bar-grad-${i})`}
-              stroke={sel ? CHART_STROKE_PRIMARY : "rgba(22, 91, 103, 0.12)"}
+              stroke={sel ? CHART_STROKE_PRIMARY : "rgba(232, 145, 45, 0.12)"}
               strokeWidth={sel ? 2.5 : 1}
               tabIndex={interactive ? 0 : undefined}
               role={interactive ? "button" : undefined}

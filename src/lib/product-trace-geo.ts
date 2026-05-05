@@ -3,7 +3,7 @@
  * Prefer DB lat/lng when added later; today we resolve UN/LOCODE-ish codes and city/country text.
  * Brand primary: keep in sync with `globals.css` --arscmp-primary.
  */
-export const ARSCMP_PRIMARY_HEX = "#165b67";
+export const ARSCMP_PRIMARY_HEX = "#e8912d";
 
 /** Common booking / lane codes from seed and typical flows (lat, lng). */
 const LOCODE_OR_IATA: Record<string, { lat: number; lng: number }> = {

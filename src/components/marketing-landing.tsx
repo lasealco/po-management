@@ -9,7 +9,7 @@ export function MarketingLanding() {
     <div className="min-h-screen bg-white text-slate-800 antialiased">
       <div className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <BrandMarkLink href="/" className="py-1" aria-label="AR SCMP home" />
+          <BrandMarkLink href="/" className="py-1" aria-label="NEOLINK home" />
           <nav className="flex items-center gap-4 text-sm font-semibold text-slate-600 sm:gap-5">
             <Link href={MARKETING_PRICING_PATH} className="transition hover:text-slate-900">
               Plans & pricing
@@ -34,7 +34,7 @@ export function MarketingLanding() {
               Run procurement and logistics in one place.
             </h1>
             <p className="mb-10 text-xl leading-relaxed text-slate-600">
-              AR SCMP is a modular supply chain management platform that connects PO management, sales
+              NEOLINK is a modular supply chain management platform that connects PO management, sales
               orders, control tower visibility, warehouse operations, reporting, CRM, and supplier
               management — with future-ready extensions for pricing, tenders, and invoice auditing.
             </p>
@@ -54,7 +54,7 @@ export function MarketingLanding() {
               </Link>
             </div>
             <p className="mt-4 text-sm text-slate-500">
-              <Link href={PLATFORM_HUB_PATH} className="font-semibold text-[#165B67] underline-offset-2 hover:underline">
+              <Link href={PLATFORM_HUB_PATH} className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline">
                 Explore the live platform
               </Link>{" "}
               when you are ready to click through the demo hub.
@@ -85,7 +85,7 @@ export function MarketingLanding() {
             </div>
             <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xl">
               <p className="mb-4 text-2xl font-bold italic" style={{ color: SITE_BRAND_HEX }}>
-                &ldquo;AR SCMP changes that by bringing these workflows together into one connected
+                &ldquo;NEOLINK changes that by bringing these workflows together into one connected
                 platform.&rdquo;
               </p>
               <div className="h-1 w-20 rounded-full" style={{ backgroundColor: SITE_BRAND_HEX }} />
@@ -284,7 +284,7 @@ export function MarketingLanding() {
 
       <section id="why" className="py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="mb-16 text-center text-4xl font-black">Why companies choose AR SCMP</h2>
+          <h2 className="mb-16 text-center text-4xl font-black">Why companies choose NEOLINK</h2>
           <div className="grid gap-x-12 gap-y-16 md:grid-cols-2 lg:grid-cols-3">
             {[
               {
@@ -305,7 +305,7 @@ export function MarketingLanding() {
               },
               {
                 t: "Commercial & Ops alignment",
-                d: "AR SCMP combines execution support with CRM, SRM, and reporting for full visibility.",
+                d: "NEOLINK combines execution support with CRM, SRM, and reporting for full visibility.",
               },
               {
                 t: "Scale over time",
@@ -353,12 +353,12 @@ export function MarketingLanding() {
             <div className="relative z-10 max-w-2xl">
               <h2 className="mb-8 text-4xl font-black lg:text-5xl">More than a logistics tool</h2>
               <p className="mb-8 text-xl leading-relaxed opacity-90">
-                AR SCMP is not just a tracking platform or a warehouse system. It is a modular supply
+                NEOLINK is not just a tracking platform or a warehouse system. It is a modular supply
                 chain operating platform designed to connect the full workflow around procurement,
                 logistics, warehousing, and commercial management.
               </p>
               <p className="text-lg italic opacity-80">
-                &ldquo;Built around real operational workflows, AR SCMP is designed for businesses that
+                &ldquo;Built around real operational workflows, NEOLINK is designed for businesses that
                 need practical control — not just dashboard visibility.&rdquo;
               </p>
             </div>
@@ -374,7 +374,7 @@ export function MarketingLanding() {
           </h2>
           <p className="mb-12 text-xl text-slate-600">
             Whether you want to improve visibility, reduce manual work, or build a more connected
-            operating model, AR SCMP gives you a scalable platform to do it.
+            operating model, NEOLINK gives you a scalable platform to do it.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <a
@@ -393,7 +393,7 @@ export function MarketingLanding() {
           </div>
           <p className="mt-8 text-sm text-slate-500">
             Already exploring?{" "}
-            <a href={PLATFORM_HUB_PATH} className="font-semibold text-[#165B67] underline-offset-2 hover:underline">
+            <a href={PLATFORM_HUB_PATH} className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline">
               Open the platform hub
             </a>
           </p>
@@ -403,18 +403,18 @@ export function MarketingLanding() {
       <footer className="border-t border-slate-100 bg-white py-16">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-8 px-4 md:flex-row sm:px-6 lg:px-8">
           <BrandMarkLink href="/" />
-          <div className="text-sm text-slate-400">© 2026 AR SCMP. All rights reserved.</div>
+          <div className="text-sm text-slate-400">© 2026 NEOLINK. All rights reserved.</div>
           <div className="flex gap-8">
-            <Link href={LEGAL_PRIVACY_PATH} className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
+            <Link href={LEGAL_PRIVACY_PATH} className="text-sm text-slate-400 transition-colors hover:text-[var(--arscmp-primary)]">
               Privacy
             </Link>
-            <Link href={LEGAL_TERMS_PATH} className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
+            <Link href={LEGAL_TERMS_PATH} className="text-sm text-slate-400 transition-colors hover:text-[var(--arscmp-primary)]">
               Terms
             </Link>
-            <Link href={LEGAL_COOKIES_PATH} className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
+            <Link href={LEGAL_COOKIES_PATH} className="text-sm text-slate-400 transition-colors hover:text-[var(--arscmp-primary)]">
               Cookies
             </Link>
-            <Link href="/login" className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
+            <Link href="/login" className="text-sm text-slate-400 transition-colors hover:text-[var(--arscmp-primary)]">
               Contact / Sign in
             </Link>
           </div>

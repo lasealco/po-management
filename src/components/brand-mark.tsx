@@ -1,14 +1,28 @@
+import Image from "next/image";
 import Link from "next/link";
 
-export const SITE_BRAND_HEX = "#165B67" as const;
+/** Primary brand orange (NEOLINK logo hex). */
+export const SITE_BRAND_HEX = "#E8912D" as const;
+
+const LOGO_SRC = "/neolink-logo.png";
+
+function NeolinkLogoImage({ className = "" }: { className?: string }) {
+  return (
+    <Image
+      src={LOGO_SRC}
+      alt="NEOLINK"
+      width={200}
+      height={44}
+      priority
+      className={["h-8 w-auto max-h-9 object-contain object-left sm:h-9", className].filter(Boolean).join(" ")}
+    />
+  );
+}
 
 export function BrandMark() {
   return (
     <div className="flex items-center gap-2">
-      <div className="arscmp-logo-box flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg px-[0.6rem] py-[0.4rem]">
-        <span className="text-xl font-black leading-none text-white">AR</span>
-      </div>
-      <span className="arscmp-brand text-3xl font-black tracking-[-0.02em]">SCMP</span>
+      <NeolinkLogoImage />
     </div>
   );
 }
@@ -25,13 +39,10 @@ export function BrandMarkLink({
   return (
     <Link
       href={href}
-      className={["flex items-center gap-2", className].filter(Boolean).join(" ")}
-      aria-label={ariaLabel}
+      className={["flex items-center gap-2 py-0.5", className].filter(Boolean).join(" ")}
+      aria-label={ariaLabel ?? "NEOLINK — home"}
     >
-      <div className="arscmp-logo-box flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg px-[0.6rem] py-[0.4rem]">
-        <span className="text-xl font-black leading-none text-white">AR</span>
-      </div>
-      <span className="arscmp-brand text-3xl font-black tracking-[-0.02em]">SCMP</span>
+      <NeolinkLogoImage />
     </Link>
   );
 }

@@ -157,7 +157,7 @@ export function AppNav({
         <BrandMarkLink
           href={PLATFORM_HUB_PATH}
           className="shrink-0 py-1"
-          aria-label="AR SCMP — platform home"
+          aria-label="NEOLINK — platform home"
         />
         <nav
           className="min-w-0 flex-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

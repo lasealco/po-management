@@ -3,9 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --arscmp-primary: #165b67;
-  --arscmp-primary-700: #124a54;
-  --arscmp-primary-50: #eef6f7;
+  /* NEOLINK brand orange (logo) */
+  --arscmp-primary: #e8912d;
+  --arscmp-primary-700: #c4731f;
+  --arscmp-primary-50: #fdf5eb;
   /* Muted strip under AppNav so the active module “flows” into secondary nav (see moduleSubNavShellClass). */
   --arscmp-nav-substrip: color-mix(in srgb, var(--arscmp-primary) 14%, white);
 }
@@ -156,9 +157,9 @@ textarea:focus {
 @keyframes guide-pulse {
   0%,
   100% {
-    box-shadow: 0 12px 40px -8px rgba(22, 91, 103, 0.5);
+    box-shadow: 0 12px 40px -8px rgba(232, 145, 45, 0.45);
   }
   50% {
-    box-shadow: 0 16px 44px -6px rgba(22, 91, 103, 0.62);
+    box-shadow: 0 16px 44px -6px rgba(232, 145, 45, 0.58);
   }
 }

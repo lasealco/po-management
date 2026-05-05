@@ -1,30 +1,31 @@
 "use client";
 
+import Image from "next/image";
+
 type ARSCMPLogoProps = {
   className?: string;
   compact?: boolean;
 };
 
+const LOGO_SRC = "/neolink-logo.png";
+
 /**
- * ARSCMP primary logo lockup.
- * Brand primary color: #165B67.
+ * Primary logo lockup (NEOLINK). Matches `--arscmp-primary` in `globals.css`.
  */
 export function ARSCMPLogo({ className = "", compact = false }: ARSCMPLogoProps) {
   return (
     <div className={`flex flex-col items-start ${className}`}>
-      <div className="flex items-center gap-2">
-        <div className="arscmp-logo-box flex aspect-square items-center justify-center rounded-xl px-2.5 py-1.5">
-          <span className="select-none text-2xl font-black leading-none text-white sm:text-3xl">
-            AR
-          </span>
-        </div>
-        <span className="arscmp-brand select-none text-3xl font-black leading-none tracking-tight sm:text-4xl">
-          SCMP
-        </span>
-      </div>
+      <Image
+        src={LOGO_SRC}
+        alt="NEOLINK"
+        width={compact ? 160 : 220}
+        height={compact ? 36 : 48}
+        priority
+        className="h-9 w-auto object-contain object-left sm:h-11 sm:w-auto"
+      />
       {!compact ? (
         <div className="mt-1 select-none text-[9px] font-medium uppercase tracking-[0.2em] text-zinc-500 sm:text-[10px]">
-          Supply Chain Management Platform
+          Connected operations platform
         </div>
       ) : null}
     </div>

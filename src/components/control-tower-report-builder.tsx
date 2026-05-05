@@ -352,8 +352,8 @@ function ResultLineChart({
     >
       <defs>
         <linearGradient id="ct-rb-line-area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#165b67" stopOpacity="0.14" />
-          <stop offset="100%" stopColor="#165b67" stopOpacity="0" />
+          <stop offset="0%" stopColor="#e8912d" stopOpacity="0.14" />
+          <stop offset="100%" stopColor="#e8912d" stopOpacity="0" />
         </linearGradient>
       </defs>
       <line x1={p} y1={h - p} x2={w - p} y2={h - p} stroke="#e7e5e4" />
@@ -370,7 +370,7 @@ function ResultLineChart({
       ) : null}
       <polyline
         fill="none"
-        stroke="#165b67"
+        stroke="#e8912d"
         strokeWidth="2.75"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -412,7 +412,7 @@ function ResultLineChart({
                   cy={cy}
                   r={sel ? 7 : 5}
                   fill="#fff"
-                  stroke="#165b67"
+                  stroke="#e8912d"
                   strokeOpacity={sel ? 1 : 0.5}
                   strokeWidth={sel ? 3 : 2}
                   pointerEvents="none"

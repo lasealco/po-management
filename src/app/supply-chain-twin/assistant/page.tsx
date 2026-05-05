@@ -9,7 +9,7 @@ import { TwinAssistantClient } from "./twin-assistant-client";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Twin Assistant — AR SCMP",
+  title: "Twin Assistant — NEOLINK",
 };
 
 export default async function SupplyChainTwinAssistantPage() {

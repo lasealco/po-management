@@ -12,7 +12,7 @@ import { ratesAuditTopNavHref } from "@/lib/rates-audit-nav";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "ARSCMP — Platform",
+  title: "NEOLINK — Platform",
   description: "Choose a workspace: POs, Control Tower, WMS, CRM, SRM, and more.",
   alternates: { canonical: PLATFORM_HUB_PATH },
 };
@@ -30,7 +30,7 @@ export default async function PlatformHomePage() {
   if (!access) {
     return (
       <main className="mx-auto flex min-h-[70vh] max-w-2xl flex-col justify-center px-6 py-16">
-        <BrandMarkLink href="/" className="mb-8 py-1" aria-label="AR SCMP home" />
+        <BrandMarkLink href="/" className="mb-8 py-1" aria-label="NEOLINK home" />
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">Welcome</h1>
         <p className="mt-4 text-zinc-600">
           Demo tenant not found. Run{" "}

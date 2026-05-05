@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AR SCMP",
+  title: "NEOLINK",
   description: "Connected supply chain platform — procurement, logistics, and operations.",
 };
 
