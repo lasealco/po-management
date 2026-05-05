@@ -66,6 +66,19 @@ export function mergeStockLedgerSearchParams(
   return next;
 }
 
+/** BF-82 — `GET /api/wms/movement-audit-chain` (chronological order; not UI ledger sort). */
+export function buildMovementAuditChainBf82Url(opts: StockLedgerUrlState): string {
+  const q = new URLSearchParams();
+  if (opts.sinceIso.trim()) q.set("since", opts.sinceIso.trim());
+  if (opts.untilIso.trim()) q.set("until", opts.untilIso.trim());
+  if (opts.warehouseId.trim()) q.set("warehouseId", opts.warehouseId.trim());
+  if (opts.movementType) q.set("movementType", opts.movementType);
+  const cap = opts.limit.trim();
+  if (cap) q.set("cap", cap);
+  const qs = q.toString();
+  return qs ? `/api/wms/movement-audit-chain?${qs}` : "/api/wms/movement-audit-chain";
+}
+
 /** Populate datetime-local inputs from an ISO string in the browser. */
 export function isoToDatetimeLocalValue(iso: string): string {
   const d = new Date(iso);

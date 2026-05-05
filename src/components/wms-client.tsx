@@ -13,6 +13,7 @@ import { printOutboundPackSlip } from "@/lib/wms/pack-slip-print";
 import { buildShipStationZpl, downloadZplTextFile } from "@/lib/wms/ship-station-zpl";
 import { WMS_DEMO_WAREHOUSE_CODE } from "@/lib/wms/demo-warehouse-code";
 import {
+  buildMovementAuditChainBf82Url,
   isoToDatetimeLocalValue,
   mergeStockLedgerSearchParams,
   normalizeMovementLedgerQueryString,
@@ -11924,6 +11925,23 @@ export function WmsClient({
             >
               Export CSV
             </button>
+            <a
+              href={buildMovementAuditChainBf82Url({
+                warehouseId: selectedWarehouseId,
+                movementType: movementTypeFilter,
+                sinceIso: ledgerSince,
+                untilIso: ledgerUntil,
+                limit: ledgerLimit,
+                sortBy: "",
+                sortDir: "",
+              })}
+              target="_blank"
+              rel="noreferrer"
+              title="BF-82 — chronological SHA-256 chain JSON for the same warehouse/type/date/cap filters (ignores table sort)."
+              className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800"
+            >
+              Audit chain JSON (BF-82)
+            </a>
           </div>
         </div>
         {lastRefreshedAt ? (

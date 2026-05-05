@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped wave: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md).
 
-**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** — **minimal slice landed** ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)). **`BF-75`** — **minimal slice landed** ([`WMS_INBOUND_ASN_NORMALIZE_BF75.md`](./WMS_INBOUND_ASN_NORMALIZE_BF75.md)). **`BF-76`** — **minimal slice landed** ([`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md)). **`BF-77`** — **minimal slice landed** ([`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md)). **`BF-78`** — **minimal slice landed** ([`WMS_STO_LANDED_COST_BF78.md`](./WMS_STO_LANDED_COST_BF78.md)). **`BF-79`** — **minimal slice landed** ([`WMS_VMI_CONSIGNMENT_BF79.md`](./WMS_VMI_CONSIGNMENT_BF79.md)). **`BF-80`** — **minimal slice landed** ([`WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md`](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md)). **`BF-81`** — **minimal slice landed** ([`WMS_RFID_COMMISSIONING_BF81.md`](./WMS_RFID_COMMISSIONING_BF81.md)). **`BF-82`** … **`BF-100`** remain draft IDs until each capsule ships.
+**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** — **minimal slice landed** ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)). **`BF-73`** — **minimal slice landed** ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)). **`BF-74`** — **minimal slice landed** ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)). **`BF-75`** — **minimal slice landed** ([`WMS_INBOUND_ASN_NORMALIZE_BF75.md`](./WMS_INBOUND_ASN_NORMALIZE_BF75.md)). **`BF-76`** — **minimal slice landed** ([`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md)). **`BF-77`** — **minimal slice landed** ([`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md)). **`BF-78`** — **minimal slice landed** ([`WMS_STO_LANDED_COST_BF78.md`](./WMS_STO_LANDED_COST_BF78.md)). **`BF-79`** — **minimal slice landed** ([`WMS_VMI_CONSIGNMENT_BF79.md`](./WMS_VMI_CONSIGNMENT_BF79.md)). **`BF-80`** — **minimal slice landed** ([`WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md`](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md)). **`BF-81`** — **minimal slice landed** ([`WMS_RFID_COMMISSIONING_BF81.md`](./WMS_RFID_COMMISSIONING_BF81.md)). **`BF-82`** — **minimal slice landed** ([`WMS_MOVEMENT_AUDIT_CHAIN_BF82.md`](./WMS_MOVEMENT_AUDIT_CHAIN_BF82.md)). **`BF-83`** … **`BF-100`** remain draft IDs until each capsule ships.
 
 **Rules:**
 
@@ -29,7 +29,7 @@
 | **BF-79** | VMI / consignment ownership metadata | Inventory accounting row (🔗 [`WMS_VMI_CONSIGNMENT_BF79.md`](./WMS_VMI_CONSIGNMENT_BF79.md)) | Stable **`InventoryBalance`** + tenant policy |
 | **BF-80** | QA sampling enforcement on receipt close | Receiving / QA row (🔗 [`WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md`](./WMS_QA_SAMPLING_RECEIPT_CLOSE_BF80.md)) | **BF-42** templates, **BF-31** close guards |
 | **BF-81** | RFID commissioning scan bridge | Packing / identification row (🔗 [`WMS_RFID_COMMISSIONING_BF81.md`](./WMS_RFID_COMMISSIONING_BF81.md)) | **BF-29** multiset scans |
-| **BF-82** | Movement hash-chain audit export | Permissions / audit row | Movement ledger stable |
+| **BF-82** | Movement hash-chain audit export | Permissions / audit row (🔗 [`WMS_MOVEMENT_AUDIT_CHAIN_BF82.md`](./WMS_MOVEMENT_AUDIT_CHAIN_BF82.md)) | Movement ledger stable |
 | **BF-83** | Supplier receiving scorecard export | Receiving / SRM row | **BF-42**, **`Shipment`** disposition stats |
 | **BF-84** | Promo uplift on forecast stub | Replenishment row | **BF-61** forecast stub |
 | **BF-85** | Bulk RMA disposition rules | Returns row | **BF-41** RMA subtype |
@@ -171,9 +171,9 @@
 
 **Objective:** Export contiguous **`InventoryMovement`** tail hashes (`sha256` chaining) for tamper-evidence narratives.
 
-**Exit sketch:** **`GET /api/wms/movement-audit-chain`** (`tenantId`, `since`, cap).
+**Shipped:** [`WMS_MOVEMENT_AUDIT_CHAIN_BF82.md`](./WMS_MOVEMENT_AUDIT_CHAIN_BF82.md) — **`GET /api/wms/movement-audit-chain`** (`bf82.v1`), deterministic canonical JSON + rolling fold, **`loadWmsViewReadScope`** parity, Stock ledger **Audit chain JSON** link; Vitest.
 
-**Out of scope:** Blockchain mainnet anchoring.
+**Out of scope:** Blockchain mainnet anchoring; persisted per-row anchors on **`InventoryMovement`** (future optional hardening).
 
 ---
 
