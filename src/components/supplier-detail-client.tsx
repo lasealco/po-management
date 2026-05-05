@@ -695,7 +695,11 @@ export function SupplierDetailClient({
 
       {initial.approvalStatus === "approved" && canApprove ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-2 text-xs text-emerald-950">
-          <span className="font-medium">Approved and eligible for POs and forwarder selection.</span>{" "}
+          <span className="font-medium">
+            {srmCategory === "logistics"
+              ? "Approved and eligible for POs and forwarder selection."
+              : "Approved and eligible for purchase orders."}
+          </span>{" "}
           <button
             type="button"
             disabled={busy}
@@ -1594,6 +1598,7 @@ export function SupplierDetailClient({
         <SupplierCapabilitiesSection
           key={`${initial.id}-${initial.updatedAt}`}
           supplierId={initial.id}
+          srmCategory={srmCategory}
           canEdit={canEdit}
           canViewSupplierSensitiveFields={canViewSupplierSensitiveFields}
           initialRows={initial.capabilities}

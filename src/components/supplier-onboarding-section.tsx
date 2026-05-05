@@ -44,14 +44,20 @@ export function SupplierOnboardingSection({
 
   const load = useCallback(async () => {
     setError(null);
-    const res = await fetch(`/api/suppliers/${supplierId}/onboarding-tasks`);
-    const payload: unknown = await res.json().catch(() => null);
-    if (!res.ok) {
-      setError(apiClientErrorMessage(payload ?? {}, "Could not load onboarding tasks."));
-      return;
+    try {
+      const res = await fetch(`/api/suppliers/${supplierId}/onboarding-tasks`);
+      const payload: unknown = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(apiClientErrorMessage(payload ?? {}, "Could not load onboarding tasks."));
+        setTasks([]);
+        return;
+      }
+      const list = (payload as { tasks?: OnboardingTaskRow[] }).tasks;
+      setTasks(Array.isArray(list) ? list : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load onboarding tasks.");
+      setTasks([]);
     }
-    const list = (payload as { tasks?: OnboardingTaskRow[] }).tasks;
-    setTasks(Array.isArray(list) ? list : []);
   }, [supplierId]);
 
   useEffect(() => {
@@ -146,14 +152,18 @@ export function SupplierOnboardingSection({
         </div>
       </div>
       <p className="mt-4 text-xs font-medium text-zinc-700">
-        {tasks.length === 0
-          ? "No checklist rows yet"
-          : `${doneCount} / ${tasks.length} complete (${pct}%)`}
+        {error
+          ? "Checklist could not be loaded."
+          : tasks.length === 0
+            ? "No checklist rows yet"
+            : `${doneCount} / ${tasks.length} complete (${pct}%)`}
       </p>
       <p className="mt-1 text-xs text-zinc-500">
-        {tasks.length === 0
-          ? "Default tasks are created when this tab loads. Try refreshing, or re-open the supplier if the list stays empty."
-          : "Default tasks are created for each supplier. Assign owners and due dates; mark items done as you complete diligence."}
+        {error
+          ? "Fix the error below or retry. Your tasks are still on the server if the API recovers."
+          : tasks.length === 0
+            ? "Default tasks are created when this tab loads. Try refreshing, or re-open the supplier if the list stays empty."
+            : "Default tasks are created for each supplier. Assign owners and due dates; mark items done as you complete diligence."}
       </p>
       <p className="mt-2 text-xs text-zinc-600">
         Tip: on the SRM list, turn on <strong className="text-zinc-800">Assigned onboarding</strong> to see suppliers
@@ -170,8 +180,20 @@ export function SupplierOnboardingSection({
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
       ) : null}
 
-      {tasks.length === 0 ? (
+      {tasks.length === 0 && !error ? (
         <p className="mt-4 text-sm text-zinc-600">No task rows to display. Check connectivity or try again in a moment.</p>
+      ) : null}
+      {error ? (
+        <button
+          type="button"
+          className="mt-3 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+          onClick={() => {
+            setTasks(null);
+            void load();
+          }}
+        >
+          Retry loading checklist
+        </button>
       ) : null}
 
       <ul className="mt-4 divide-y divide-zinc-100">

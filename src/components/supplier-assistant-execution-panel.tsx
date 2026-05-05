@@ -58,19 +58,24 @@ export function SupplierAssistantExecutionPanel({
     const controller = new AbortController();
     async function load() {
       setError(null);
-      const res = await fetch(`/api/suppliers/${supplierId}/assistant-execution`, { signal: controller.signal });
-      const parsed: unknown = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(apiClientErrorMessage(parsed, "Could not load supplier execution assistant."));
-        return;
+      try {
+        const res = await fetch(`/api/suppliers/${supplierId}/assistant-execution`, { signal: controller.signal });
+        const parsed: unknown = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(apiClientErrorMessage(parsed, "Could not load supplier execution assistant."));
+          return;
+        }
+        const payload = parsed as Amp2Snapshot;
+        setSnapshot(payload);
+        setBrief(payload.supplier.assistantPerformanceBrief ?? payload.generated.performanceBrief);
+        setGapPlan(payload.supplier.assistantOnboardingGapPlan ?? payload.generated.onboardingGapPlan);
+        setNote(payload.supplier.assistantExecutionNote ?? "");
+        setFollowUpMessage(payload.generated.followUpMessage);
+        setTaskTitle(payload.onboardingTasks.find((task) => !task.done)?.title ?? "Confirm supplier follow-up owner and due date");
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setError(e instanceof Error ? e.message : "Could not load supplier execution assistant.");
       }
-      const payload = parsed as Amp2Snapshot;
-      setSnapshot(payload);
-      setBrief(payload.supplier.assistantPerformanceBrief ?? payload.generated.performanceBrief);
-      setGapPlan(payload.supplier.assistantOnboardingGapPlan ?? payload.generated.onboardingGapPlan);
-      setNote(payload.supplier.assistantExecutionNote ?? "");
-      setFollowUpMessage(payload.generated.followUpMessage);
-      setTaskTitle(payload.onboardingTasks.find((task) => !task.done)?.title ?? "Confirm supplier follow-up owner and due date");
     }
     void load();
     return () => controller.abort();
@@ -142,7 +147,7 @@ export function SupplierAssistantExecutionPanel({
           </p>
         </div>
         <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-sky-800">
-          {snapshot?.supplier.assistantExecutionStatus ?? "Loading"}
+          {snapshot?.supplier.assistantExecutionStatus ?? (error ? "Unavailable" : "Loading")}
         </span>
       </div>
 
@@ -150,10 +155,22 @@ export function SupplierAssistantExecutionPanel({
       {notice ? <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{notice}</p> : null}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
-        {metric("Parent POs", snapshot?.metrics.parentOrderCount ?? null)}
-        {metric("Awaiting confirm", snapshot?.metrics.awaitingConfirmation ?? null)}
-        {metric("On-time ship %", snapshot?.metrics.onTimeShipPct ?? null)}
-        {metric("Open gaps", snapshot?.metrics.openOnboardingTasks ?? null)}
+        {metric(
+          "Parent POs",
+          !snapshot ? (error ? "—" : "…") : snapshot.metrics.parentOrderCount,
+        )}
+        {metric(
+          "Awaiting confirm",
+          !snapshot ? (error ? "—" : "…") : snapshot.metrics.awaitingConfirmation,
+        )}
+        {metric(
+          "On-time ship %",
+          !snapshot ? (error ? "—" : "…") : snapshot.metrics.onTimeShipPct,
+        )}
+        {metric(
+          "Open gaps",
+          !snapshot ? (error ? "—" : "…") : snapshot.metrics.openOnboardingTasks,
+        )}
       </div>
 
       {!canViewOrders ? (

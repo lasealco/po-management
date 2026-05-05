@@ -10,11 +10,14 @@ const MODE_OPTIONS = ["", "OCEAN", "AIR", "ROAD", "RAIL"] as const;
 
 export function SupplierCapabilitiesSection({
   supplierId,
+  srmCategory,
   canEdit,
   canViewSupplierSensitiveFields,
   initialRows,
 }: {
   supplierId: string;
+  /** Product partners use the same schema for optional logistics-adjacent services; logistics partners use transport-style qualification. */
+  srmCategory: "product" | "logistics";
   canEdit: boolean;
   /** Phase K: geography and free-text notes need edit/approve, not view-only. */
   canViewSupplierSensitiveFields: boolean;
@@ -157,8 +160,17 @@ export function SupplierCapabilitiesSection({
         <div className="mt-4 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 p-5">
           <p className="text-sm font-medium text-zinc-800">No capabilities yet</p>
           <p className="mt-1 text-xs text-zinc-600">
-            Add modes (ocean, air, …), service lines, and geography so buyers can see how this partner can
-            help. Use the form below.
+            {srmCategory === "product" ? (
+              <>
+                Only fill this if this supplier also covers freight, customs, or lanes for you. Otherwise skip —
+                product sourcing still runs through POs and supplier performance elsewhere.
+              </>
+            ) : (
+              <>
+                Add modes (ocean, air, …), service lines, and geography so buyers can see how this partner can
+                help. Use the form below.
+              </>
+            )}
           </p>
         </div>
       ) : null}
