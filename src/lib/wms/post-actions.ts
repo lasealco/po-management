@@ -119,6 +119,7 @@ import {
   landedCostNotesBf78ToStoredJson,
   validateLandedCostNotesBf78Draft,
 } from "./landed-cost-notes-bf78";
+import { evaluateDeniedPartyScreeningBf92ForMarkOutboundShipped } from "./denied-party-screening-bf92";
 import { persistDockYardMilestoneWithDetentionAudit } from "./dock-yard-milestone-tx";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
@@ -3233,7 +3234,10 @@ export async function handleWmsPost(
     }
     const order = await prisma.outboundOrder.findFirst({
       where: { id: outboundOrderId, tenantId },
-      include: { lines: { include: { product: true } } },
+      include: {
+        lines: { include: { product: true } },
+        crmAccount: { select: { id: true, name: true, legalName: true } },
+      },
     });
     if (!order) {
       return toApiErrorResponseFromStatus("Outbound order not found.", 404);
@@ -3342,6 +3346,28 @@ export async function handleWmsPost(
           400,
         );
       }
+    }
+
+    const deniedPartyBf92 = await evaluateDeniedPartyScreeningBf92ForMarkOutboundShipped({
+      tenantId,
+      actorUserId: actorId,
+      order: {
+        id: order.id,
+        outboundNo: order.outboundNo,
+        warehouseId: order.warehouseId,
+        customerRef: order.customerRef ?? null,
+        shipToName: order.shipToName,
+        shipToLine1: order.shipToLine1,
+        shipToCity: order.shipToCity,
+        shipToCountryCode: order.shipToCountryCode,
+        crmAccount: order.crmAccount,
+      },
+    });
+    if (!deniedPartyBf92.ok) {
+      return toApiErrorResponseFromStatus(deniedPartyBf92.message, deniedPartyBf92.httpStatus, {
+        deniedPartyScreeningBf92: true,
+        schemaVersion: "bf92.v1",
+      });
     }
 
     await prisma.$transaction(async (tx) => {

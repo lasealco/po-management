@@ -23,6 +23,7 @@ import {
   CO2E_HINT_SCHEMA_VERSION,
 } from "@/lib/wms/carbon-intensity-bf69";
 import { externalPdpBf70DashboardMeta } from "@/lib/wms/external-pdp-bf70";
+import { deniedPartyScreeningBf92DashboardMeta } from "@/lib/wms/denied-party-screening-bf92";
 import { prisma } from "@/lib/prisma";
 import {
   evaluateDangerousGoodsReadinessBf72,
@@ -1006,6 +1007,7 @@ export async function getWmsDashboardPayload(
       methodology: CO2E_HINT_METHODOLOGY,
     },
     externalPdpBf70: externalPdpBf70DashboardMeta(),
+    deniedPartyScreeningBf92: deniedPartyScreeningBf92DashboardMeta(),
     inventoryOwnershipBalanceFilterBf79: echoInventoryOwnershipBf79Filter(inventoryOwnershipBalanceFilterBf79 ?? null),
     suppliersBf79: suppliersBf79.map((s) => ({ id: s.id, code: s.code, name: s.name })),
     atpByWarehouseProduct,

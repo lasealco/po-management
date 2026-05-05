@@ -451,6 +451,14 @@ type WmsData = {
     timeoutMs: number;
     failOpen: boolean;
   };
+  /** BF-92 — denied-party screening hook before mark_outbound_shipped (URL not exposed). */
+  deniedPartyScreeningBf92?: {
+    schemaVersion: string;
+    enabled: boolean;
+    timeoutMs: number;
+    failOpen: boolean;
+    bearerConfigured: boolean;
+  };
   /** BF-79 — echo of balance ownership filter applied to `balances` (`GET /api/wms` query). */
   inventoryOwnershipBalanceFilterBf79?: {
     schemaVersion: string;
@@ -3229,6 +3237,39 @@ export function WmsClient({
                   </>
                 )}
                 . See <span className="font-medium">docs/wms/WMS_EXTERNAL_PDP_BF70.md</span>.
+              </p>
+            </section>
+          ) : null}
+          {data.deniedPartyScreeningBf92?.enabled ? (
+            <section className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-950">BF-92 — Denied-party screening</p>
+              <p className="mt-2 text-xs text-amber-950/90">
+                <span className="font-medium">mark_outbound_shipped</span> POSTs ship-party hints (
+                <span className="font-mono">{data.deniedPartyScreeningBf92.schemaVersion}</span>) before committing shipment moves.
+                Timeout <span className="font-mono">{data.deniedPartyScreeningBf92.timeoutMs}ms</span>
+                {data.deniedPartyScreeningBf92.failOpen ? (
+                  <>
+                    {" "}
+                    · <span className="font-medium">fail-open</span> on provider errors (
+                    <span className="font-mono">WMS_DENIED_PARTY_SCREENING_FAIL_OPEN</span>)
+                  </>
+                ) : (
+                  <>
+                    {" "}
+                    · <span className="font-medium">fail-closed</span> on provider errors
+                  </>
+                )}
+                {data.deniedPartyScreeningBf92.bearerConfigured ? (
+                  <>
+                    {" "}
+                    · Bearer auth configured (<span className="font-mono">WMS_DENIED_PARTY_SCREENING_BEARER_TOKEN</span>)
+                  </>
+                ) : null}
+                . Response contract:{" "}
+                <code className="rounded bg-amber-100/80 px-1 py-0.5 font-mono text-[11px]">
+                  {`{ "allow": boolean, "reason"?: string }`}
+                </code>
+                .
               </p>
             </section>
           ) : null}
