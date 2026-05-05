@@ -53,7 +53,16 @@ export async function GET(request: Request) {
         },
       },
       crmAccount: { select: { id: true, name: true, legalName: true } },
-      sourceCrmQuote: { select: { quoteNumber: true, title: true } },
+      sourceCrmQuote: {
+        select: {
+          id: true,
+          quoteNumber: true,
+          title: true,
+          currency: true,
+          subtotal: true,
+          validUntil: true,
+        },
+      },
       lines: {
         orderBy: { lineNo: "asc" },
         select: {
@@ -61,6 +70,10 @@ export async function GET(request: Request) {
           quantity: true,
           packedQty: true,
           shippedQty: true,
+          commercialUnitPrice: true,
+          commercialListUnitPrice: true,
+          commercialPriceTierLabel: true,
+          commercialExtendedAmount: true,
           product: {
             select: { id: true, sku: true, productCode: true, name: true },
           },

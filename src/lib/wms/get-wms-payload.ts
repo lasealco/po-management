@@ -38,6 +38,7 @@ import {
   RFID_ENCODING_TABLE_SCHEMA_VERSION,
 } from "@/lib/wms/rfid-scan-bridge-bf81";
 import { parseStoredLandedCostNotesBf78Json } from "@/lib/wms/landed-cost-notes-bf78";
+import { parseWmsCommercialTermsBf87FromDb } from "@/lib/wms/commercial-terms-bf87";
 import {
   effectiveForecastQtyBf84,
   promoUpliftBf84PayloadFromDb,
@@ -113,6 +114,41 @@ function mapWmsProductJson(p: {
 function andWhereClauses<T>(base: T, extra: object): T {
   if (!extra || Object.keys(extra).length === 0) return base;
   return { AND: [base, extra] } as T;
+}
+
+function mapCommercialTermsBf87ForWmsPayload(raw: unknown): {
+  schemaVersion: string;
+  incoterm: string | null;
+  paymentTermsDays: number | null;
+  paymentTermsLabel: string | null;
+  billTo: {
+    name: string | null;
+    line1: string | null;
+    city: string | null;
+    region: string | null;
+    postalCode: string | null;
+    countryCode: string | null;
+  } | null;
+} | null {
+  const doc = parseWmsCommercialTermsBf87FromDb(raw);
+  if (!doc) return null;
+  const bt = doc.billTo;
+  return {
+    schemaVersion: doc.schemaVersion,
+    incoterm: doc.incoterm ?? null,
+    paymentTermsDays: doc.paymentTermsDays ?? null,
+    paymentTermsLabel: doc.paymentTermsLabel ?? null,
+    billTo: bt
+      ? {
+          name: bt.name ?? null,
+          line1: bt.line1 ?? null,
+          city: bt.city ?? null,
+          region: bt.region ?? null,
+          postalCode: bt.postalCode ?? null,
+          countryCode: bt.countryCode ?? null,
+        }
+      : null,
+  };
 }
 
 /** Serializable JSON for `GET /api/wms` (WMS client + pages). */
@@ -1174,6 +1210,7 @@ export async function getWmsDashboardPayload(
         wmsDangerousGoodsChecklistJson: o.wmsDangerousGoodsChecklistJson,
       }).checklistComplete,
       dangerousGoodsChecklist: parseDgChecklistJsonFromDb(o.wmsDangerousGoodsChecklistJson),
+      commercialTermsBf87: mapCommercialTermsBf87ForWmsPayload(o.wmsCommercialTermsJsonBf87),
       status: o.status,
       warehouse: o.warehouse,
       crmAccount: o.crmAccount,

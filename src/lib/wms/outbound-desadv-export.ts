@@ -1,8 +1,46 @@
 /**
  * BF-40 — EDIFACT DESADV-inspired JSON stub for outbound ship notices (not a certified EDI encoder).
+ * BF-87 — nested commercial terms snapshot (`commercialTermsBf87`) beside BF-22 line pricing.
  */
 
 import { Prisma } from "@prisma/client";
+
+import { parseWmsCommercialTermsBf87FromDb } from "./commercial-terms-bf87";
+
+export type OutboundDesadvCommercialTermsBf87Export = {
+  schemaVersion: "bf87.v1";
+  incoterm: string | null;
+  paymentTermsDays: number | null;
+  paymentTermsLabel: string | null;
+  billToStructured: {
+    name: string | null;
+    line1: string | null;
+    city: string | null;
+    region: string | null;
+    postalCode: string | null;
+    countryCode: string | null;
+  } | null;
+  billToCrmAccountRef: {
+    id: string;
+    name: string;
+    legalName: string | null;
+  } | null;
+  sourceQuote: {
+    id: string;
+    quoteNumber: string | null;
+    title: string;
+    currency: string;
+    subtotal: string | null;
+    validUntil: string | null;
+  } | null;
+  lineCommercials: Array<{
+    lineNo: number;
+    commercialUnitPrice: string | null;
+    commercialListUnitPrice: string | null;
+    commercialPriceTierLabel: string | null;
+    commercialExtendedAmount: string | null;
+  }>;
+};
 
 export type OutboundDesadvSnapshotV1 = {
   schemaVersion: 1;
@@ -53,6 +91,8 @@ export type OutboundDesadvSnapshotV1 = {
     quoteNumber: string | null;
     title: string;
   } | null;
+  /** BF-87 — Incoterms / payment / bill-to / quote financials / BF-22 line commercial snapshot. */
+  commercialTermsBf87: OutboundDesadvCommercialTermsBf87Export;
   lines: Array<{
     lineNo: number;
     productId: string;
@@ -84,6 +124,7 @@ export type OutboundDesadvPrismaRow = {
   carrierTrackingNo: string | null;
   carrierLabelAdapterId: string | null;
   carrierLabelPurchasedAt: Date | null;
+  wmsCommercialTermsJsonBf87: Prisma.JsonValue | null;
   warehouse: {
     code: string | null;
     name: string;
@@ -93,12 +134,23 @@ export type OutboundDesadvPrismaRow = {
     countryCode: string | null;
   };
   crmAccount: { id: string; name: string; legalName: string | null } | null;
-  sourceCrmQuote: { quoteNumber: string | null; title: string } | null;
+  sourceCrmQuote: {
+    id: string;
+    quoteNumber: string | null;
+    title: string;
+    currency: string;
+    subtotal: Prisma.Decimal | null;
+    validUntil: Date | null;
+  } | null;
   lines: Array<{
     lineNo: number;
     quantity: Prisma.Decimal;
     packedQty: Prisma.Decimal;
     shippedQty: Prisma.Decimal;
+    commercialUnitPrice: Prisma.Decimal | null;
+    commercialListUnitPrice: Prisma.Decimal | null;
+    commercialPriceTierLabel: string | null;
+    commercialExtendedAmount: Prisma.Decimal | null;
     product: {
       id: string;
       sku: string | null;
@@ -126,6 +178,8 @@ export function buildOutboundDesadvSnapshotV1(
 ): OutboundDesadvSnapshotV1 {
   const qtyBasis: "PACKED" | "SHIPPED" = order.status === "SHIPPED" ? "SHIPPED" : "PACKED";
   let sum = new Prisma.Decimal(0);
+  const stored = parseWmsCommercialTermsBf87FromDb(order.wmsCommercialTermsJsonBf87);
+
   const lines = order.lines.map((l) => {
     const raw = qtyBasis === "SHIPPED" ? l.shippedQty : l.packedQty;
     const dispatchedQty = raw.toString();
@@ -142,6 +196,47 @@ export function buildOutboundDesadvSnapshotV1(
       uom: "EA" as const,
     };
   });
+
+  const commercialTermsBf87: OutboundDesadvCommercialTermsBf87Export = {
+    schemaVersion: "bf87.v1",
+    incoterm: stored?.incoterm ?? null,
+    paymentTermsDays: stored?.paymentTermsDays ?? null,
+    paymentTermsLabel: stored?.paymentTermsLabel ?? null,
+    billToStructured: stored?.billTo
+      ? {
+          name: stored.billTo.name ?? null,
+          line1: stored.billTo.line1 ?? null,
+          city: stored.billTo.city ?? null,
+          region: stored.billTo.region ?? null,
+          postalCode: stored.billTo.postalCode ?? null,
+          countryCode: stored.billTo.countryCode ?? null,
+        }
+      : null,
+    billToCrmAccountRef: order.crmAccount
+      ? {
+          id: order.crmAccount.id,
+          name: order.crmAccount.name,
+          legalName: order.crmAccount.legalName,
+        }
+      : null,
+    sourceQuote: order.sourceCrmQuote
+      ? {
+          id: order.sourceCrmQuote.id,
+          quoteNumber: order.sourceCrmQuote.quoteNumber,
+          title: order.sourceCrmQuote.title,
+          currency: order.sourceCrmQuote.currency,
+          subtotal: order.sourceCrmQuote.subtotal?.toString() ?? null,
+          validUntil: order.sourceCrmQuote.validUntil?.toISOString() ?? null,
+        }
+      : null,
+    lineCommercials: order.lines.map((l) => ({
+      lineNo: l.lineNo,
+      commercialUnitPrice: l.commercialUnitPrice?.toString() ?? null,
+      commercialListUnitPrice: l.commercialListUnitPrice?.toString() ?? null,
+      commercialPriceTierLabel: l.commercialPriceTierLabel ?? null,
+      commercialExtendedAmount: l.commercialExtendedAmount?.toString() ?? null,
+    })),
+  };
 
   return {
     schemaVersion: 1,
@@ -196,6 +291,7 @@ export function buildOutboundDesadvSnapshotV1(
           title: order.sourceCrmQuote.title,
         }
       : null,
+    commercialTermsBf87,
     lines,
     totals: {
       lineCount: lines.length,

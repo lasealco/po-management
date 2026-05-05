@@ -74,6 +74,12 @@ import {
   parseWmsRmaDispositionMatchModeBf85,
   parseWmsReturnDispositionBf85,
 } from "./rma-disposition-rules-bf85";
+import {
+  commercialTermsBf87ToJsonValue,
+  isCommercialTermsBf87DocEmpty,
+  mergeOutboundCommercialTermsPatchBf87,
+  parseWmsCommercialTermsBf87FromDb,
+} from "./commercial-terms-bf87";
 import { resolveVarianceDisposition } from "./receive-line-variance";
 import {
   parseLotBatchExpiryInput,
@@ -1508,6 +1514,119 @@ export async function handleWmsPost(
         ...(clearSourceQuote ? { sourceCrmQuoteId: null } : {}),
       },
     });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_outbound_commercial_terms_bf87") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true, status: true, wmsCommercialTermsJsonBf87: true },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (order.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus("Cannot set commercial terms on cancelled outbound.", 400);
+    }
+
+    if (input.wmsCommercialTermsBf87Clear === true) {
+      await prisma.outboundOrder.update({
+        where: { id: order.id },
+        data: { wmsCommercialTermsJsonBf87: Prisma.JsonNull },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    const patch: Parameters<typeof mergeOutboundCommercialTermsPatchBf87>[1] = {};
+
+    if (input.wmsCommercialTermsIncotermBf87 !== undefined) {
+      const raw = input.wmsCommercialTermsIncotermBf87;
+      if (raw === null || raw === "") {
+        patch.incoterm = null;
+      } else {
+        const s = String(raw).trim().toUpperCase().slice(0, 16);
+        patch.incoterm = s || null;
+      }
+    }
+
+    if (input.wmsCommercialTermsPaymentDaysBf87 !== undefined) {
+      const raw = input.wmsCommercialTermsPaymentDaysBf87;
+      if (raw === null || raw === "") {
+        patch.paymentTermsDays = null;
+      } else {
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < 0 || n > 3650) {
+          return toApiErrorResponseFromStatus("wmsCommercialTermsPaymentDaysBf87 must be 0–3650 or null.", 400);
+        }
+        patch.paymentTermsDays = Math.floor(n);
+      }
+    }
+
+    if (input.wmsCommercialTermsPaymentLabelBf87 !== undefined) {
+      const raw = input.wmsCommercialTermsPaymentLabelBf87;
+      patch.paymentTermsLabel =
+        raw === null || raw === "" ? null : String(raw).trim().slice(0, 128) || null;
+    }
+
+    if (input.wmsCommercialTermsBillToNameBf87 !== undefined) {
+      const raw = input.wmsCommercialTermsBillToNameBf87;
+      patch.billToName =
+        raw === null || raw === "" ? null : String(raw).trim().slice(0, 256) || null;
+    }
+    if (input.wmsCommercialTermsBillToLine1Bf87 !== undefined) {
+      const raw = input.wmsCommercialTermsBillToLine1Bf87;
+      patch.billToLine1 =
+        raw === null || raw === "" ? null : String(raw).trim().slice(0, 512) || null;
+    }
+    if (input.wmsCommercialTermsBillToCityBf87 !== undefined) {
+      const raw = input.wmsCommercialTermsBillToCityBf87;
+      patch.billToCity =
+        raw === null || raw === "" ? null : String(raw).trim().slice(0, 128) || null;
+    }
+    if (input.wmsCommercialTermsBillToRegionBf87 !== undefined) {
+      const raw = input.wmsCommercialTermsBillToRegionBf87;
+      patch.billToRegion =
+        raw === null || raw === "" ? null : String(raw).trim().slice(0, 128) || null;
+    }
+    if (input.wmsCommercialTermsBillToPostalCodeBf87 !== undefined) {
+      const raw = input.wmsCommercialTermsBillToPostalCodeBf87;
+      patch.billToPostalCode =
+        raw === null || raw === "" ? null : String(raw).trim().slice(0, 32) || null;
+    }
+    if (input.wmsCommercialTermsBillToCountryBf87 !== undefined) {
+      const raw = input.wmsCommercialTermsBillToCountryBf87;
+      if (raw === null || raw === "") {
+        patch.billToCountryCode = null;
+      } else {
+        const u = String(raw).trim().toUpperCase().slice(0, 2);
+        patch.billToCountryCode = u.length === 2 ? u : null;
+      }
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return toApiErrorResponseFromStatus(
+        "Provide fields to patch or wmsCommercialTermsBf87Clear=true.",
+        400,
+      );
+    }
+
+    const existing = parseWmsCommercialTermsBf87FromDb(order.wmsCommercialTermsJsonBf87);
+    const merged = mergeOutboundCommercialTermsPatchBf87(existing, patch);
+    const jsonDoc = commercialTermsBf87ToJsonValue(merged);
+
+    await prisma.outboundOrder.update({
+      where: { id: order.id },
+      data: {
+        wmsCommercialTermsJsonBf87: isCommercialTermsBf87DocEmpty(merged)
+          ? Prisma.JsonNull
+          : (jsonDoc as Prisma.InputJsonValue),
+      },
+    });
+
     return NextResponse.json({ ok: true });
   }
 

@@ -5666,6 +5666,8 @@ model OutboundOrder {
   manifestParcelIds       Json?
   /// BF-72 — operator DG checklist attestation (`wms.dg_checklist_state.bf72.v1`); cleared when shipping workflow resets checklist only via explicit clear action.
   wmsDangerousGoodsChecklistJson Json?
+  /// BF-87 — optional Incoterms / payment / bill-to snapshot for ASN / ship-notice JSON (`bf87.v1`).
+  wmsCommercialTermsJsonBf87 Json?
   createdById       String
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt

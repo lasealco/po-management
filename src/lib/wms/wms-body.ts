@@ -443,4 +443,16 @@ export type WmsBody = {
   };
   /** BF-78 — `set_wms_stock_transfer_landed_cost_notes_bf78` clears JSON when true. */
   landedCostNotesBf78Clear?: boolean;
+
+  /** BF-87 — `set_outbound_commercial_terms_bf87`: clears JSON when true. */
+  wmsCommercialTermsBf87Clear?: boolean;
+  wmsCommercialTermsIncotermBf87?: string | null;
+  wmsCommercialTermsPaymentDaysBf87?: number | string | null;
+  wmsCommercialTermsPaymentLabelBf87?: string | null;
+  wmsCommercialTermsBillToNameBf87?: string | null;
+  wmsCommercialTermsBillToLine1Bf87?: string | null;
+  wmsCommercialTermsBillToCityBf87?: string | null;
+  wmsCommercialTermsBillToRegionBf87?: string | null;
+  wmsCommercialTermsBillToPostalCodeBf87?: string | null;
+  wmsCommercialTermsBillToCountryBf87?: string | null;
 };

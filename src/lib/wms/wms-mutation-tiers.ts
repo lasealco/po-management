@@ -60,6 +60,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_outbound_order_cube_hint: "operations",
   /** BF-67 — multi-parcel tracking ids on outbound (`manifestParcelIds` JSON). */
   set_outbound_manifest_parcel_ids_bf67: "operations",
+  /** BF-87 — outbound commercial terms snapshot (`wmsCommercialTermsJsonBf87`, DESADV export). */
+  set_outbound_commercial_terms_bf87: "operations",
 
   create_putaway_task: "operations",
   complete_putaway_task: "operations",

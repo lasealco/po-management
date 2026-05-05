@@ -27,15 +27,27 @@ function baseOrder(over: Partial<OutboundDesadvPrismaRow> = {}): OutboundDesadvP
     carrierTrackingNo: null,
     carrierLabelAdapterId: null,
     carrierLabelPurchasedAt: null,
+    wmsCommercialTermsJsonBf87: null,
     warehouse,
     crmAccount: { id: "crm1", name: "Buyer Inc", legalName: "Buyer Incorporated" },
-    sourceCrmQuote: { quoteNumber: "Q-100", title: "Spring quote" },
+    sourceCrmQuote: {
+      id: "q1",
+      quoteNumber: "Q-100",
+      title: "Spring quote",
+      currency: "USD",
+      subtotal: new Prisma.Decimal("100.50"),
+      validUntil: new Date("2026-06-01T00:00:00.000Z"),
+    },
     lines: [
       {
         lineNo: 1,
         quantity: new Prisma.Decimal(10),
         packedQty: new Prisma.Decimal(10),
         shippedQty: new Prisma.Decimal(0),
+        commercialUnitPrice: null,
+        commercialListUnitPrice: null,
+        commercialPriceTierLabel: null,
+        commercialExtendedAmount: null,
         product: {
           id: "p1",
           sku: "SKU-A",
@@ -67,6 +79,24 @@ describe("outbound-desadv-export", () => {
     expect(snap.totals.sumDispatchedQty).toBe("10");
     expect(snap.outboundOrder.asnReference).toBe("ASN-77");
     expect(snap.parties.billToCustomer?.legalName).toBe("Buyer Incorporated");
+    expect(snap.commercialTermsBf87.schemaVersion).toBe("bf87.v1");
+    expect(snap.commercialTermsBf87.incoterm).toBeNull();
+    expect(snap.commercialTermsBf87.sourceQuote?.id).toBe("q1");
+    expect(snap.commercialTermsBf87.sourceQuote?.currency).toBe("USD");
+    expect(snap.commercialTermsBf87.lineCommercials[0]?.lineNo).toBe(1);
+    expect(snap.commercialTermsBf87.lineCommercials[0]?.commercialUnitPrice).toBeNull();
+  });
+
+  it("maps BF-87 JSON incoterm into export snapshot", () => {
+    const snap = buildOutboundDesadvSnapshotV1(
+      baseOrder({
+        wmsCommercialTermsJsonBf87: { schemaVersion: "bf87.v1", incoterm: "DAP", paymentTermsDays: 30 },
+      }),
+      tenant,
+      at,
+    );
+    expect(snap.commercialTermsBf87.incoterm).toBe("DAP");
+    expect(snap.commercialTermsBf87.paymentTermsDays).toBe(30);
   });
 
   it("uses shipped quantities when status is SHIPPED", () => {
@@ -79,6 +109,10 @@ describe("outbound-desadv-export", () => {
             quantity: new Prisma.Decimal(10),
             packedQty: new Prisma.Decimal(10),
             shippedQty: new Prisma.Decimal(10),
+            commercialUnitPrice: null,
+            commercialListUnitPrice: null,
+            commercialPriceTierLabel: null,
+            commercialExtendedAmount: null,
             product: { id: "p1", sku: "SKU-A", productCode: "CODE-A", name: "Widget" },
           },
         ],

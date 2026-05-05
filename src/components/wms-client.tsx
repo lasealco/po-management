@@ -485,6 +485,21 @@ type WmsData = {
       actorUserId: string;
       items: Array<{ code: string; label: string; ok: boolean }>;
     } | null;
+    /** BF-87 — outbound commercial terms snapshot (`bf87.v1`) for DESADV / ASN JSON. */
+    commercialTermsBf87: {
+      schemaVersion: string;
+      incoterm: string | null;
+      paymentTermsDays: number | null;
+      paymentTermsLabel: string | null;
+      billTo: {
+        name: string | null;
+        line1: string | null;
+        city: string | null;
+        region: string | null;
+        postalCode: string | null;
+        countryCode: string | null;
+      } | null;
+    } | null;
     status: "DRAFT" | "RELEASED" | "PICKING" | "PACKED" | "SHIPPED" | "CANCELLED";
     warehouse: { id: string; code: string | null; name: string };
     crmAccount: { id: string; name: string; legalName: string | null } | null;
@@ -1202,6 +1217,226 @@ function StoLandedCostBf78Panel({
                 action: "set_wms_stock_transfer_landed_cost_notes_bf78",
                 stockTransferId: transferId,
                 landedCostNotesBf78Clear: true,
+              })
+            }
+            className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Clear
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+type OutboundCommercialTermsBf87Payload = {
+  schemaVersion: string;
+  incoterm: string | null;
+  paymentTermsDays: number | null;
+  paymentTermsLabel: string | null;
+  billTo: {
+    name: string | null;
+    line1: string | null;
+    city: string | null;
+    region: string | null;
+    postalCode: string | null;
+    countryCode: string | null;
+  } | null;
+} | null;
+
+function OutboundCommercialTermsBf87Panel({
+  outboundOrderId,
+  commercialTermsBf87,
+  canEdit,
+  busy,
+  runAction,
+}: {
+  outboundOrderId: string;
+  commercialTermsBf87: OutboundCommercialTermsBf87Payload;
+  canEdit: boolean;
+  busy: boolean;
+  runAction: (body: Record<string, unknown>) => void | Promise<unknown>;
+}) {
+  const ct = commercialTermsBf87;
+  const [incoterm, setIncoterm] = useState(() => ct?.incoterm ?? "");
+  const [paymentDays, setPaymentDays] = useState(() =>
+    ct?.paymentTermsDays != null ? String(ct.paymentTermsDays) : "",
+  );
+  const [paymentLabel, setPaymentLabel] = useState(() => ct?.paymentTermsLabel ?? "");
+  const [billName, setBillName] = useState(() => ct?.billTo?.name ?? "");
+  const [billLine1, setBillLine1] = useState(() => ct?.billTo?.line1 ?? "");
+  const [billCity, setBillCity] = useState(() => ct?.billTo?.city ?? "");
+  const [billRegion, setBillRegion] = useState(() => ct?.billTo?.region ?? "");
+  const [billPostal, setBillPostal] = useState(() => ct?.billTo?.postalCode ?? "");
+  const [billCountry, setBillCountry] = useState(() => ct?.billTo?.countryCode ?? "");
+
+  useEffect(() => {
+    setIncoterm(ct?.incoterm ?? "");
+    setPaymentDays(ct?.paymentTermsDays != null ? String(ct.paymentTermsDays) : "");
+    setPaymentLabel(ct?.paymentTermsLabel ?? "");
+    setBillName(ct?.billTo?.name ?? "");
+    setBillLine1(ct?.billTo?.line1 ?? "");
+    setBillCity(ct?.billTo?.city ?? "");
+    setBillRegion(ct?.billTo?.region ?? "");
+    setBillPostal(ct?.billTo?.postalCode ?? "");
+    setBillCountry(ct?.billTo?.countryCode ?? "");
+  }, [
+    outboundOrderId,
+    ct?.incoterm,
+    ct?.paymentTermsDays,
+    ct?.paymentTermsLabel,
+    ct?.billTo?.name,
+    ct?.billTo?.line1,
+    ct?.billTo?.city,
+    ct?.billTo?.region,
+    ct?.billTo?.postalCode,
+    ct?.billTo?.countryCode,
+  ]);
+
+  const disabled = !canEdit || busy;
+
+  return (
+    <div className="mt-2 w-full rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+        Commercial terms (BF-87)
+      </p>
+      <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">
+        Incoterms, payment terms, and structured bill-to ride on{" "}
+        <span className="font-medium">Export ASN JSON</span> beside CRM quote line pricing (BF-22 fields).
+      </p>
+      <div className="mt-2 grid gap-2 sm:grid-cols-3">
+        <label className="text-[11px] text-zinc-600">
+          Incoterm
+          <input
+            value={incoterm}
+            onChange={(e) => setIncoterm(e.target.value)}
+            disabled={disabled}
+            maxLength={16}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-xs uppercase disabled:opacity-50"
+            placeholder="e.g. DAP"
+          />
+        </label>
+        <label className="text-[11px] text-zinc-600">
+          Payment days
+          <input
+            value={paymentDays}
+            onChange={(e) => setPaymentDays(e.target.value)}
+            disabled={disabled}
+            inputMode="numeric"
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-xs disabled:opacity-50"
+            placeholder="e.g. 30"
+          />
+        </label>
+        <label className="text-[11px] text-zinc-600">
+          Payment label
+          <input
+            value={paymentLabel}
+            onChange={(e) => setPaymentLabel(e.target.value)}
+            disabled={disabled}
+            maxLength={128}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs disabled:opacity-50"
+            placeholder="Net 30 · ACH"
+          />
+        </label>
+      </div>
+      <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+        Bill-to (optional override)
+      </p>
+      <div className="mt-1 grid gap-2 sm:grid-cols-2">
+        <label className="text-[11px] text-zinc-600">
+          Name
+          <input
+            value={billName}
+            onChange={(e) => setBillName(e.target.value)}
+            disabled={disabled}
+            maxLength={256}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs disabled:opacity-50"
+          />
+        </label>
+        <label className="text-[11px] text-zinc-600">
+          Address line 1
+          <input
+            value={billLine1}
+            onChange={(e) => setBillLine1(e.target.value)}
+            disabled={disabled}
+            maxLength={512}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs disabled:opacity-50"
+          />
+        </label>
+        <label className="text-[11px] text-zinc-600">
+          City
+          <input
+            value={billCity}
+            onChange={(e) => setBillCity(e.target.value)}
+            disabled={disabled}
+            maxLength={128}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs disabled:opacity-50"
+          />
+        </label>
+        <label className="text-[11px] text-zinc-600">
+          Region
+          <input
+            value={billRegion}
+            onChange={(e) => setBillRegion(e.target.value)}
+            disabled={disabled}
+            maxLength={128}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs disabled:opacity-50"
+          />
+        </label>
+        <label className="text-[11px] text-zinc-600">
+          Postal code
+          <input
+            value={billPostal}
+            onChange={(e) => setBillPostal(e.target.value)}
+            disabled={disabled}
+            maxLength={32}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs disabled:opacity-50"
+          />
+        </label>
+        <label className="text-[11px] text-zinc-600">
+          Country (ISO-2)
+          <input
+            value={billCountry}
+            onChange={(e) => setBillCountry(e.target.value.toUpperCase())}
+            disabled={disabled}
+            maxLength={2}
+            className="mt-1 block w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-xs uppercase disabled:opacity-50"
+          />
+        </label>
+      </div>
+      {canEdit ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              const pd = paymentDays.trim();
+              void runAction({
+                action: "set_outbound_commercial_terms_bf87",
+                outboundOrderId,
+                wmsCommercialTermsIncotermBf87: incoterm.trim() || null,
+                wmsCommercialTermsPaymentDaysBf87: pd === "" ? null : pd,
+                wmsCommercialTermsPaymentLabelBf87: paymentLabel.trim() || null,
+                wmsCommercialTermsBillToNameBf87: billName.trim() || null,
+                wmsCommercialTermsBillToLine1Bf87: billLine1.trim() || null,
+                wmsCommercialTermsBillToCityBf87: billCity.trim() || null,
+                wmsCommercialTermsBillToRegionBf87: billRegion.trim() || null,
+                wmsCommercialTermsBillToPostalCodeBf87: billPostal.trim() || null,
+                wmsCommercialTermsBillToCountryBf87: billCountry.trim() || null,
+              });
+            }}
+            className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            Save commercial terms
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void runAction({
+                action: "set_outbound_commercial_terms_bf87",
+                outboundOrderId,
+                wmsCommercialTermsBf87Clear: true,
               })
             }
             className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
@@ -8918,6 +9153,15 @@ export function WmsClient({
                       </button>
                     </div>
                   </div>
+                ) : null}
+                {o.status !== "CANCELLED" ? (
+                  <OutboundCommercialTermsBf87Panel
+                    outboundOrderId={o.id}
+                    commercialTermsBf87={o.commercialTermsBf87 ?? null}
+                    canEdit={canEdit}
+                    busy={busy}
+                    runAction={runAction}
+                  />
                 ) : null}
                 {canEdit && o.status !== "SHIPPED" && o.status !== "CANCELLED" ? (
                   <button
