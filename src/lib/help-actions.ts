@@ -2,7 +2,7 @@ import { actorIsSupplierPortalRestricted, viewerHas, type ViewerAccess } from "@
 import { HELP_PLAYBOOKS, type HelpPlaybookDoAction } from "@/lib/help-playbooks";
 import { LEGAL_PUBLIC_HELP_PATHS } from "@/lib/legal-public-paths";
 import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
-import { MARKETING_PUBLIC_HELP_PATHS } from "@/lib/marketing-public-paths";
+import { MARKETING_PUBLIC_HELP_PATHS, DEMO_INTRO_HELP_PATHS } from "@/lib/marketing-public-paths";
 import { prisma } from "@/lib/prisma";
 import { TARIFF_HELP_OPEN_PATHS, TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
@@ -44,6 +44,7 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/forgot-password",
   "/reset-password",
   ...MARKETING_PUBLIC_HELP_PATHS,
+  ...DEMO_INTRO_HELP_PATHS,
   ...LEGAL_PUBLIC_HELP_PATHS,
   "/catalog",
   "/products",

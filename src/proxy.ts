@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { PO_AUTH_USER_COOKIE, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
 import { LEGAL_PUBLIC_HELP_PATHS } from "@/lib/legal-public-paths";
-import { MARKETING_PRICING_PATH } from "@/lib/marketing-public-paths";
+import { DEMO_INTRO_PATH, MARKETING_PRICING_PATH } from "@/lib/marketing-public-paths";
 
 const PUBLIC_PATHS = new Set([
   "/",
@@ -38,6 +38,7 @@ export function proxy(request: NextRequest) {
   }
 
   if (PUBLIC_PATHS.has(pathname)) return nextWithPathname(request);
+  if (pathname === DEMO_INTRO_PATH || pathname.startsWith(`${DEMO_INTRO_PATH}/`)) return nextWithPathname(request);
   if (pathname.startsWith("/api/auth/")) return nextWithPathname(request);
   if (pathname.startsWith("/api/demo-session")) return nextWithPathname(request);
   if (pathname.startsWith("/_next/")) return nextWithPathname(request);

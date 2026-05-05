@@ -6,7 +6,7 @@ import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { getViewerGrantSet } from "@/lib/authz";
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 import { resolveNavState } from "@/lib/nav-visibility";
-import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
+import { DEMO_INTRO_PATH, MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import { ratesAuditTopNavHref } from "@/lib/rates-audit-nav";
 
 export const dynamic = "force-dynamic";
@@ -166,6 +166,15 @@ export default async function PlatformHomePage() {
             ⌘K
           </kbd>
           ) for quick jumps, including plans & pricing and the public privacy, terms, and cookie pages.
+        </p>
+
+        <p className="mt-3 text-sm text-zinc-600">
+          <Link
+            href={DEMO_INTRO_PATH}
+            className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
+          >
+            First time presenting? Start with the 2-page guided demo →
+          </Link>
         </p>
 
         {!user ? (
