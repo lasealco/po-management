@@ -14,11 +14,11 @@
 
 ### Event kinds
 
-- **`VALIDATE_PACK_SCAN`** — Same gates as **`validate_outbound_pack_scan`** (order **RELEASED** / **PICKING** / **PACKED**); BF-43 LU-aware multiset rules.
-- **`VALIDATE_SHIP_SCAN`** — Same gates as ship scan before **`mark_outbound_shipped`** (order **PACKED**, fully packed, optional **`WMS_ENFORCE_SSCC`**, optional **`WMS_REQUIRE_SHIP_SCAN`** empty-token rule).
+- **`VALIDATE_PACK_SCAN`** — Same gates as **`validate_outbound_pack_scan`** (order **RELEASED** / **PICKING** / **PACKED**); BF-43 LU-aware multiset rules; **BF-81** tenant RFID encoding expansion when configured.
+- **`VALIDATE_SHIP_SCAN`** — Same gates as ship scan before **`mark_outbound_shipped`** (order **PACKED**, fully packed, optional **`WMS_ENFORCE_SSCC`**, optional **`WMS_REQUIRE_SHIP_SCAN`** empty-token rule); **BF-81** expansion when configured.
 
 ## Out of scope
 
 Full PWA service worker, IndexedDB sync, CRDT inventory merges.
 
-_Last updated: 2026-04-29 — BF-60 minimal stub._
+_Last updated: 2026-05-05 — BF-81 RFID expansion on replay._

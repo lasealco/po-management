@@ -110,6 +110,11 @@ import {
   verifyOutboundPackScanResolved,
 } from "./outbound-logistics-unit-scan";
 import {
+  fetchParsedRfidEncodingBf81ForTenant,
+  rfidEncodingTableBf81ToStoredJson,
+  validateRfidEncodingTableBf81DraftFromPost,
+} from "./rfid-scan-bridge-bf81";
+import {
   assertAllowedOutboundWebhookUrl,
   parseOutboundWebhookEventTypes,
   scheduleEmitWmsOutboundWebhooks,
@@ -2802,10 +2807,13 @@ export async function handleWmsPost(
     if (!outboundOrderId) {
       return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
     }
-    const order = await prisma.outboundOrder.findFirst({
-      where: { id: outboundOrderId, tenantId },
-      include: { lines: { include: { product: true } } },
-    });
+    const [order, rfidParsed] = await Promise.all([
+      prisma.outboundOrder.findFirst({
+        where: { id: outboundOrderId, tenantId },
+        include: { lines: { include: { product: true } } },
+      }),
+      fetchParsedRfidEncodingBf81ForTenant(tenantId),
+    ]);
     if (!order) {
       return toApiErrorResponseFromStatus("Outbound order not found.", 404);
     }
@@ -2829,7 +2837,7 @@ export async function handleWmsPost(
             order.lines.map((l) => ({ pickedQty: Number(l.pickedQty), product: l.product })),
           );
     const flat = flattenPackScanExpectations(plan);
-    const result = await verifyOutboundPackScanResolved(tenantId, outboundOrderId, flat, tokens);
+    const result = await verifyOutboundPackScanResolved(tenantId, outboundOrderId, flat, tokens, rfidParsed);
     return NextResponse.json({
       ok: result.ok,
       missing: result.missing,
@@ -2963,7 +2971,14 @@ export async function handleWmsPost(
     );
     const flat = flattenPackScanExpectations(plan);
     if (tokens.length > 0) {
-      const scanResult = await verifyOutboundPackScanResolved(tenantId, outboundOrderId, flat, tokens);
+      const rfidParsed = await fetchParsedRfidEncodingBf81ForTenant(tenantId);
+      const scanResult = await verifyOutboundPackScanResolved(
+        tenantId,
+        outboundOrderId,
+        flat,
+        tokens,
+        rfidParsed,
+      );
       if (!scanResult.ok) {
         return toApiErrorResponseFromStatus(
           `Pack scan mismatch. Missing: ${scanResult.missing.slice(0, 12).join(", ") || "—"}; unexpected: ${scanResult.unexpected.slice(0, 12).join(", ") || "—"}`,
@@ -3103,11 +3118,13 @@ export async function handleWmsPost(
     );
     const shipFlat = flattenPackScanExpectations(shipPlan);
     if (shipTokens.length > 0) {
+      const rfidParsed = await fetchParsedRfidEncodingBf81ForTenant(tenantId);
       const shipScanResult = await verifyOutboundPackScanResolved(
         tenantId,
         outboundOrderId,
         shipFlat,
         shipTokens,
+        rfidParsed,
       );
       if (!shipScanResult.ok) {
         return toApiErrorResponseFromStatus(
@@ -5294,6 +5311,32 @@ export async function handleWmsPost(
     await prisma.tenant.update({
       where: { id: tenantId },
       data: { wmsLaborVariancePolicyJson: laborVariancePolicyToStoredJson(validated.policy) },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_wms_rfid_encoding_table_bf81") {
+    if (input.rfidEncodingTableBf81Clear === true) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { wmsRfidEncodingTableJsonBf81: Prisma.JsonNull },
+      });
+      return NextResponse.json({ ok: true });
+    }
+    const rawDraft = input.rfidEncodingTableBf81;
+    if (rawDraft === undefined) {
+      return toApiErrorResponseFromStatus(
+        "rfidEncodingTableBf81 required (object), or rfidEncodingTableBf81Clear true.",
+        400,
+      );
+    }
+    const validated = validateRfidEncodingTableBf81DraftFromPost(rawDraft);
+    if (!validated.ok) {
+      return toApiErrorResponseFromStatus(validated.error, 400);
+    }
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: { wmsRfidEncodingTableJsonBf81: rfidEncodingTableBf81ToStoredJson(validated.value) },
     });
     return NextResponse.json({ ok: true });
   }

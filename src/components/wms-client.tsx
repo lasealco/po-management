@@ -186,6 +186,13 @@ type WmsData = {
       completedBy: { id: string; name: string | null } | null;
     }>;
   };
+  /** BF-81 — RFID commissioning bridge (`Tenant.wmsRfidEncodingTableJsonBf81`). */
+  rfidEncodingBf81?: {
+    schemaVersion: string;
+    raw: unknown | null;
+    parseNotice: string | null;
+    enabled: boolean;
+  };
   /** BF-55 — stock transfer orders (inter-warehouse). */
   stockTransfers?: Array<{
     id: string;
@@ -1356,6 +1363,8 @@ export function WmsClient({
   const [laborVarianceLookbackBf77, setLaborVarianceLookbackBf77] = useState("14");
   const [laborVarianceMaxRowsBf77, setLaborVarianceMaxRowsBf77] = useState("40");
   const [laborVarianceBusyBf77, setLaborVarianceBusyBf77] = useState(false);
+  const [rfidEncodingDraftBf81, setRfidEncodingDraftBf81] = useState("");
+  const [rfidEncodingBusyBf81, setRfidEncodingBusyBf81] = useState(false);
   const [stoFromWh, setStoFromWh] = useState("");
   const [stoToWh, setStoToWh] = useState("");
   const [stoSourceBalanceId, setStoSourceBalanceId] = useState("");
@@ -1593,6 +1602,13 @@ export function WmsClient({
     data?.laborVarianceBf77?.policy?.lookbackDays,
     data?.laborVarianceBf77?.policy?.maxRows,
   ]);
+
+  useEffect(() => {
+    if (!data?.rfidEncodingBf81) return;
+    const raw = data.rfidEncodingBf81.raw;
+    setRfidEncodingDraftBf81(raw == null ? "" : JSON.stringify(raw, null, 2));
+  }, [data?.rfidEncodingBf81?.raw]);
+
   const [ledgerSince, setLedgerSince] = useState("");
   const [ledgerUntil, setLedgerUntil] = useState("");
   const [ledgerLimit, setLedgerLimit] = useState("");
@@ -3872,6 +3888,85 @@ export function WmsClient({
                         setLaborVarianceEnabledBf77(false);
                       } finally {
                         setLaborVarianceBusyBf77(false);
+                      }
+                    })()
+                  }
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="rounded-xl border border-sky-100 bg-sky-50/35 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                RFID commissioning bridge (BF-81)
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Tenant JSON maps TID hex / GS1 SSCC URIs / GTIN digits into BF-29 multiset tokens before{" "}
+                <span className="font-mono text-[11px]">validate_outbound_pack_scan</span>, pack/ship gates, and BF-60
+                batch replay. See <span className="font-medium">docs/wms/WMS_RFID_COMMISSIONING_BF81.md</span>.
+              </p>
+              {data?.rfidEncodingBf81?.parseNotice ? (
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                  {data.rfidEncodingBf81.parseNotice}
+                </p>
+              ) : null}
+              <p className="mt-2 text-[11px] text-zinc-600">
+                Stored policy enabled:{" "}
+                <span className="font-semibold text-zinc-800">{data?.rfidEncodingBf81?.enabled ? "yes" : "no"}</span>
+              </p>
+              <textarea
+                value={rfidEncodingDraftBf81}
+                onChange={(e) => setRfidEncodingDraftBf81(e.target.value)}
+                rows={10}
+                spellCheck={false}
+                disabled={rfidEncodingBusyBf81 || !canEdit}
+                className="mt-2 w-full rounded-lg border border-zinc-300 bg-white p-2 font-mono text-[11px] text-zinc-900"
+                placeholder={`{\n  "schemaVersion": "bf81.v1",\n  "enabled": true,\n  "tidHexPrefixStrip": ["E280"],\n  "tidHexToPackToken": { "DEADBEEF": "SKU-A" },\n  "tidSuffixHexToPackToken": {}\n}`}
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={rfidEncodingBusyBf81 || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        setRfidEncodingBusyBf81(true);
+                        let doc: unknown;
+                        try {
+                          doc = JSON.parse(rfidEncodingDraftBf81 || "{}") as unknown;
+                        } catch {
+                          window.alert("Invalid JSON — fix the textarea before saving.");
+                          return;
+                        }
+                        await runAction({
+                          action: "set_wms_rfid_encoding_table_bf81",
+                          rfidEncodingTableBf81: doc,
+                        });
+                      } finally {
+                        setRfidEncodingBusyBf81(false);
+                      }
+                    })()
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {rfidEncodingBusyBf81 ? "Saving…" : "Save BF-81 encoding table"}
+                </button>
+                <button
+                  type="button"
+                  disabled={rfidEncodingBusyBf81 || !canEdit}
+                  onClick={() =>
+                    void (async () => {
+                      if (!window.confirm("Clear RFID encoding table for this tenant?")) return;
+                      try {
+                        setRfidEncodingBusyBf81(true);
+                        await runAction({
+                          action: "set_wms_rfid_encoding_table_bf81",
+                          rfidEncodingTableBf81Clear: true,
+                        });
+                        setRfidEncodingDraftBf81("");
+                      } finally {
+                        setRfidEncodingBusyBf81(false);
                       }
                     })()
                   }

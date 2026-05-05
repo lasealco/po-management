@@ -1,6 +1,7 @@
 /**
- * BF-29 — deterministic pack-line scan verification (scanner wedge / manual tokens).
+ * BF-29 / BF-81 — deterministic pack-line scan verification (scanner wedge / manual tokens).
  * Matches multiset of normalized identifiers to picked units per outbound line.
+ * Optional per-scan candidate expansion supports RFID / GTIN / SSCC URI wedges.
  */
 
 export type OutboundLinePackScanSource = {
@@ -58,17 +59,51 @@ export function parsePackScanTokenArray(raw: unknown): string[] {
   return raw.map((x) => String(x).trim()).filter((x) => x.length > 0);
 }
 
-/** Multiset subtract: each scan consumes one matching expected token. */
-export function verifyOutboundPackScan(expectedSorted: string[], scannedRaw: string[]): PackScanVerifyResult {
+function dedupeNormalizedCandidates(candidates: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const c of candidates) {
+    const t = normalizePackScanToken(c);
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
+/** Multiset subtract: each scan consumes one matching expected token (first matching expanded candidate wins). */
+export function verifyOutboundPackScan(
+  expectedSorted: string[],
+  scannedRaw: string[],
+  expandRaw?: (raw: string) => string[],
+): PackScanVerifyResult {
+  const expand =
+    expandRaw ??
+    ((r: string) => {
+      const t = normalizePackScanToken(r);
+      return t ? [t] : [];
+    });
+
   const expected = [...expectedSorted].sort((a, b) => a.localeCompare(b));
-  const scanned = scannedRaw.map(normalizePackScanToken).filter(Boolean);
+  const scanned = scannedRaw.map((x) => String(x).trim()).filter((x) => x.length > 0);
   const unusedExpected = [...expected];
   const unexpected: string[] = [];
 
-  for (const token of scanned) {
-    const idx = unusedExpected.indexOf(token);
-    if (idx >= 0) unusedExpected.splice(idx, 1);
-    else unexpected.push(token);
+  for (const raw of scanned) {
+    const candidates = dedupeNormalizedCandidates(expand(raw));
+    let matched = false;
+    for (const token of candidates) {
+      const idx = unusedExpected.indexOf(token);
+      if (idx >= 0) {
+        unusedExpected.splice(idx, 1);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      const display = normalizePackScanToken(raw) || raw;
+      unexpected.push(display);
+    }
   }
 
   unusedExpected.sort((a, b) => a.localeCompare(b));

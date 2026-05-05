@@ -209,6 +209,10 @@ export type WmsBody = {
   laborVarianceLookbackDays?: number;
   laborVarianceMaxRows?: number;
   laborVarianceTaskTypes?: string[];
+  /** BF-81 — `set_wms_rfid_encoding_table_bf81`: clears `Tenant.wmsRfidEncodingTableJsonBf81`. */
+  rfidEncodingTableBf81Clear?: boolean;
+  /** BF-81 — tenant RFID commissioning encoding table (`schemaVersion` `bf81.v1`). */
+  rfidEncodingTableBf81?: unknown;
   /** Target allocation strategy for `set_warehouse_pick_allocation_strategy`. */
   pickAllocationStrategy?:
     | "MAX_AVAILABLE_FIRST"

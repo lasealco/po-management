@@ -10,7 +10,7 @@
 
 | Piece | Role |
 |-------|------|
-| **`pack-scan-verify.ts`** | Normalize scan tokens; multiset match vs **picked** units (pack) or **packed** units (ship); `validate_outbound_pack_scan` for UX. |
+| **`pack-scan-verify.ts`** | Normalize scan tokens; multiset match vs **picked** units (pack) or **packed** units (ship); optional **BF-81** RFID/GTIN/SSCC URI expansion before multiset verify — [`WMS_RFID_COMMISSIONING_BF81.md`](./WMS_RFID_COMMISSIONING_BF81.md); `validate_outbound_pack_scan` for UX. |
 | **Env guardrails** | `WMS_REQUIRE_PACK_SCAN=1` → `packScanTokens` required on `mark_outbound_packed`; `WMS_REQUIRE_SHIP_SCAN=1` → `shipScanTokens` required on `mark_outbound_shipped`. |
 | **`GET /api/wms`** | `packShipScanPolicy` + per-outbound `packScanPlan` (expected codes × qty). |
 | **`validate_outbound_pack_scan`** | Non-mutating check; returns `plan`, `missing`, `unexpected`. |
@@ -26,4 +26,4 @@ USB/BLE scanner drivers, purchasable carrier APIs (FedEx/UPS/DHL), 4×6 PDF, par
 
 ---
 
-_Last updated: 2026-05-01 — BF-29 minimal landed._
+_Last updated: 2026-05-05 — **BF-81** RFID commissioning bridge on multiset expansion._

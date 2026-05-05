@@ -10,6 +10,10 @@ import { prisma } from "@/lib/prisma";
 
 import { validateOutboundLuHierarchy } from "./outbound-lu-hierarchy";
 import {
+  fetchParsedRfidEncodingBf81ForTenant,
+  type ParsedRfidEncodingTableBf81,
+} from "./rfid-scan-bridge-bf81";
+import {
   buildOutboundPackScanPlan,
   flattenPackScanExpectations,
   parsePackScanTokenArray,
@@ -183,6 +187,7 @@ async function runValidatePackScan(
   tenantId: string,
   outboundOrderId: string,
   tokens: string[],
+  rfidEncoding: ParsedRfidEncodingTableBf81,
 ): Promise<
   | { ok: true; validate: ScanBatchSuccessBody["results"][0]["validate"] }
   | { ok: false; conflict: ScanBatchConflictBody["conflict"] }
@@ -223,7 +228,7 @@ async function runValidatePackScan(
           order.lines.map((l) => ({ pickedQty: Number(l.pickedQty), product: l.product })),
         );
   const flat = flattenPackScanExpectations(plan);
-  const result = await verifyOutboundPackScanResolved(tenantId, outboundOrderId, flat, tokens);
+  const result = await verifyOutboundPackScanResolved(tenantId, outboundOrderId, flat, tokens, rfidEncoding);
   if (!result.ok) {
     return {
       ok: false,
@@ -254,6 +259,7 @@ async function runValidateShipScan(
   tenantId: string,
   outboundOrderId: string,
   tokens: string[],
+  rfidEncoding: ParsedRfidEncodingTableBf81,
 ): Promise<
   | { ok: true; validate: ScanBatchSuccessBody["results"][0]["validate"] }
   | { ok: false; conflict: ScanBatchConflictBody["conflict"] }
@@ -348,7 +354,7 @@ async function runValidateShipScan(
   );
   const flat = flattenPackScanExpectations(plan);
   if (tokens.length > 0) {
-    const shipScanResult = await verifyOutboundPackScanResolved(tenantId, outboundOrderId, flat, tokens);
+    const shipScanResult = await verifyOutboundPackScanResolved(tenantId, outboundOrderId, flat, tokens, rfidEncoding);
     if (!shipScanResult.ok) {
       return {
         ok: false,
@@ -407,12 +413,14 @@ export async function executeScanEventBatch(
   const cached = await readCachedBatch(tenantId, input.clientBatchId);
   if (cached) return cached;
 
+  const rfidEncoding = await fetchParsedRfidEncodingBf81ForTenant(tenantId);
+
   const results: ScanBatchSuccessBody["results"] = [];
 
   for (const ev of input.events) {
     if (ev.type === "VALIDATE_PACK_SCAN") {
       const tokens = ev.payload.packScanTokens ?? [];
-      const r = await runValidatePackScan(tenantId, ev.payload.outboundOrderId, tokens);
+      const r = await runValidatePackScan(tenantId, ev.payload.outboundOrderId, tokens, rfidEncoding);
       if (!r.ok) {
         const conflictBody: ScanBatchConflictBody = {
           ok: false,
@@ -451,7 +459,7 @@ export async function executeScanEventBatch(
       });
     } else {
       const tokens = ev.payload.shipScanTokens ?? [];
-      const r = await runValidateShipScan(tenantId, ev.payload.outboundOrderId, tokens);
+      const r = await runValidateShipScan(tenantId, ev.payload.outboundOrderId, tokens, rfidEncoding);
       if (!r.ok) {
         const conflictBody: ScanBatchConflictBody = {
           ok: false,

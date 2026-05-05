@@ -50,6 +50,8 @@ model Tenant {
   wmsDockDetentionPolicyJson                  Json?
   /// BF-77 — optional labor variance queue thresholds (`excessPercentThreshold`, `lookbackDays`, etc.).
   wmsLaborVariancePolicyJson                  Json?
+  /// BF-81 — optional RFID commissioning bridge: TID/EPC normalization + mappings for pack/ship multiset scans (`schemaVersion` `bf81.v1`).
+  wmsRfidEncodingTableJsonBf81                Json?
 
   users                                       User[]
   orgUnits                                    OrgUnit[]

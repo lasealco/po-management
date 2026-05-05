@@ -33,6 +33,10 @@ import {
   loadLaborVarianceExceptionsBf77,
   parseLaborVariancePolicyBf77Json,
 } from "@/lib/wms/labor-variance-bf77";
+import {
+  parseRfidEncodingTableBf81Json,
+  RFID_ENCODING_TABLE_SCHEMA_VERSION,
+} from "@/lib/wms/rfid-scan-bridge-bf81";
 import { parseStoredLandedCostNotesBf78Json } from "@/lib/wms/landed-cost-notes-bf78";
 import {
   echoInventoryOwnershipBf79Filter,
@@ -463,7 +467,7 @@ export async function getWmsDashboardPayload(
     }),
     prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { wmsDockDetentionPolicyJson: true, wmsLaborVariancePolicyJson: true },
+      select: { wmsDockDetentionPolicyJson: true, wmsLaborVariancePolicyJson: true, wmsRfidEncodingTableJsonBf81: true },
     }),
     prisma.wmsDemandForecastStub.findMany({
       where: {
@@ -648,6 +652,9 @@ export async function getWmsDashboardPayload(
   const dockDetentionAlertByApptId = new Map(dockDetentionAlerts.map((x) => [x.appointmentId, x]));
 
   const laborVarParsed = parseLaborVariancePolicyBf77Json(tenantPolicyJsonRow?.wmsLaborVariancePolicyJson);
+  const rfidBf81Parsed = parseRfidEncodingTableBf81Json(
+    tenantPolicyJsonRow?.wmsRfidEncodingTableJsonBf81 ?? null,
+  );
   const laborVarianceExceptions = await loadLaborVarianceExceptionsBf77(
     prisma,
     tenantId,
@@ -951,6 +958,12 @@ export async function getWmsDashboardPayload(
       policy: laborVarParsed.policy,
       policyNotice: laborVarParsed.notice ?? null,
       exceptions: laborVarianceExceptions,
+    },
+    rfidEncodingBf81: {
+      schemaVersion: RFID_ENCODING_TABLE_SCHEMA_VERSION,
+      raw: tenantPolicyJsonRow?.wmsRfidEncodingTableJsonBf81 ?? null,
+      parseNotice: rfidBf81Parsed.notice ?? null,
+      enabled: Boolean(rfidBf81Parsed.table?.enabled),
     },
     stockTransfers: stockTransfersRaw.map((st) => {
       const lc = parseStoredLandedCostNotesBf78Json(st.landedCostNotesBf78Json);
