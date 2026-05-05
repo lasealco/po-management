@@ -477,6 +477,7 @@ export async function getWmsDashboardPayload(
       shipmentId: true,
       purchaseOrderId: true,
       warehouseId: true,
+      asnPartnerId: true,
       createdAt: true,
       updatedAt: true,
       warehouse: { select: { id: true, code: true, name: true } },
@@ -1180,6 +1181,7 @@ export async function getWmsDashboardPayload(
     inboundAsnAdvises: inboundAsnAdvises.map((a) => ({
       id: a.id,
       externalAsnId: a.externalAsnId,
+      asnPartnerId: a.asnPartnerId,
       asnReference: a.asnReference,
       expectedReceiveAt: a.expectedReceiveAt?.toISOString() ?? null,
       lineCount: Array.isArray(a.linesJson) ? a.linesJson.length : 0,

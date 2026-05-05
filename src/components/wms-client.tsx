@@ -571,6 +571,7 @@ type WmsData = {
   inboundAsnAdvises: Array<{
     id: string;
     externalAsnId: string;
+    asnPartnerId: string | null;
     asnReference: string | null;
     expectedReceiveAt: string | null;
     lineCount: number;
@@ -1001,6 +1002,15 @@ export function WmsClient({
   const [busy, setBusy] = useState(false);
   const [bf59AdviseJson, setBf59AdviseJson] = useState(
     '{\n  "externalAsnId": "ADVISE-DEMO-001",\n  "asnReference": "ASN-DEMO",\n  "lines": [{ "lineNo": 1, "productSku": "DEMO-SKU", "quantityExpected": 12 }]\n}',
+  );
+  const [bf75PartnerId, setBf75PartnerId] = useState("edi-demo");
+  const [bf75EnvelopeHint, setBf75EnvelopeHint] = useState<"" | "bf59_wrap" | "compact_items_v1">(
+    "compact_items_v1",
+  );
+  const [bf75Persist, setBf75Persist] = useState(true);
+  const [bf75NormalizeExtrasJson, setBf75NormalizeExtrasJson] = useState("{}");
+  const [bf75EnvelopeJson, setBf75EnvelopeJson] = useState(
+    '{\n  "asnId": "BF75-DEMO-001",\n  "asnRef": "856-DEMO",\n  "eta": "2026-06-01T10:00:00.000Z",\n  "items": [{ "sku": "DEMO-SKU", "qty": 12, "line": 1 }]\n}',
   );
   const [bf60BatchJson, setBf60BatchJson] = useState(
     '{\n  "clientBatchId": "00000000-0000-4000-8000-000000000060",\n  "deviceClock": "2026-04-30T12:00:00.000Z",\n  "events": [\n    {\n      "seq": 1,\n      "deviceClock": "2026-04-30T12:00:01.000Z",\n      "type": "VALIDATE_PACK_SCAN",\n      "payload": {\n        "outboundOrderId": "REPLACE_WITH_OUTBOUND_ID",\n        "packScanTokens": []\n      }\n    }\n  ]\n}',
@@ -2115,6 +2125,68 @@ export function WmsClient({
     const o = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
     const upd = o.updated === true ? "updated" : "created";
     window.alert(`ASN pre-advise ${upd} (id: ${String(o.id ?? "")}).`);
+  }
+
+  async function submitInboundAsnNormalize(): Promise<void> {
+    let envelope: unknown;
+    try {
+      envelope = JSON.parse(bf75EnvelopeJson);
+    } catch {
+      window.alert("Invalid envelope JSON.");
+      return;
+    }
+    let extras: Record<string, unknown> = {};
+    if (bf75NormalizeExtrasJson.trim()) {
+      try {
+        extras = JSON.parse(bf75NormalizeExtrasJson) as Record<string, unknown>;
+      } catch {
+        window.alert("Invalid linkage JSON — use {} or optional warehouseId / purchaseOrderId / shipmentId.");
+        return;
+      }
+    }
+    const partnerId = bf75PartnerId.trim();
+    if (!partnerId) {
+      window.alert("partnerId is required.");
+      return;
+    }
+    const body: Record<string, unknown> = {
+      partnerId,
+      rawEnvelope: envelope,
+      persist: bf75Persist,
+    };
+    if (bf75EnvelopeHint) {
+      body.envelopeHint = bf75EnvelopeHint;
+    }
+    const wh = extras.warehouseId;
+    const po = extras.purchaseOrderId;
+    const sh = extras.shipmentId;
+    if (typeof wh === "string" && wh.trim()) body.warehouseId = wh.trim();
+    if (typeof po === "string" && po.trim()) body.purchaseOrderId = po.trim();
+    if (typeof sh === "string" && sh.trim()) body.shipmentId = sh.trim();
+
+    setBusy(true);
+    setError(null);
+    const res = await fetch("/api/wms/inbound-asn-normalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const parsed: unknown = await res.json();
+    if (!res.ok) {
+      setError(apiClientErrorMessage(parsed, "ASN normalize failed."));
+      setBusy(false);
+      return;
+    }
+    await load();
+    setBusy(false);
+    const o = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+    if (bf75Persist) {
+      const adviseId = String(o.adviseId ?? "");
+      const upd = o.updated === true ? "updated" : "created";
+      window.alert(`ASN normalized and advise ${upd} (advise id: ${adviseId}).`);
+      return;
+    }
+    window.alert("ASN normalized (persist off — response includes bf75.v1 in DevTools).");
   }
 
   async function submitScanEventBatch(): Promise<void> {
@@ -4902,11 +4974,16 @@ export function WmsClient({
           <span className="font-medium">ASN pre-advise</span> ingestion (
           <span className="font-mono text-[11px]">POST /api/wms/inbound-asn-advise</span>, idempotent{" "}
           <span className="font-medium">externalAsnId</span>) to prime expected lines ahead of receipt — see{" "}
-          <span className="font-medium">docs/wms/WMS_INBOUND_ASN_ADVISE_BF59.md</span>.
+          <span className="font-medium">docs/wms/WMS_INBOUND_ASN_ADVISE_BF59.md</span>.{" "}
+          <span className="font-medium">BF-75</span> adds a partner-envelope →{" "}
+          <span className="font-mono text-[11px]">bf75.v1</span> normalize path (
+          <span className="font-mono text-[11px]">POST /api/wms/inbound-asn-normalize</span>) — see{" "}
+          <span className="font-medium">docs/wms/WMS_INBOUND_ASN_NORMALIZE_BF75.md</span>.
         </p>
         {canEdit ? (
-          <section className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">BF-59 · ASN pre-advise</p>
+          <Fragment>
+            <section className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">BF-59 · ASN pre-advise</p>
             <p className="mt-2 text-xs text-zinc-600">
               Post structured lines (JSON). Re-using the same <span className="font-medium">externalAsnId</span> replaces
               the stored advise for this tenant.
@@ -4933,6 +5010,7 @@ export function WmsClient({
                   <thead className="bg-zinc-100 text-left text-[10px] uppercase text-zinc-600">
                     <tr>
                       <th className="px-2 py-1">External ASN id</th>
+                      <th className="px-2 py-1">Partner</th>
                       <th className="px-2 py-1">Lines</th>
                       <th className="px-2 py-1">PO</th>
                       <th className="px-2 py-1">Shipment</th>
@@ -4943,6 +5021,7 @@ export function WmsClient({
                     {data.inboundAsnAdvises.map((a) => (
                       <tr key={a.id}>
                         <td className="px-2 py-1 font-mono">{a.externalAsnId}</td>
+                        <td className="px-2 py-1 font-mono text-zinc-700">{a.asnPartnerId ?? "—"}</td>
                         <td className="px-2 py-1">{a.lineCount}</td>
                         <td className="px-2 py-1">{a.purchaseOrder?.orderNumber ?? "—"}</td>
                         <td className="px-2 py-1">{a.shipment?.shipmentNo ?? a.shipmentId?.slice(0, 8) ?? "—"}</td>
@@ -4954,6 +5033,78 @@ export function WmsClient({
               </div>
             ) : null}
           </section>
+          <section className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">
+              BF-75 · ASN envelope normalize
+            </p>
+            <p className="mt-2 text-xs text-zinc-600">
+              Map a carrier-style JSON envelope into canonical{" "}
+              <span className="font-mono text-[11px]">bf75.v1</span> and upsert the same{" "}
+              <span className="font-medium">WmsInboundAsnAdvise</span> row as BF-59 (optional{" "}
+              <span className="font-medium">persist: false</span> for dry-run). Full X12/856 translators remain out of
+              scope.
+            </p>
+            <label className="mt-3 block text-xs font-medium text-zinc-700">
+              partnerId
+              <input
+                type="text"
+                value={bf75PartnerId}
+                onChange={(e) => setBf75PartnerId(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900"
+                spellCheck={false}
+              />
+            </label>
+            <label className="mt-3 block text-xs font-medium text-zinc-700">
+              Envelope hint (optional — auto-detect when empty)
+              <select
+                value={bf75EnvelopeHint}
+                onChange={(e) =>
+                  setBf75EnvelopeHint(e.target.value as "" | "bf59_wrap" | "compact_items_v1")
+                }
+                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+              >
+                <option value="">Auto</option>
+                <option value="bf59_wrap">bf59_wrap (same shape as BF-59 POST)</option>
+                <option value="compact_items_v1">compact_items_v1</option>
+              </select>
+            </label>
+            <label className="mt-2 flex items-center gap-2 text-xs text-zinc-700">
+              <input
+                type="checkbox"
+                checked={bf75Persist}
+                onChange={(e) => setBf75Persist(e.target.checked)}
+              />
+              Persist advise (<span className="font-mono text-[11px]">POST …/inbound-asn-normalize</span> default)
+            </label>
+            <p className="mt-3 text-xs font-medium text-zinc-700">
+              Linkage JSON (optional — <span className="font-mono">warehouseId</span>,{" "}
+              <span className="font-mono">purchaseOrderId</span>, <span className="font-mono">shipmentId</span>)
+            </p>
+            <textarea
+              value={bf75NormalizeExtrasJson}
+              onChange={(e) => setBf75NormalizeExtrasJson(e.target.value)}
+              rows={3}
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900"
+              spellCheck={false}
+            />
+            <p className="mt-3 text-xs font-medium text-zinc-700">Raw envelope JSON</p>
+            <textarea
+              value={bf75EnvelopeJson}
+              onChange={(e) => setBf75EnvelopeJson(e.target.value)}
+              rows={8}
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void submitInboundAsnNormalize()}
+              className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Run ASN normalize
+            </button>
+          </section>
+          </Fragment>
         ) : null}
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label className="flex flex-wrap items-center gap-2 text-xs text-zinc-700">

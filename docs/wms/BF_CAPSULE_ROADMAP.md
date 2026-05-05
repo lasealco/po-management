@@ -143,7 +143,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 55 | **BF-72** | R2 — Dangerous goods | ✅ **Minimal landed** — DG checklist POST + manifest export + ship gate env ([`WMS_DANGEROUS_GOODS_BF72.md`](./WMS_DANGEROUS_GOODS_BF72.md)) |
 | 56 | **BF-73** | A — Recall campaigns | ✅ **Minimal landed** — **`WmsRecallCampaign`** + materialize freeze sweep + dashboard list ([`WMS_RECALL_CAMPAIGN_BF73.md`](./WMS_RECALL_CAMPAIGN_BF73.md)) |
 | 57 | **BF-74** | C — Yard geofence | ✅ **Minimal landed** — signed webhook + idempotency receipts + milestone/detention parity ([`WMS_YARD_GEOFENCE_BF74.md`](./WMS_YARD_GEOFENCE_BF74.md)) |
-| 58 | **BF-75** | A — ASN EDI normalize | **Draft** — canonical inbound JSON ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-75) |
+| 58 | **BF-75** | A — ASN EDI normalize | **Minimal landed** — [`WMS_INBOUND_ASN_NORMALIZE_BF75.md`](./WMS_INBOUND_ASN_NORMALIZE_BF75.md) ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-75) |
 | 59 | **BF-76** | B — Pick path export | **Draft** — wave visit sequence file ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-76) |
 | 60 | **BF-77** | D — Labor variance queue | **Draft** — threshold exceptions ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-77) |
 | 61 | **BF-78** | A — STO landed cost notes | **Draft** — FX/cost narrative ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-78) |
@@ -248,7 +248,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 
 ### Draft — **`BF-71` … `BF-100`**
 
-Themes span serialization depth, DG/recall, yard geofence + ASN normalize, labor/finance exports, VMI, QA enforcement, audit hashes, supplier scorecards, ATP tiers, TMS hints, trade screening, feature flags, partner mutations, ESG scope-3, search snapshots, and blueprint self-check — full rollup + exit sketches in [`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md). Standalone **`WMS_*_BF71.md`**–**`WMS_*_BF74.md`** docs ship with landed capsules; **`WMS_*_BF75.md`** … **`WMS_*_BF100.md`** remain backlog until funded.
+Themes span serialization depth, DG/recall, yard geofence + ASN normalize, labor/finance exports, VMI, QA enforcement, audit hashes, supplier scorecards, ATP tiers, TMS hints, trade screening, feature flags, partner mutations, ESG scope-3, search snapshots, and blueprint self-check — full rollup + exit sketches in [`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md). Standalone **`WMS_*_BF71.md`**–**`WMS_*_BF75.md`** docs ship with landed minimal capsules; **`WMS_*_BF76.md`** … **`WMS_*_BF100.md`** remain backlog until funded.
 
 ---
 

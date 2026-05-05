@@ -3988,6 +3988,8 @@ model WmsInboundAsnAdvise {
   shipmentId        String?
   asnReference      String?   @db.VarChar(256)
   expectedReceiveAt DateTime?
+  /// BF-75 — logical partner / carrier id from ASN normalize (`POST /api/wms/inbound-asn-normalize`).
+  asnPartnerId      String?   @db.VarChar(128)
   /// Normalized lines from `parseInboundAsnAdviseLines`.
   linesJson         Json
   rawPayloadJson    Json?
@@ -4003,6 +4005,7 @@ model WmsInboundAsnAdvise {
 
   @@unique([tenantId, externalAsnId])
   @@index([tenantId, createdAt])
+  @@index([tenantId, asnPartnerId])
   @@index([shipmentId])
   @@index([purchaseOrderId])
 }

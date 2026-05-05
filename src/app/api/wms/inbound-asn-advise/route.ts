@@ -9,12 +9,14 @@ import {
   inboundAsnAdviseLinesToPrismaJson,
   parseInboundAsnAdviseLines,
 } from "@/lib/wms/inbound-asn-advise";
+import { upsertInboundAsnAdviseRow } from "@/lib/wms/inbound-asn-advise-upsert";
 import { gateWmsTierMutation } from "@/lib/wms/wms-mutation-grants";
 
 export const dynamic = "force-dynamic";
 
 type PostBody = {
   externalAsnId?: string;
+  asnPartnerId?: string | null;
   warehouseId?: string | null;
   purchaseOrderId?: string | null;
   shipmentId?: string | null;
@@ -48,6 +50,7 @@ export async function GET(request: Request) {
       shipmentId: true,
       purchaseOrderId: true,
       warehouseId: true,
+      asnPartnerId: true,
       createdAt: true,
       updatedAt: true,
       warehouse: { select: { id: true, code: true, name: true } },
@@ -119,76 +122,36 @@ export async function POST(request: Request) {
   }
 
   const warehouseId = body.warehouseId?.trim() || null;
-  if (warehouseId) {
-    const wh = await prisma.warehouse.findFirst({
-      where: { id: warehouseId, tenantId: tenant.id },
-      select: { id: true },
-    });
-    if (!wh) {
-      return toApiErrorResponse({ error: "warehouseId not found for tenant.", code: "NOT_FOUND", status: 404 });
-    }
-  }
-
   const purchaseOrderId = body.purchaseOrderId?.trim() || null;
-  if (purchaseOrderId) {
-    const po = await prisma.purchaseOrder.findFirst({
-      where: { id: purchaseOrderId, tenantId: tenant.id },
-      select: { id: true },
-    });
-    if (!po) {
-      return toApiErrorResponse({
-        error: "purchaseOrderId not found for tenant.",
-        code: "NOT_FOUND",
-        status: 404,
-      });
-    }
-  }
-
   const shipmentId = body.shipmentId?.trim() || null;
-  if (shipmentId) {
-    const sh = await prisma.shipment.findFirst({
-      where: { id: shipmentId, order: { tenantId: tenant.id } },
-      select: { id: true },
-    });
-    if (!sh) {
-      return toApiErrorResponse({ error: "shipmentId not found for tenant.", code: "NOT_FOUND", status: 404 });
-    }
+
+  let asnPartnerPatch: string | null | undefined = undefined;
+  if ("asnPartnerId" in body) {
+    asnPartnerPatch = body.asnPartnerId?.trim() || null;
   }
 
-  const prior = await prisma.wmsInboundAsnAdvise.findUnique({
-    where: { tenantId_externalAsnId: { tenantId: tenant.id, externalAsnId } },
-    select: { id: true },
+  const up = await upsertInboundAsnAdviseRow(prisma, {
+    tenantId: tenant.id,
+    actorId,
+    externalAsnId,
+    linesJson,
+    ...(asnPartnerPatch !== undefined ? { asnPartnerId: asnPartnerPatch } : {}),
+    asnReference,
+    expectedReceiveAt,
+    warehouseId,
+    purchaseOrderId,
+    shipmentId,
+    ...(rawPayloadJson !== undefined ? { rawPayloadJson } : {}),
   });
 
-  const row = await prisma.wmsInboundAsnAdvise.upsert({
-    where: { tenantId_externalAsnId: { tenantId: tenant.id, externalAsnId } },
-    create: {
-      tenantId: tenant.id,
-      externalAsnId,
-      warehouseId,
-      purchaseOrderId,
-      shipmentId,
-      asnReference,
-      expectedReceiveAt,
-      linesJson,
-      createdById: actorId,
-      ...(rawPayloadJson !== undefined ? { rawPayloadJson } : {}),
-    },
-    update: {
-      warehouseId,
-      purchaseOrderId,
-      shipmentId,
-      asnReference,
-      expectedReceiveAt,
-      linesJson,
-      ...(rawPayloadJson !== undefined ? { rawPayloadJson } : {}),
-    },
-  });
+  if (!up.ok) {
+    return toApiErrorResponse(up.err);
+  }
 
   return NextResponse.json({
     ok: true,
-    id: row.id,
-    externalAsnId: row.externalAsnId,
-    updated: prior !== null,
+    id: up.row.id,
+    externalAsnId: up.row.externalAsnId,
+    updated: up.updated,
   });
 }
