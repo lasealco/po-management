@@ -9,6 +9,7 @@ import { loadSupplierDetailSnapshot } from "@/lib/srm/load-supplier-detail-snaps
 import { redactSupplierDetailSnapshot } from "@/lib/srm/redact-supplier-sensitive";
 import { getSrmOperatorNotificationUnreadCount } from "@/lib/srm/srm-operator-notification-unread";
 import { resolveSrmPermissions } from "@/lib/srm/permissions";
+import { fetchSupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -83,13 +84,14 @@ export default async function SrmSupplierDetailPage({
   const canViewOrders = permissions.canViewOrders;
   const initialSnapshot = redactSupplierDetailSnapshot(snapshot, canViewSupplierSensitiveFields);
 
-  const [onboardingAssigneeOptions, unreadSrmNotifications] = await Promise.all([
+  const [onboardingAssigneeOptions, unreadSrmNotifications, orderHistory] = await Promise.all([
     prisma.user.findMany({
       where: { tenantId: tenant.id, isActive: true },
       select: { id: true, name: true, email: true },
       orderBy: { name: "asc" },
     }),
     getSrmOperatorNotificationUnreadCount(prisma, { tenantId: tenant.id, userId: access.user.id }),
+    canViewOrders ? fetchSupplierOrderAnalytics(prisma, tenant.id, snapshot.id) : Promise.resolve(null),
   ]);
 
   return (
@@ -120,7 +122,7 @@ export default async function SrmSupplierDetailPage({
           canApprove={canApprove}
           canViewSupplierSensitiveFields={canViewSupplierSensitiveFields}
           canViewOrders={canViewOrders}
-          orderHistory={null}
+          orderHistory={orderHistory}
           detailNavContext="srm"
           onboardingAssigneeOptions={onboardingAssigneeOptions}
           viewerUserId={access.user.id}
