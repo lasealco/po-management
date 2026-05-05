@@ -215,6 +215,11 @@ export async function getWmsDashboardPayload(
             parentUnitId: true,
             outboundOrderLineId: true,
             containedQty: true,
+            luSerials: {
+              select: {
+                serial: { select: { id: true, serialNo: true, productId: true } },
+              },
+            },
           },
         },
       },
@@ -1028,6 +1033,11 @@ export async function getWmsDashboardPayload(
         parentUnitId: u.parentUnitId,
         outboundOrderLineId: u.outboundOrderLineId,
         containedQty: u.containedQty?.toString() ?? null,
+        luSerials: (u.luSerials ?? []).map((row) => ({
+          serialId: row.serial.id,
+          serialNo: row.serial.serialNo,
+          productId: row.serial.productId,
+        })),
       })),
       packScanPlan:
         o.status === "RELEASED" || o.status === "PICKING"

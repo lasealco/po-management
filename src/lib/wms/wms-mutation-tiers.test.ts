@@ -88,6 +88,12 @@ describe("wmsMutationTierForPostAction", () => {
 
   it("maps BF-57 outbound LU hierarchy validate to operations tier", () => {
     expect(wmsMutationTierForPostAction("validate_outbound_lu_hierarchy")).toBe("operations");
+    expect(wmsMutationTierForPostAction("validate_outbound_serial_aggregation_bf71")).toBe("operations");
+  });
+
+  it("maps BF-71 outbound LU serial link mutations to inventory tier", () => {
+    expect(wmsMutationTierForPostAction("link_outbound_lu_serial_bf71")).toBe("inventory");
+    expect(wmsMutationTierForPostAction("unlink_outbound_lu_serial_bf71")).toBe("inventory");
   });
 
   it("maps BF-58 inventory freeze actions to inventory tier", () => {

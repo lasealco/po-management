@@ -143,6 +143,7 @@ import {
   varianceRequiresReason,
 } from "./cycle-count-session";
 import { validateOutboundLuHierarchy } from "./outbound-lu-hierarchy";
+import { bf71EvaluationFromLoadedOrder } from "./serial-aggregation-bf71";
 import type { WmsBody } from "./wms-body";
 import { loadWmsViewReadScope } from "./wms-read-scope";
 import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
@@ -2486,6 +2487,177 @@ export async function handleWmsPost(
     });
   }
 
+  const BF71_ORDER_SELECT = {
+    id: true,
+    status: true,
+    lines: { select: { id: true, productId: true } },
+    logisticsUnits: {
+      orderBy: { scanCode: "asc" as const },
+      select: {
+        id: true,
+        scanCode: true,
+        parentUnitId: true,
+        outboundOrderLineId: true,
+        containedQty: true,
+        luSerials: {
+          select: {
+            serial: { select: { id: true, serialNo: true, productId: true } },
+          },
+        },
+      },
+    },
+  } as const;
+
+  if (action === "validate_outbound_serial_aggregation_bf71") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: BF71_ORDER_SELECT,
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    const evaluation = bf71EvaluationFromLoadedOrder(order);
+    const linkCount = order.logisticsUnits.reduce((n, u) => n + u.luSerials.length, 0);
+    return NextResponse.json({
+      ok: evaluation.ok,
+      errors: evaluation.errors,
+      warnings: evaluation.warnings,
+      units: evaluation.units,
+      unitCount: order.logisticsUnits.length,
+      linkCount,
+    });
+  }
+
+  if (action === "link_outbound_lu_serial_bf71") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    const logisticsUnitId = input.logisticsUnitId?.trim();
+    const serialId = input.inventorySerialId?.trim();
+    if (!outboundOrderId || !logisticsUnitId || !serialId) {
+      return toApiErrorResponseFromStatus(
+        "outboundOrderId, logisticsUnitId, and inventorySerialId required.",
+        400,
+      );
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true, status: true },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (order.status === "SHIPPED" || order.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus(
+        "Cannot link BF-71 serials on SHIPPED or CANCELLED outbound orders.",
+        400,
+      );
+    }
+    const lu = await prisma.wmsOutboundLogisticsUnit.findFirst({
+      where: { id: logisticsUnitId, tenantId, outboundOrderId },
+      select: { id: true, scanCode: true },
+    });
+    if (!lu) {
+      return toApiErrorResponseFromStatus("Logistics unit not found on this outbound.", 404);
+    }
+    const serial = await prisma.wmsInventorySerial.findFirst({
+      where: { id: serialId, tenantId },
+      select: { id: true, serialNo: true, productId: true },
+    });
+    if (!serial) {
+      return toApiErrorResponseFromStatus("Inventory serial not found.", 404);
+    }
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.wmsOutboundLuSerial.create({
+          data: {
+            tenantId,
+            outboundOrderId,
+            logisticsUnitId,
+            serialId,
+          },
+        });
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            entityType: "OUTBOUND_ORDER",
+            entityId: outboundOrderId,
+            action: "bf71_outbound_lu_serial_linked",
+            payload: {
+              logisticsUnitId,
+              serialId,
+              serialNo: serial.serialNo,
+            },
+            actorUserId: actorId,
+          },
+        });
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        return toApiErrorResponseFromStatus(
+          "Serial is already linked on this outbound or logistics unit.",
+          409,
+        );
+      }
+      throw e;
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "unlink_outbound_lu_serial_bf71") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    const logisticsUnitId = input.logisticsUnitId?.trim();
+    const serialId = input.inventorySerialId?.trim();
+    if (!outboundOrderId || !logisticsUnitId || !serialId) {
+      return toApiErrorResponseFromStatus(
+        "outboundOrderId, logisticsUnitId, and inventorySerialId required.",
+        400,
+      );
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true, status: true },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (order.status === "SHIPPED" || order.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus(
+        "Cannot unlink BF-71 serials on SHIPPED or CANCELLED outbound orders.",
+        400,
+      );
+    }
+    const deleted = await prisma.$transaction(async (tx) => {
+      const res = await tx.wmsOutboundLuSerial.deleteMany({
+        where: {
+          tenantId,
+          outboundOrderId,
+          logisticsUnitId,
+          serialId,
+        },
+      });
+      if (res.count > 0) {
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            entityType: "OUTBOUND_ORDER",
+            entityId: outboundOrderId,
+            action: "bf71_outbound_lu_serial_unlinked",
+            payload: { logisticsUnitId, serialId },
+            actorUserId: actorId,
+          },
+        });
+      }
+      return res.count;
+    });
+    if (deleted === 0) {
+      return toApiErrorResponseFromStatus("BF-71 serial link not found.", 404);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "validate_outbound_pack_scan") {
     const outboundOrderId = input.outboundOrderId?.trim();
     if (!outboundOrderId) {
@@ -2737,6 +2909,28 @@ export async function handleWmsPost(
             `WMS_ENFORCE_SSCC=1: logistics unit validation failed — ${v.errors.slice(0, 6).join("; ")}`,
             400,
           );
+        }
+      }
+    }
+
+    const enforceBf71 = process.env.WMS_ENFORCE_BF71_SERIAL_AGGREGATION === "1";
+    if (enforceBf71) {
+      const linkCt = await prisma.wmsOutboundLuSerial.count({
+        where: { tenantId, outboundOrderId },
+      });
+      if (linkCt > 0) {
+        const o71 = await prisma.outboundOrder.findFirst({
+          where: { id: outboundOrderId, tenantId },
+          select: BF71_ORDER_SELECT,
+        });
+        if (o71) {
+          const ev = bf71EvaluationFromLoadedOrder(o71);
+          if (!ev.ok) {
+            return toApiErrorResponseFromStatus(
+              `WMS_ENFORCE_BF71_SERIAL_AGGREGATION=1: serial aggregation invalid — ${ev.errors.slice(0, 6).join("; ")}`,
+              400,
+            );
+          }
         }
       }
     }

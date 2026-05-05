@@ -66,6 +66,7 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   mark_outbound_packed: "operations",
   mark_outbound_shipped: "operations",
   validate_outbound_lu_hierarchy: "operations",
+  validate_outbound_serial_aggregation_bf71: "operations",
   validate_outbound_pack_scan: "operations",
   upsert_outbound_logistics_unit_bf43: "operations",
   delete_outbound_logistics_unit_bf43: "operations",
@@ -91,6 +92,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   register_inventory_serial: "inventory",
   set_inventory_serial_balance: "inventory",
   attach_inventory_serial_to_movement: "inventory",
+  link_outbound_lu_serial_bf71: "inventory",
+  unlink_outbound_lu_serial_bf71: "inventory",
   /** BF-64 — cold-chain custody segment on ledger movement. */
   set_inventory_movement_custody_segment_bf64: "inventory",
   set_inventory_movement_co2e_hint_bf69: "inventory",

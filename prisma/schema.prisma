@@ -95,6 +95,7 @@ model Tenant {
   wmsReceipts                                 WmsReceipt[]
   wmsReceivingDispositionTemplates           WmsReceivingDispositionTemplate[]
   wmsOutboundLogisticsUnits                  WmsOutboundLogisticsUnit[]
+  wmsOutboundLuSerials                       WmsOutboundLuSerial[]
   wmsOutboundWebhookSubscriptions             WmsOutboundWebhookSubscription[]
   wmsOutboundWebhookDeliveries                WmsOutboundWebhookDelivery[]
   wmsPartnerApiKeys                           WmsPartnerApiKey[]
@@ -5091,6 +5092,7 @@ model WmsInventorySerial {
   product            Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
   currentBalance     InventoryBalance?  @relation(fields: [currentBalanceId], references: [id], onDelete: SetNull)
   movementLinks      WmsInventorySerialMovement[]
+  outboundLuSerialLinks WmsOutboundLuSerial[]
 
   @@unique([tenantId, productId, serialNo])
   @@index([tenantId, serialNo])
@@ -5603,6 +5605,7 @@ model OutboundOrder {
   createdBy  User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
   lines             OutboundOrderLine[]
   logisticsUnits    WmsOutboundLogisticsUnit[]
+  wmsOutboundLuSerials WmsOutboundLuSerial[]
   dockAppointments  WmsDockAppointment[]
   linkedReturnShipments Shipment[]        @relation("ShipmentReturnSourceOutbound")
   wmsDamageReports      WmsDamageReport[]
@@ -5669,10 +5672,30 @@ model WmsOutboundLogisticsUnit {
   parentUnit         WmsOutboundLogisticsUnit? @relation("WmsOutboundLuHierarchy", fields: [parentUnitId], references: [id], onDelete: SetNull)
   childUnits         WmsOutboundLogisticsUnit[] @relation("WmsOutboundLuHierarchy")
   outboundOrderLine  OutboundOrderLine?  @relation(fields: [outboundOrderLineId], references: [id], onDelete: SetNull)
+  luSerials          WmsOutboundLuSerial[]
 
   @@unique([tenantId, outboundOrderId, scanCode])
   @@index([tenantId, outboundOrderId])
   @@index([tenantId, outboundOrderLineId])
+}
+
+/// BF-71 — inventory serial linked to an outbound logistics unit (rollup includes child units).
+model WmsOutboundLuSerial {
+  id              String   @id @default(cuid())
+  tenantId        String
+  outboundOrderId String
+  logisticsUnitId String
+  serialId        String
+  createdAt       DateTime @default(now())
+
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outboundOrder   OutboundOrder            @relation(fields: [outboundOrderId], references: [id], onDelete: Cascade)
+  logisticsUnit   WmsOutboundLogisticsUnit @relation(fields: [logisticsUnitId], references: [id], onDelete: Cascade)
+  serial          WmsInventorySerial       @relation(fields: [serialId], references: [id], onDelete: Cascade)
+
+  @@unique([outboundOrderId, serialId])
+  @@unique([logisticsUnitId, serialId])
+  @@index([tenantId, outboundOrderId])
 }
 
 /// BF-44 — outbound webhook event kinds (tenant subscriptions choose a subset).

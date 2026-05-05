@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped wave: [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md).
 
-**Status:** **`BF-71`** … **`BF-100`** — **draft IDs only** (no minimal slices shipped yet). Each row below is a **program placeholder** until product funds it and a matching **`docs/wms/WMS_*_BFxx.md`** lands.
+**Status:** **`BF-71`** — **minimal slice landed** ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)). **`BF-72`** … **`BF-100`** remain draft IDs until each capsule ships.
 
 **Rules:**
 
@@ -18,7 +18,7 @@
 
 | ID | Mega phase (short) | Primary `GAP_MAP` signal (when funded) | Typical depends on |
 |----|-------------------|----------------------------------------|---------------------|
-| **BF-71** | Aggregated serial closure at ship/pack | SKU / serial row | **BF-13** registry, **BF-57** LU closure |
+| **BF-71** | Aggregated serial closure at ship/pack | SKU / serial row (🔗 [`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)) | **BF-13** registry, **BF-57** LU closure |
 | **BF-72** | Dangerous goods checklist + DG manifest JSON | Packing / trade compliance row | **BF-68** customs stub, **BF-29** scans |
 | **BF-73** | Recall campaign workflow stub | Holds / compliance row | **BF-58** freeze matrix, **BF-02** lot metadata |
 | **BF-74** | Yard geofence arrival webhook stub | Dock / yard row | **BF-05**, **BF-54** detention |
@@ -57,7 +57,9 @@
 
 **Objective:** Parent/child **serial aggregation** rules when nested LUs or kits ship — closes gaps between **BF-13** unit registry and **BF-57** hierarchy checks.
 
-**Exit sketch:** POST validate + optional **`GET` export** manifest listing aggregated SNs per **`OutboundOrder`** / LU.
+**Exit (landed):** **`WmsOutboundLuSerial`** + `link_outbound_lu_serial_bf71` / `unlink_outbound_lu_serial_bf71` / `validate_outbound_serial_aggregation_bf71` + **`GET /api/wms/outbound-serial-manifest-export`** (`bf71.v1`) + optional **`WMS_ENFORCE_BF71_SERIAL_AGGREGATION`** on ship — see [`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md).
+
+**Exit sketch (remaining backlog):** Deeper kit/genealogy hooks (**BF-94**), automated serialization on pick/pack.
 
 **Out of scope:** Full **EPCIS** repository, OEM serialization hubs.
 

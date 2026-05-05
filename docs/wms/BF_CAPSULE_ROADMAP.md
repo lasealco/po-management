@@ -139,7 +139,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 51 | **BF-68** | E — Customs filing handoff | ✅ **Minimal landed** — **`GET /api/wms/customs-filing-export`** (`bf68.v1`) ([`WMS_CUSTOMS_FILING_BF68.md`](./WMS_CUSTOMS_FILING_BF68.md)) |
 | 52 | **BF-69** | Enterprise ESG / sustainability | ✅ **Minimal landed** — movement **CO₂e** hints + product factor + **`movementCo2eHintMeta`** ([`WMS_CARBON_INTENSITY_BF69.md`](./WMS_CARBON_INTENSITY_BF69.md)) |
 | 53 | **BF-70** | Governance / external PDP | ✅ **Minimal landed** — **`evaluateExternalWmsPolicy`** + **`externalPdpBf70`** ([`WMS_EXTERNAL_PDP_BF70.md`](./WMS_EXTERNAL_PDP_BF70.md)) |
-| 54 | **BF-71** | A — Serial aggregation | **Draft** — aggregated SN manifest at ship ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-71) |
+| 54 | **BF-71** | A — Serial aggregation | ✅ **Minimal landed** — LU ↔ serial links + validate + manifest export ([`WMS_SERIAL_AGGREGATION_BF71.md`](./WMS_SERIAL_AGGREGATION_BF71.md)) |
 | 55 | **BF-72** | R2 — Dangerous goods | **Draft** — DG checklist + manifest JSON ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-72) |
 | 56 | **BF-73** | A — Recall campaigns | **Draft** — scoped freeze cascade ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-73) |
 | 57 | **BF-74** | C — Yard geofence | **Draft** — arrival webhook stub ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-74) |

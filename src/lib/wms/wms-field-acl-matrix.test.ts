@@ -12,8 +12,10 @@ describe("wms-field-acl-matrix (BF-48)", () => {
           ],
           "serialRegistryOnly": [
             "attach_inventory_serial_to_movement",
+            "link_outbound_lu_serial_bf71",
             "register_inventory_serial",
             "set_inventory_serial_balance",
+            "unlink_outbound_lu_serial_bf71",
           ],
         },
         "version": 1,

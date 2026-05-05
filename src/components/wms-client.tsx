@@ -363,6 +363,7 @@ type WmsData = {
       parentUnitId: string | null;
       outboundOrderLineId: string | null;
       containedQty: string | null;
+      luSerials: Array<{ serialId: string; serialNo: string; productId: string }>;
     }>;
     packScanPlan: Array<{ code: string; qty: number }>;
   }>;
@@ -1123,6 +1124,10 @@ export function WmsClient({
   const [luDraftByOutboundId, setLuDraftByOutboundId] = useState<Record<string, WmsLuDraftBf43>>({});
   /** BF-57 — last hierarchy/SSCC validation message per outbound (client-only). */
   const [bf57LuValidateMsgByOutboundId, setBf57LuValidateMsgByOutboundId] = useState<Record<string, string>>({});
+  const [bf71SerialAggMsgByOutboundId, setBf71SerialAggMsgByOutboundId] = useState<Record<string, string>>({});
+  const [bf71LinkDraftByOutboundId, setBf71LinkDraftByOutboundId] = useState<
+    Record<string, { logisticsUnitId: string; inventorySerialId: string }>
+  >({});
   const [outboundCreateAsn, setOutboundCreateAsn] = useState("");
   const [outboundCreateRequestedShip, setOutboundCreateRequestedShip] = useState("");
   const [dockShipmentLink, setDockShipmentLink] = useState("");
@@ -7095,6 +7100,8 @@ export function WmsClient({
             const canExportManifestBf67 =
               canExportDesadvAsn &&
               (Boolean(o.carrierTrackingNo) || (o.manifestParcelIds?.length ?? 0) > 0);
+            const canExportSerialBf71 =
+              canExportDesadvAsn && (o.logisticsUnits?.length ?? 0) > 0;
             return (
             <div key={o.id} className="rounded border border-zinc-200 p-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -7331,6 +7338,46 @@ export function WmsClient({
                     Export manifest JSON
                   </button>
                 ) : null}
+                {canExportSerialBf71 ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="BF-71 aggregated serial manifest JSON per logistics unit."
+                    onClick={async () => {
+                      setBusy(true);
+                      setError(null);
+                      try {
+                        const res = await fetch(
+                          `/api/wms/outbound-serial-manifest-export?${new URLSearchParams({
+                            outboundOrderId: o.id,
+                            pretty: "1",
+                          })}`,
+                        );
+                        const text = await res.text();
+                        if (!res.ok) {
+                          let parsed: unknown;
+                          try {
+                            parsed = JSON.parse(text);
+                          } catch {
+                            parsed = null;
+                          }
+                          setError(apiClientErrorMessage(parsed, "Serial manifest export failed."));
+                          return;
+                        }
+                        const safeName = o.outboundNo.replace(/[^\w.-]+/g, "_") || "outbound";
+                        downloadUtf8Blob(
+                          new Blob([text], { type: "application/json;charset=utf-8" }),
+                          `${safeName}-outbound-serial-manifest-bf71.json`,
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Export serial manifest JSON
+                  </button>
+                ) : null}
                 {canExportDesadvAsn ? (
                   <button
                     type="button"
@@ -7532,6 +7579,129 @@ export function WmsClient({
                       <span className="text-[11px] text-violet-900/90">{bf57LuValidateMsgByOutboundId[o.id]}</span>
                     ) : null}
                   </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-violet-100 pt-2">
+                    <button
+                      type="button"
+                      disabled={busy || !canEdit}
+                      onClick={async () => {
+                        const ret = await runAction({
+                          action: "validate_outbound_serial_aggregation_bf71",
+                          outboundOrderId: o.id,
+                        });
+                        if (!ret) return;
+                        const ok = ret.ok === true;
+                        const errs = Array.isArray(ret.errors) ? (ret.errors as string[]).join("; ") : "";
+                        const warns = Array.isArray(ret.warnings) ? (ret.warnings as string[]).join("; ") : "";
+                        const lc = typeof ret.linkCount === "number" ? ret.linkCount : 0;
+                        setBf71SerialAggMsgByOutboundId((prev) => ({
+                          ...prev,
+                          [o.id]:
+                            lc === 0
+                              ? "BF-71: no LU serial links on this order."
+                              : ok
+                                ? warns
+                                  ? `BF-71 OK (${lc} links). Warnings: ${warns}`
+                                  : `BF-71 OK (${lc} links).`
+                                : `BF-71 failed: ${errs || "validation errors"}`,
+                        }));
+                      }}
+                      className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-violet-900 disabled:opacity-40"
+                    >
+                      Validate serial aggregation (BF-71)
+                    </button>
+                    {bf71SerialAggMsgByOutboundId[o.id] ? (
+                      <span className="text-[11px] text-violet-900/90">{bf71SerialAggMsgByOutboundId[o.id]}</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-[11px] text-violet-900/80">
+                    BF-71 ties BF-13 registry ids to LUs; aggregated SNs roll up to parents for manifests. Optional gate{" "}
+                    <span className="font-mono text-[10px]">WMS_ENFORCE_BF71_SERIAL_AGGREGATION=1</span> blocks{" "}
+                    <span className="font-medium">Mark shipped</span> when links exist but validation fails.
+                  </p>
+                  {stockSerialEdit && (o.logisticsUnits ?? []).length > 0 ? (
+                    <div className="mt-2 grid gap-2 rounded border border-violet-100 bg-white p-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <label className="grid gap-1 sm:col-span-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                          Logistics unit
+                        </span>
+                        <select
+                          value={bf71LinkDraftByOutboundId[o.id]?.logisticsUnitId ?? ""}
+                          onChange={(e) =>
+                            setBf71LinkDraftByOutboundId((prev) => ({
+                              ...prev,
+                              [o.id]: {
+                                logisticsUnitId: e.target.value,
+                                inventorySerialId: prev[o.id]?.inventorySerialId ?? "",
+                              },
+                            }))
+                          }
+                          className="rounded border border-violet-200 px-2 py-1 text-xs text-zinc-900"
+                        >
+                          <option value="">Select unit…</option>
+                          {(o.logisticsUnits ?? []).map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.scanCode} ({u.kind})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-1 sm:col-span-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                          Inventory serial id (BF-13)
+                        </span>
+                        <input
+                          value={bf71LinkDraftByOutboundId[o.id]?.inventorySerialId ?? ""}
+                          onChange={(e) =>
+                            setBf71LinkDraftByOutboundId((prev) => ({
+                              ...prev,
+                              [o.id]: {
+                                logisticsUnitId: prev[o.id]?.logisticsUnitId ?? "",
+                                inventorySerialId: e.target.value,
+                              },
+                            }))
+                          }
+                          className="rounded border border-violet-200 px-2 py-1 font-mono text-[11px] text-zinc-900"
+                          placeholder="cuid…"
+                        />
+                      </label>
+                      <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-4">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            const d = bf71LinkDraftByOutboundId[o.id];
+                            if (!d?.logisticsUnitId.trim() || !d.inventorySerialId.trim()) return;
+                            void runAction({
+                              action: "link_outbound_lu_serial_bf71",
+                              outboundOrderId: o.id,
+                              logisticsUnitId: d.logisticsUnitId.trim(),
+                              inventorySerialId: d.inventorySerialId.trim(),
+                            });
+                          }}
+                          className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                        >
+                          Link serial to LU
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            const d = bf71LinkDraftByOutboundId[o.id];
+                            if (!d?.logisticsUnitId.trim() || !d.inventorySerialId.trim()) return;
+                            void runAction({
+                              action: "unlink_outbound_lu_serial_bf71",
+                              outboundOrderId: o.id,
+                              logisticsUnitId: d.logisticsUnitId.trim(),
+                              inventorySerialId: d.inventorySerialId.trim(),
+                            });
+                          }}
+                          className="rounded border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                        >
+                          Unlink
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   {(o.logisticsUnits ?? []).length > 0 ? (
                     <div className="mt-2 overflow-x-auto rounded border border-violet-100 bg-white">
                       <table className="min-w-full border-collapse text-[11px]">
@@ -7542,6 +7712,7 @@ export function WmsClient({
                             <th className="px-2 py-1 font-semibold">Parent</th>
                             <th className="px-2 py-1 font-semibold">Line</th>
                             <th className="px-2 py-1 font-semibold">Qty</th>
+                            <th className="px-2 py-1 font-semibold">BF-71 serials</th>
                             <th className="px-2 py-1 font-semibold" />
                           </tr>
                         </thead>
@@ -7562,6 +7733,11 @@ export function WmsClient({
                                   : "—"}
                               </td>
                               <td className="px-2 py-1">{u.containedQty ?? "—"}</td>
+                              <td className="max-w-[10rem] truncate px-2 py-1 font-mono text-[10px] text-violet-900">
+                                {(u.luSerials ?? []).length > 0
+                                  ? (u.luSerials ?? []).map((s) => s.serialNo).join(", ")
+                                  : "—"}
+                              </td>
                               <td className="px-2 py-1 text-right">
                                 <button
                                   type="button"
