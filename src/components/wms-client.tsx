@@ -424,7 +424,7 @@ type WmsData = {
     signingSecretSuffix: string;
     createdAt: string;
   }>;
-  /** BF-45 — partner read API keys (`GET /api/wms/partner/v1/*`). */
+  /** BF-45 — partner API keys (`GET /api/wms/partner/v1/*`; BF-98 mutation pilot when scoped). */
   partnerApiKeys?: Array<{
     id: string;
     label: string;
@@ -1804,6 +1804,7 @@ export function WmsClient({
   const [bf45PartnerKeyLabel, setBf45PartnerKeyLabel] = useState("");
   const [bf45ScopeInventory, setBf45ScopeInventory] = useState(true);
   const [bf45ScopeOutbound, setBf45ScopeOutbound] = useState(true);
+  const [bf45ScopeInboundAsnWrite, setBf45ScopeInboundAsnWrite] = useState(false);
   const [bf45IssuedKeyPlaintext, setBf45IssuedKeyPlaintext] = useState<string | null>(null);
   const [outboundRef, setOutboundRef] = useState("");
   const [outboundProductId, setOutboundProductId] = useState("");
@@ -6773,8 +6774,10 @@ export function WmsClient({
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Partner API keys (BF-45)</h2>
         <p className="mt-1 text-xs text-zinc-600">
-          Scoped <span className="font-mono text-[11px]">GET</span> access for integrations — inventory balances by warehouse and
-          outbound order detail. Send{" "}
+          Scoped <span className="font-mono text-[11px]">GET</span> access for integrations — inventory balances by warehouse,
+          outbound order detail; optional <span className="font-medium">BF-98</span> scoped{" "}
+          <span className="font-mono text-[11px]">POST</span> for inbound ASN advise upserts (same JSON shape as{" "}
+          <span className="font-mono text-[11px]">POST /api/wms/inbound-asn-advise</span>). Send{" "}
           <span className="font-mono text-[11px]">Authorization: Bearer &lt;key&gt;</span> or header{" "}
           <span className="font-mono text-[11px]">X-WMS-Partner-Key</span>. Plaintext key is shown once when created; store it as a
           secret. Rate-limit headers are advisory stubs until enforcement lands.
@@ -6784,6 +6787,9 @@ export function WmsClient({
             GET /api/wms/partner/v1/inventory-balances?warehouseId=&lt;id&gt;&amp;limit=500
           </li>
           <li className="font-mono">GET /api/wms/partner/v1/outbound-orders/&lt;outboundOrderId&gt;</li>
+          <li className="font-mono">
+            POST /api/wms/partner/v1/mutations/inbound-asn-advise — scope INBOUND_ASN_ADVISE_WRITE (BF-98)
+          </li>
         </ul>
         {bf45IssuedKeyPlaintext ? (
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
@@ -6896,14 +6902,27 @@ export function WmsClient({
                 />
                 OUTBOUND_READ
               </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={bf45ScopeInboundAsnWrite}
+                  disabled={busy}
+                  onChange={(e) => setBf45ScopeInboundAsnWrite(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                INBOUND_ASN_ADVISE_WRITE (BF-98)
+              </label>
             </div>
             <button
               type="button"
-              disabled={busy || (!bf45ScopeInventory && !bf45ScopeOutbound)}
+              disabled={
+                busy || (!bf45ScopeInventory && !bf45ScopeOutbound && !bf45ScopeInboundAsnWrite)
+              }
               onClick={() => {
                 const scopes: string[] = [];
                 if (bf45ScopeInventory) scopes.push("INVENTORY_READ");
                 if (bf45ScopeOutbound) scopes.push("OUTBOUND_READ");
+                if (bf45ScopeInboundAsnWrite) scopes.push("INBOUND_ASN_ADVISE_WRITE");
                 void runAction({
                   action: "create_wms_partner_api_key_bf45",
                   partnerApiKeyLabel: bf45PartnerKeyLabel.trim() || undefined,

@@ -166,7 +166,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 78 | **BF-95** | A — Scrap valuation stub | **Minimal landed** — `scrapValuePerUnitCentsBf95` + **`set_shipment_item_scrap_valuation_bf95`** + claim-export **`valuationHintsBf95`** ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-95) |
 | 79 | **BF-96** | C — Dock SLA risk scorer | **Minimal landed** — **`dockSlaRiskScores`** + BF-93 **`dockSlaRiskScorerBf96`** ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-96) |
 | 80 | **BF-97** | Enterprise ESG scope-3 stub | **Minimal landed** — supplier/product upstream g/kg + movement rollup + refresh qty×factor ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-97) |
-| 81 | **BF-98** | C — Partner mutation pilot | **Draft** — scoped POST ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-98) |
+| 81 | **BF-98** | C — Partner mutation pilot | **Minimal landed** — **`POST …/mutations/inbound-asn-advise`**, **`INBOUND_ASN_ADVISE_WRITE`** ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-98) |
 | 82 | **BF-99** | C — Search snapshot export | **Draft** — JSON Lines index ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-99) |
 | 83 | **BF-100** | Meta — Blueprint self-check | **Draft** — gap vs actions report ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-100) |
 

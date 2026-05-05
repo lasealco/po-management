@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: WMS Partner API (BF-45)
+  title: WMS Partner API (BF-45 + BF-98)
   version: "1.0.0"
   description: >
-    Scoped read-only GET endpoints under /api/wms/partner/v1.
+    Scoped GET endpoints plus BF-98 inbound ASN advise mutation under /api/wms/partner/v1.
     Authenticate with Bearer token or X-WMS-Partner-Key (plaintext key from Setup UI).
 servers:
   - url: https://{host}
@@ -59,6 +59,89 @@ paths:
           description: Missing OUTBOUND_READ scope
         "404":
           description: Order not found
+  /api/wms/partner/v1/mutations/inbound-asn-advise:
+    post:
+      summary: Upsert inbound ASN advise (BF-98)
+      security:
+        - PartnerApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - externalAsnId
+                - lines
+              properties:
+                externalAsnId:
+                  type: string
+                  maxLength: 256
+                asnPartnerId:
+                  type: string
+                  nullable: true
+                warehouseId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                purchaseOrderId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                shipmentId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                asnReference:
+                  type: string
+                  nullable: true
+                expectedReceiveAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                lines:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    properties:
+                      lineNo:
+                        type: integer
+                        minimum: 0
+                      productSku:
+                        type: string
+                      productCode:
+                        type: string
+                      sku:
+                        type: string
+                      quantityExpected:
+                        type: number
+                      qty:
+                        type: number
+                      expectedQty:
+                        type: number
+                      uom:
+                        type: string
+                      lotCode:
+                        type: string
+                      lot:
+                        type: string
+                rawPayload:
+                  description: Optional opaque JSON echoed into storage when valid JSON.
+                  nullable: true
+      responses:
+        "200":
+          description: Upsert OK (schemaVersion bf98.v1, ok true, id, externalAsnId, updated)
+        "400":
+          description: Validation error (partner envelope with ok false)
+        "401":
+          description: Missing or invalid API key
+        "403":
+          description: Missing INBOUND_ASN_ADVISE_WRITE scope
+        "404":
+          description: Referenced warehouseId / purchaseOrderId / shipmentId not found for tenant
+        "503":
+          description: No active tenant user available as mutation actor surrogate
 components:
   securitySchemes:
     PartnerApiKey:

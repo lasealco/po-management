@@ -11,6 +11,7 @@ export const WMS_PARTNER_API_KEY_PREFIX = "wmsp_live_";
 export const WMS_PARTNER_API_SCOPES: readonly WmsPartnerApiKeyScope[] = [
   "INVENTORY_READ",
   "OUTBOUND_READ",
+  "INBOUND_ASN_ADVISE_WRITE",
 ];
 
 export function generatePartnerApiKeyPlaintext(): string {

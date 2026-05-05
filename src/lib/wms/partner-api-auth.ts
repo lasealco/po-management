@@ -1,5 +1,5 @@
 /**
- * BF-45 — authenticate partner `GET /api/wms/partner/v1/*` via Bearer or X-WMS-Partner-Key.
+ * BF-45 — authenticate partner `GET /api/wms/partner/v1/*` (BF-98 adds `POST …/mutations/*`) via Bearer or X-WMS-Partner-Key.
  */
 
 import type { WmsPartnerApiKeyScope } from "@prisma/client";

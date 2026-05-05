@@ -27,5 +27,8 @@ describe("BF-45 partner API keys", () => {
       "INVENTORY_READ",
       "OUTBOUND_READ",
     ]);
+    expect(
+      parsePartnerApiKeyScopes(["INBOUND_ASN_ADVISE_WRITE", "INBOUND_ASN_ADVISE_WRITE", "inventory_read"]),
+    ).toEqual(["INBOUND_ASN_ADVISE_WRITE", "INVENTORY_READ"]);
   });
 });

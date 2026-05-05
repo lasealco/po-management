@@ -5884,10 +5884,12 @@ model WmsOutboundWebhookDelivery {
   @@index([tenantId, status, nextAttemptAt])
 }
 
-/// BF-45 — partner / 3PL read-only API scopes (`GET /api/wms/partner/v1/*`).
+/// BF-45 — partner / 3PL API scopes (`GET /api/wms/partner/v1/*`; BF-98 adds mutation pilot scope).
 enum WmsPartnerApiKeyScope {
   INVENTORY_READ
   OUTBOUND_READ
+  /// BF-98 — `POST /api/wms/partner/v1/mutations/inbound-asn-advise` (audited ASN advise upsert).
+  INBOUND_ASN_ADVISE_WRITE
 }
 
 model WmsPartnerApiKey {
