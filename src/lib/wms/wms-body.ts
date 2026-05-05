@@ -54,6 +54,23 @@ export type WmsBody = {
   wmsQaSamplingPct?: number | string | null;
   /** BF-42 — optional FK to disposition template on inbound line; null clears with disconnect. */
   wmsReceivingDispositionTemplateId?: string | null;
+  /** BF-85 — `upsert_wms_rma_disposition_rule_bf85` / `delete_wms_rma_disposition_rule_bf85`. */
+  wmsRmaDispositionRuleIdBf85?: string;
+  /** BF-85 — lower priority number runs first (default 100 on create). */
+  wmsRmaDispositionRulePriorityBf85?: number;
+  wmsRmaDispositionRuleMatchFieldBf85?:
+    | "ORDER_LINE_DESCRIPTION"
+    | "PRODUCT_SKU"
+    | "PRODUCT_CODE"
+    | "SHIPMENT_RMA_REFERENCE";
+  wmsRmaDispositionRuleMatchModeBf85?: "EXACT" | "PREFIX" | "CONTAINS";
+  wmsRmaDispositionRulePatternBf85?: string;
+  wmsRmaDispositionRuleApplyDispositionBf85?: "RESTOCK" | "SCRAP" | "QUARANTINE";
+  /** BF-85 — optional BF-42 receiving template FK; null disconnects on upsert when field is sent. */
+  wmsRmaDispositionRuleReceivingTemplateIdBf85?: string | null;
+  wmsRmaDispositionRuleNoteBf85?: string | null;
+  /** BF-85 — `apply_rma_disposition_rules_bf85`: set lines that already have disposition. */
+  wmsRmaDispositionRulesOverwriteBf85?: boolean;
   milestoneCode?: string;
   outboundOrderId?: string;
   outboundLineId?: string;

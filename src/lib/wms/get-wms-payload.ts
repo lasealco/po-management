@@ -878,6 +878,25 @@ export async function getWmsDashboardPayload(
     },
   });
 
+  const rmaDispositionRulesBf85 = await prisma.wmsRmaDispositionRuleBf85.findMany({
+    where: { tenantId },
+    orderBy: [{ priority: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      priority: true,
+      matchField: true,
+      matchMode: true,
+      pattern: true,
+      applyDisposition: true,
+      receivingDispositionTemplateId: true,
+      note: true,
+      updatedAt: true,
+      receivingDispositionTemplate: {
+        select: { id: true, code: true, title: true },
+      },
+    },
+  });
+
   const outboundWebhookSubscriptions = await prisma.wmsOutboundWebhookSubscription.findMany({
     where: { tenantId },
     orderBy: { createdAt: "desc" },
@@ -1097,6 +1116,24 @@ export async function getWmsDashboardPayload(
       noteTemplate: t.noteTemplate,
       suggestedVarianceDisposition: t.suggestedVarianceDisposition,
       updatedAt: t.updatedAt.toISOString(),
+    })),
+    rmaDispositionRulesBf85: rmaDispositionRulesBf85.map((r) => ({
+      id: r.id,
+      priority: r.priority,
+      matchField: r.matchField,
+      matchMode: r.matchMode,
+      pattern: r.pattern,
+      applyDisposition: r.applyDisposition,
+      receivingDispositionTemplateId: r.receivingDispositionTemplateId,
+      receivingDispositionTemplate: r.receivingDispositionTemplate
+        ? {
+            id: r.receivingDispositionTemplate.id,
+            code: r.receivingDispositionTemplate.code,
+            title: r.receivingDispositionTemplate.title,
+          }
+        : null,
+      note: r.note,
+      updatedAt: r.updatedAt.toISOString(),
     })),
     outboundWebhookSubscriptions: outboundWebhookSubscriptions.map((s) => ({
       id: s.id,

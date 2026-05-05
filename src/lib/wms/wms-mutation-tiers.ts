@@ -28,6 +28,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   create_wms_receiving_disposition_template: "setup",
   update_wms_receiving_disposition_template: "setup",
   delete_wms_receiving_disposition_template: "setup",
+  upsert_wms_rma_disposition_rule_bf85: "setup",
+  delete_wms_rma_disposition_rule_bf85: "setup",
   create_wms_outbound_webhook_subscription_bf44: "setup",
   update_wms_outbound_webhook_subscription_bf44: "setup",
   delete_wms_outbound_webhook_subscription_bf44: "setup",
@@ -88,6 +90,7 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_shipment_item_return_disposition: "operations",
   set_shipment_item_qa_sampling_bf42: "operations",
   apply_wms_disposition_template_to_shipment_item: "operations",
+  apply_rma_disposition_rules_bf85: "operations",
   /** BF-65 — damage report + carrier claim export flow. */
   create_wms_damage_report_bf65: "operations",
   create_wms_receipt: "operations",

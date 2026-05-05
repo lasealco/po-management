@@ -34,8 +34,9 @@
 |--------|------|
 | **`set_shipment_inbound_fields`** | Optional **`wmsInboundSubtype`**, **`wmsRmaReference`**, **`returnSourceOutboundOrderId`** (tenant **`OutboundOrder`** id or **`null`**). Setting subtype to **`STANDARD`** clears RMA + outbound link server-side. |
 | **`set_shipment_item_return_disposition`** | **`shipmentItemId`** + **`wmsReturnDisposition`** — only when parent shipment **`wmsInboundSubtype`** is **`CUSTOMER_RETURN`**; writes **`CtAuditLog`** (`customer_return_line_disposition_set`). |
+| **`apply_rma_disposition_rules_bf85`** | **`shipmentId`**, optional **`wmsRmaDispositionRulesOverwriteBf85`** — bulk-applies tenant **BF-85** rules; see [`WMS_RMA_DISPOSITION_RULES_BF85.md`](./WMS_RMA_DISPOSITION_RULES_BF85.md). |
 
-**`GET /api/wms`** payload includes **`wmsInboundSubtype`**, **`wmsRmaReference`**, **`returnSourceOutboundOrderId`**, embedded **`returnSourceOutbound`** `{ id, outboundNo }`, and each **`receiveLines[].wmsReturnDisposition`**.
+**`GET /api/wms`** payload includes **`wmsInboundSubtype`**, **`wmsRmaReference`**, **`returnSourceOutboundOrderId`**, embedded **`returnSourceOutbound`** `{ id, outboundNo }`, and each **`receiveLines[].wmsReturnDisposition`**, plus **`rmaDispositionRulesBf85`** (ordered BF-85 setup rows).
 
 ---
 

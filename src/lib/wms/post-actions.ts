@@ -68,6 +68,12 @@ import {
 import { parseManifestParcelIdsInput } from "./outbound-manifest-bf67";
 import { buildReceivingAccrualSnapshotV1 } from "./receiving-accrual-staging";
 import { canAdvanceReceiveStatusToReceiptComplete } from "./wms-receipt-close-policy";
+import {
+  findFirstMatchingRmaDispositionRuleBf85,
+  parseWmsRmaDispositionMatchFieldBf85,
+  parseWmsRmaDispositionMatchModeBf85,
+  parseWmsReturnDispositionBf85,
+} from "./rma-disposition-rules-bf85";
 import { resolveVarianceDisposition } from "./receive-line-variance";
 import {
   parseLotBatchExpiryInput,
@@ -3764,6 +3770,342 @@ export async function handleWmsPost(
       },
     });
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "upsert_wms_rma_disposition_rule_bf85") {
+    const ruleId = input.wmsRmaDispositionRuleIdBf85?.trim();
+
+    const patternProvided = input.wmsRmaDispositionRulePatternBf85 !== undefined;
+    const patternTrimmed = patternProvided
+      ? String(input.wmsRmaDispositionRulePatternBf85 ?? "").trim()
+      : null;
+    if (patternProvided && (!patternTrimmed || patternTrimmed.length > 256)) {
+      return toApiErrorResponseFromStatus(
+        "wmsRmaDispositionRulePatternBf85 invalid (1–256 chars when provided).",
+        400,
+      );
+    }
+
+    const noteProvided = input.wmsRmaDispositionRuleNoteBf85 !== undefined;
+    const noteTrimmed = noteProvided ? String(input.wmsRmaDispositionRuleNoteBf85 ?? "").trim() : null;
+    if (noteProvided && noteTrimmed !== null && noteTrimmed.length > 500) {
+      return toApiErrorResponseFromStatus("wmsRmaDispositionRuleNoteBf85 exceeds 500 chars.", 400);
+    }
+
+    const parsePriority = (raw: unknown): number | null => {
+      if (raw === undefined) return null;
+      const p = Number(raw);
+      if (!Number.isFinite(p) || p < 0 || p > 1_000_000) return null;
+      return Math.floor(p);
+    };
+
+    if (ruleId) {
+      const existing = await prisma.wmsRmaDispositionRuleBf85.findFirst({
+        where: { id: ruleId, tenantId },
+      });
+      if (!existing) {
+        return toApiErrorResponseFromStatus("Rule not found.", 404);
+      }
+
+      const data: Prisma.WmsRmaDispositionRuleBf85UpdateInput = {};
+
+      const pri = parsePriority(input.wmsRmaDispositionRulePriorityBf85);
+      if (input.wmsRmaDispositionRulePriorityBf85 !== undefined && pri === null) {
+        return toApiErrorResponseFromStatus("wmsRmaDispositionRulePriorityBf85 invalid (0–1000000).", 400);
+      }
+      if (pri !== null) data.priority = pri;
+
+      if (input.wmsRmaDispositionRuleMatchFieldBf85 !== undefined) {
+        const mf = parseWmsRmaDispositionMatchFieldBf85(input.wmsRmaDispositionRuleMatchFieldBf85);
+        if (!mf) {
+          return toApiErrorResponseFromStatus("wmsRmaDispositionRuleMatchFieldBf85 invalid.", 400);
+        }
+        data.matchField = mf;
+      }
+
+      if (input.wmsRmaDispositionRuleMatchModeBf85 !== undefined) {
+        const mm = parseWmsRmaDispositionMatchModeBf85(input.wmsRmaDispositionRuleMatchModeBf85);
+        if (!mm) {
+          return toApiErrorResponseFromStatus("wmsRmaDispositionRuleMatchModeBf85 invalid.", 400);
+        }
+        data.matchMode = mm;
+      }
+
+      if (patternProvided && patternTrimmed) {
+        data.pattern = patternTrimmed;
+      }
+
+      if (input.wmsRmaDispositionRuleApplyDispositionBf85 !== undefined) {
+        const ad = parseWmsReturnDispositionBf85(input.wmsRmaDispositionRuleApplyDispositionBf85);
+        if (!ad) {
+          return toApiErrorResponseFromStatus("wmsRmaDispositionRuleApplyDispositionBf85 invalid.", 400);
+        }
+        data.applyDisposition = ad;
+      }
+
+      if (input.wmsRmaDispositionRuleReceivingTemplateIdBf85 !== undefined) {
+        const tid = input.wmsRmaDispositionRuleReceivingTemplateIdBf85?.trim() ?? null;
+        if (tid) {
+          const tpl = await prisma.wmsReceivingDispositionTemplate.findFirst({
+            where: { id: tid, tenantId },
+            select: { id: true },
+          });
+          if (!tpl) {
+            return toApiErrorResponseFromStatus("Receiving template not found for tenant.", 404);
+          }
+          data.receivingDispositionTemplate = { connect: { id: tid } };
+        } else {
+          data.receivingDispositionTemplate = { disconnect: true };
+        }
+      }
+
+      if (noteProvided) {
+        data.note = noteTrimmed === "" ? null : noteTrimmed;
+      }
+
+      if (Object.keys(data).length === 0) {
+        return toApiErrorResponseFromStatus("Provide fields to update.", 400);
+      }
+
+      await prisma.wmsRmaDispositionRuleBf85.update({ where: { id: ruleId }, data });
+      await prisma.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WMS_RMA_DISPOSITION_RULE_BF85",
+          entityId: ruleId,
+          action: "wms_rma_disposition_rule_bf85_updated",
+          payload: { keys: Object.keys(data) },
+          actorUserId: actorId,
+        },
+      });
+      return NextResponse.json({ ok: true, wmsRmaDispositionRuleIdBf85: ruleId });
+    }
+
+    if (!patternTrimmed) {
+      return toApiErrorResponseFromStatus(
+        "Create requires wmsRmaDispositionRulePatternBf85 (1–256 chars).",
+        400,
+      );
+    }
+    const mf = parseWmsRmaDispositionMatchFieldBf85(input.wmsRmaDispositionRuleMatchFieldBf85);
+    if (!mf) {
+      return toApiErrorResponseFromStatus(
+        "Create requires valid wmsRmaDispositionRuleMatchFieldBf85.",
+        400,
+      );
+    }
+    const ad = parseWmsReturnDispositionBf85(input.wmsRmaDispositionRuleApplyDispositionBf85);
+    if (!ad) {
+      return toApiErrorResponseFromStatus(
+        "Create requires valid wmsRmaDispositionRuleApplyDispositionBf85.",
+        400,
+      );
+    }
+
+    let mode: NonNullable<ReturnType<typeof parseWmsRmaDispositionMatchModeBf85>>;
+    if (input.wmsRmaDispositionRuleMatchModeBf85 === undefined) {
+      mode = "CONTAINS";
+    } else {
+      const mm = parseWmsRmaDispositionMatchModeBf85(input.wmsRmaDispositionRuleMatchModeBf85);
+      if (!mm) {
+        return toApiErrorResponseFromStatus("wmsRmaDispositionRuleMatchModeBf85 invalid.", 400);
+      }
+      mode = mm;
+    }
+
+    const priCreate = parsePriority(input.wmsRmaDispositionRulePriorityBf85);
+    const priority =
+      input.wmsRmaDispositionRulePriorityBf85 === undefined ? 100 : priCreate;
+    if (priority === null) {
+      return toApiErrorResponseFromStatus("wmsRmaDispositionRulePriorityBf85 invalid (0–1000000).", 400);
+    }
+
+    let receivingDispositionTemplateId: string | null = null;
+    if (input.wmsRmaDispositionRuleReceivingTemplateIdBf85 !== undefined) {
+      const tid = input.wmsRmaDispositionRuleReceivingTemplateIdBf85?.trim() ?? null;
+      if (tid) {
+        const tpl = await prisma.wmsReceivingDispositionTemplate.findFirst({
+          where: { id: tid, tenantId },
+          select: { id: true },
+        });
+        if (!tpl) {
+          return toApiErrorResponseFromStatus("Receiving template not found for tenant.", 400);
+        }
+        receivingDispositionTemplateId = tid;
+      }
+    }
+
+    let noteVal: string | null = null;
+    if (noteProvided) {
+      noteVal = noteTrimmed === "" ? null : noteTrimmed;
+    }
+
+    const row = await prisma.wmsRmaDispositionRuleBf85.create({
+      data: {
+        tenantId,
+        priority,
+        matchField: mf,
+        matchMode: mode,
+        pattern: patternTrimmed,
+        applyDisposition: ad,
+        receivingDispositionTemplateId,
+        note: noteVal,
+      },
+      select: { id: true },
+    });
+
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_RMA_DISPOSITION_RULE_BF85",
+        entityId: row.id,
+        action: "wms_rma_disposition_rule_bf85_created",
+        payload: { matchField: mf, priority },
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true, wmsRmaDispositionRuleIdBf85: row.id });
+  }
+
+  if (action === "delete_wms_rma_disposition_rule_bf85") {
+    const rid = input.wmsRmaDispositionRuleIdBf85?.trim();
+    if (!rid) {
+      return toApiErrorResponseFromStatus("wmsRmaDispositionRuleIdBf85 required.", 400);
+    }
+    const existing = await prisma.wmsRmaDispositionRuleBf85.findFirst({
+      where: { id: rid, tenantId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return toApiErrorResponseFromStatus("Rule not found.", 404);
+    }
+    await prisma.wmsRmaDispositionRuleBf85.delete({ where: { id: rid } });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_RMA_DISPOSITION_RULE_BF85",
+        entityId: rid,
+        action: "wms_rma_disposition_rule_bf85_deleted",
+        payload: {},
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "apply_rma_disposition_rules_bf85") {
+    const shipmentId = input.shipmentId?.trim();
+    if (!shipmentId) {
+      return toApiErrorResponseFromStatus("shipmentId required.", 400);
+    }
+    const overwrite = Boolean(input.wmsRmaDispositionRulesOverwriteBf85);
+
+    const shipment = await prisma.shipment.findFirst({
+      where: { id: shipmentId, order: { tenantId } },
+      select: {
+        id: true,
+        wmsInboundSubtype: true,
+        wmsRmaReference: true,
+      },
+    });
+    if (!shipment) {
+      return toApiErrorResponseFromStatus("Shipment not found.", 404);
+    }
+    if (shipment.wmsInboundSubtype !== "CUSTOMER_RETURN") {
+      return toApiErrorResponseFromStatus(
+        "apply_rma_disposition_rules_bf85 requires CUSTOMER_RETURN inbound subtype (BF-41).",
+        400,
+      );
+    }
+
+    const rules = await prisma.wmsRmaDispositionRuleBf85.findMany({
+      where: { tenantId },
+      orderBy: [{ priority: "asc" }, { id: "asc" }],
+    });
+
+    const items = await prisma.shipmentItem.findMany({
+      where: { shipmentId },
+      select: {
+        id: true,
+        wmsReturnDisposition: true,
+        orderItem: {
+          select: {
+            description: true,
+            product: { select: { sku: true, productCode: true } },
+          },
+        },
+      },
+    });
+
+    type Op = { itemId: string; disposition: WmsReturnLineDisposition; templateId?: string };
+    const ops: Op[] = [];
+    const matchedRuleIds: string[] = [];
+    let skippedExistingDispositionCount = 0;
+    let skippedNoRuleCount = 0;
+
+    for (const line of items) {
+      if (!overwrite && line.wmsReturnDisposition != null) {
+        skippedExistingDispositionCount++;
+        continue;
+      }
+      const ctx = {
+        orderLineDescription: line.orderItem.description,
+        productSku: line.orderItem.product?.sku ?? null,
+        productCode: line.orderItem.product?.productCode ?? null,
+        shipmentRmaReference: shipment.wmsRmaReference,
+      };
+      const hit = findFirstMatchingRmaDispositionRuleBf85(rules, ctx);
+      if (!hit) {
+        skippedNoRuleCount++;
+        continue;
+      }
+      matchedRuleIds.push(hit.id);
+      ops.push({
+        itemId: line.id,
+        disposition: hit.applyDisposition,
+        ...(hit.receivingDispositionTemplateId
+          ? { templateId: hit.receivingDispositionTemplateId }
+          : {}),
+      });
+    }
+
+    const updatedCount = ops.length;
+
+    await prisma.$transaction(async (tx) => {
+      for (const op of ops) {
+        await tx.shipmentItem.update({
+          where: { id: op.itemId },
+          data: {
+            wmsReturnDisposition: op.disposition,
+            ...(op.templateId !== undefined ? { wmsReceivingDispositionTemplateId: op.templateId } : {}),
+          },
+        });
+      }
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: shipment.id,
+          entityType: "SHIPMENT",
+          entityId: shipment.id,
+          action: "rma_disposition_rules_applied_bf85",
+          payload: {
+            overwriteExisting: overwrite,
+            updatedCount,
+            skippedNoRuleCount,
+            skippedExistingDispositionCount,
+            matchedRuleIds: [...new Set(matchedRuleIds)],
+          },
+          actorUserId: actorId,
+        },
+      });
+    });
+
+    return NextResponse.json({
+      ok: true,
+      updatedCount,
+      skippedNoRuleCount,
+      skippedExistingDispositionCount,
+    });
   }
 
   if (action === "create_wms_outbound_webhook_subscription_bf44") {

@@ -99,6 +99,7 @@ model Tenant {
   wmsYardGeofenceWebhookReceipts              WmsYardGeofenceWebhookReceipt[]
   wmsReceipts                                 WmsReceipt[]
   wmsReceivingDispositionTemplates           WmsReceivingDispositionTemplate[]
+  wmsRmaDispositionRulesBf85                 WmsRmaDispositionRuleBf85[]
   wmsOutboundLogisticsUnits                  WmsOutboundLogisticsUnit[]
   wmsOutboundLuSerials                       WmsOutboundLuSerial[]
   wmsRecallCampaigns                         WmsRecallCampaign[]
@@ -3779,6 +3780,21 @@ enum WmsReturnLineDisposition {
   QUARANTINE
 }
 
+/// BF-85 — which text source RMA disposition rules match against.
+enum WmsRmaDispositionMatchFieldBf85 {
+  ORDER_LINE_DESCRIPTION
+  PRODUCT_SKU
+  PRODUCT_CODE
+  SHIPMENT_RMA_REFERENCE
+}
+
+/// BF-85 — string match operator for `pattern` vs haystack.
+enum WmsRmaDispositionMatchModeBf85 {
+  EXACT
+  PREFIX
+  CONTAINS
+}
+
 model Shipment {
   id                      String         @id @default(cuid())
   orderId                 String
@@ -3889,9 +3905,30 @@ model WmsReceivingDispositionTemplate {
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipmentItems ShipmentItem[]
+  wmsRmaDispositionRulesBf85 WmsRmaDispositionRuleBf85[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+/// BF-85 — tenant rules mapping reason/code/RMA ref patterns → return disposition (+ optional BF-42 receiving template).
+model WmsRmaDispositionRuleBf85 {
+  id                             String                              @id @default(cuid())
+  tenantId                       String
+  priority                       Int                                 @default(100)
+  matchField                     WmsRmaDispositionMatchFieldBf85
+  matchMode                      WmsRmaDispositionMatchModeBf85      @default(CONTAINS)
+  pattern                        String                              @db.VarChar(256)
+  applyDisposition               WmsReturnLineDisposition
+  receivingDispositionTemplateId String?
+  note                           String?                             @db.VarChar(500)
+  createdAt                      DateTime                            @default(now())
+  updatedAt                      DateTime                            @updatedAt
+
+  tenant                         Tenant                              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  receivingDispositionTemplate   WmsReceivingDispositionTemplate?    @relation(fields: [receivingDispositionTemplateId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, priority])
 }
 
 model ShipmentItem {

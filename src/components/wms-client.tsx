@@ -336,6 +336,19 @@ type WmsData = {
       | null;
     updatedAt: string;
   }>;
+  /** BF-85 — tenant rules bulk-applying return disposition (+ optional BF-42 template) on CUSTOMER_RETURN. */
+  rmaDispositionRulesBf85?: Array<{
+    id: string;
+    priority: number;
+    matchField: "ORDER_LINE_DESCRIPTION" | "PRODUCT_SKU" | "PRODUCT_CODE" | "SHIPMENT_RMA_REFERENCE";
+    matchMode: "EXACT" | "PREFIX" | "CONTAINS";
+    pattern: string;
+    applyDisposition: "RESTOCK" | "SCRAP" | "QUARANTINE";
+    receivingDispositionTemplateId: string | null;
+    receivingDispositionTemplate: { id: string; code: string; title: string } | null;
+    note: string | null;
+    updatedAt: string;
+  }>;
   /** BF-44 — tenant outbound webhooks (HMAC-signed POST bodies). */
   outboundWebhookSubscriptions?: Array<{
     id: string;
@@ -1415,6 +1428,18 @@ export function WmsClient({
   const [bf42TplNote, setBf42TplNote] = useState("");
   const [bf42TplSuggested, setBf42TplSuggested] = useState("");
   const [bf42EditingTemplateId, setBf42EditingTemplateId] = useState<string | null>(null);
+  const [bf85RuleEditingId, setBf85RuleEditingId] = useState<string | null>(null);
+  const [bf85Priority, setBf85Priority] = useState("100");
+  const [bf85MatchField, setBf85MatchField] = useState<
+    "ORDER_LINE_DESCRIPTION" | "PRODUCT_SKU" | "PRODUCT_CODE" | "SHIPMENT_RMA_REFERENCE"
+  >("ORDER_LINE_DESCRIPTION");
+  const [bf85MatchMode, setBf85MatchMode] = useState<"EXACT" | "PREFIX" | "CONTAINS">("CONTAINS");
+  const [bf85Pattern, setBf85Pattern] = useState("");
+  const [bf85ApplyDisp, setBf85ApplyDisp] = useState<"RESTOCK" | "SCRAP" | "QUARANTINE">("RESTOCK");
+  const [bf85TemplateId, setBf85TemplateId] = useState("");
+  const [bf85RuleNote, setBf85RuleNote] = useState("");
+  const [bf85ApplyShipmentId, setBf85ApplyShipmentId] = useState("");
+  const [bf85ApplyOverwrite, setBf85ApplyOverwrite] = useState(false);
   const [bf44WebhookUrl, setBf44WebhookUrl] = useState("");
   const [bf44WebhookSecret, setBf44WebhookSecret] = useState("");
   const [bf44EvtReceiptClosed, setBf44EvtReceiptClosed] = useState(true);
@@ -5148,6 +5173,258 @@ export function WmsClient({
       </section>
 
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">RMA disposition rules (BF-85)</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Ordered tenant rules match <span className="font-medium">CUSTOMER_RETURN</span> lines (
+          <span className="font-medium">BF-41</span>) on PO line description, product SKU/code, or shipment RMA ref (
+          case-insensitive). Lower priority runs first. Optional{" "}
+          <span className="font-medium">BF-42</span> receiving template attaches when a rule matches. Apply from{" "}
+          <span className="font-medium">Operations → Inbound</span>. See{" "}
+          <span className="font-medium">docs/wms/WMS_RMA_DISPOSITION_RULES_BF85.md</span>.
+        </p>
+        <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-100">
+          <table className="min-w-full text-xs">
+            <thead className="bg-zinc-100 text-left uppercase text-zinc-600">
+              <tr>
+                <th className="px-2 py-1.5">Pri</th>
+                <th className="px-2 py-1.5">Field</th>
+                <th className="px-2 py-1.5">Mode</th>
+                <th className="px-2 py-1.5">Pattern</th>
+                <th className="px-2 py-1.5">Disposition</th>
+                <th className="px-2 py-1.5">BF-42 tpl</th>
+                <th className="px-2 py-1.5">Updated</th>
+                {canEdit ? <th className="px-2 py-1.5"> </th> : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {(!data.rmaDispositionRulesBf85 || data.rmaDispositionRulesBf85.length === 0) ? (
+                <tr>
+                  <td colSpan={canEdit ? 8 : 7} className="px-2 py-3 text-zinc-500">
+                    No rules yet — create one below (requires inbound customer-return shipments to apply).
+                  </td>
+                </tr>
+              ) : (
+                (data.rmaDispositionRulesBf85 ?? []).map((r) => (
+                  <tr key={r.id}>
+                    <td className="whitespace-nowrap px-2 py-1.5 font-mono text-zinc-800">{r.priority}</td>
+                    <td className="px-2 py-1.5 text-zinc-700">{r.matchField}</td>
+                    <td className="px-2 py-1.5 text-zinc-700">{r.matchMode}</td>
+                    <td className="max-w-[12rem] truncate px-2 py-1.5 font-mono text-[11px] text-zinc-800" title={r.pattern}>
+                      {r.pattern}
+                    </td>
+                    <td className="px-2 py-1.5 text-zinc-700">{r.applyDisposition}</td>
+                    <td className="px-2 py-1.5 text-zinc-600">
+                      {r.receivingDispositionTemplate ? `${r.receivingDispositionTemplate.code}` : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-1.5 text-zinc-500">
+                      {new Date(r.updatedAt).toLocaleString()}
+                    </td>
+                    {canEdit ? (
+                      <td className="space-x-1 whitespace-nowrap px-2 py-1.5">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            setBf85RuleEditingId(r.id);
+                            setBf85Priority(String(r.priority));
+                            setBf85MatchField(r.matchField);
+                            setBf85MatchMode(r.matchMode);
+                            setBf85Pattern(r.pattern);
+                            setBf85ApplyDisp(r.applyDisposition);
+                            setBf85TemplateId(r.receivingDispositionTemplateId ?? "");
+                            setBf85RuleNote(r.note ?? "");
+                          }}
+                          className="rounded border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void runAction({
+                              action: "delete_wms_rma_disposition_rule_bf85",
+                              wmsRmaDispositionRuleIdBf85: r.id,
+                            })
+                          }
+                          className="rounded border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-800 disabled:opacity-40"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {canEdit ? (
+          <div className="mt-4 grid gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 sm:grid-cols-2">
+            <label className="block text-[11px] font-medium text-zinc-600">
+              Priority (lower runs first)
+              <input
+                value={bf85Priority}
+                disabled={busy}
+                onChange={(e) => setBf85Priority(e.target.value)}
+                placeholder="100"
+                className="mt-1 w-full max-w-xs rounded-lg border border-zinc-300 px-3 py-2 text-sm disabled:bg-zinc-100"
+              />
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600">
+              Match field
+              <select
+                value={bf85MatchField}
+                disabled={busy}
+                onChange={(e) =>
+                  setBf85MatchField(
+                    e.target.value as
+                      | "ORDER_LINE_DESCRIPTION"
+                      | "PRODUCT_SKU"
+                      | "PRODUCT_CODE"
+                      | "SHIPMENT_RMA_REFERENCE",
+                  )
+                }
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="ORDER_LINE_DESCRIPTION">Order line description</option>
+                <option value="PRODUCT_SKU">Product SKU</option>
+                <option value="PRODUCT_CODE">Product code</option>
+                <option value="SHIPMENT_RMA_REFERENCE">Shipment RMA reference</option>
+              </select>
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600">
+              Match mode
+              <select
+                value={bf85MatchMode}
+                disabled={busy}
+                onChange={(e) => setBf85MatchMode(e.target.value as "EXACT" | "PREFIX" | "CONTAINS")}
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="CONTAINS">Contains</option>
+                <option value="PREFIX">Prefix</option>
+                <option value="EXACT">Exact</option>
+              </select>
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600">
+              Apply disposition
+              <select
+                value={bf85ApplyDisp}
+                disabled={busy}
+                onChange={(e) =>
+                  setBf85ApplyDisp(e.target.value as "RESTOCK" | "SCRAP" | "QUARANTINE")
+                }
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="RESTOCK">RESTOCK</option>
+                <option value="SCRAP">SCRAP</option>
+                <option value="QUARANTINE">QUARANTINE</option>
+              </select>
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600 sm:col-span-2">
+              Pattern (1–256 chars)
+              <input
+                value={bf85Pattern}
+                disabled={busy}
+                onChange={(e) => setBf85Pattern(e.target.value)}
+                placeholder="e.g. defective, RMA-, SKU prefix…"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm disabled:bg-zinc-100"
+              />
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600 sm:col-span-2">
+              Optional BF-42 receiving template
+              <select
+                value={bf85TemplateId}
+                disabled={busy}
+                onChange={(e) => setBf85TemplateId(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="">None</option>
+                {(data.receivingDispositionTemplates ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.code} — {t.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[11px] font-medium text-zinc-600 sm:col-span-2">
+              Rule note (optional)
+              <input
+                value={bf85RuleNote}
+                disabled={busy}
+                onChange={(e) => setBf85RuleNote(e.target.value)}
+                placeholder="Operator hint (max 500 chars)"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <div className="flex flex-wrap items-end gap-2 sm:col-span-2">
+              <button
+                type="button"
+                disabled={busy || !bf85Pattern.trim()}
+                onClick={() => {
+                  const pri = Number(bf85Priority.trim());
+                  const payload = {
+                    action: "upsert_wms_rma_disposition_rule_bf85" as const,
+                    wmsRmaDispositionRuleMatchFieldBf85: bf85MatchField,
+                    wmsRmaDispositionRuleMatchModeBf85: bf85MatchMode,
+                    wmsRmaDispositionRulePatternBf85: bf85Pattern.trim(),
+                    wmsRmaDispositionRuleApplyDispositionBf85: bf85ApplyDisp,
+                    ...(Number.isFinite(pri) ? { wmsRmaDispositionRulePriorityBf85: pri } : {}),
+                    ...(bf85RuleEditingId
+                      ? {
+                          wmsRmaDispositionRuleReceivingTemplateIdBf85: bf85TemplateId.trim() || null,
+                          wmsRmaDispositionRuleNoteBf85: bf85RuleNote.trim() === "" ? null : bf85RuleNote.trim(),
+                        }
+                      : {
+                          ...(bf85TemplateId.trim()
+                            ? { wmsRmaDispositionRuleReceivingTemplateIdBf85: bf85TemplateId.trim() }
+                            : {}),
+                          ...(bf85RuleNote.trim() ? { wmsRmaDispositionRuleNoteBf85: bf85RuleNote.trim() } : {}),
+                        }),
+                    ...(bf85RuleEditingId ? { wmsRmaDispositionRuleIdBf85: bf85RuleEditingId } : {}),
+                  };
+                  void runAction(payload).then((res) => {
+                    if (res) {
+                      setBf85RuleEditingId(null);
+                      setBf85Priority("100");
+                      setBf85MatchField("ORDER_LINE_DESCRIPTION");
+                      setBf85MatchMode("CONTAINS");
+                      setBf85Pattern("");
+                      setBf85ApplyDisp("RESTOCK");
+                      setBf85TemplateId("");
+                      setBf85RuleNote("");
+                    }
+                  });
+                }}
+                className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {bf85RuleEditingId ? "Save rule" : "Create rule"}
+              </button>
+              {bf85RuleEditingId ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setBf85RuleEditingId(null);
+                    setBf85Priority("100");
+                    setBf85MatchField("ORDER_LINE_DESCRIPTION");
+                    setBf85MatchMode("CONTAINS");
+                    setBf85Pattern("");
+                    setBf85ApplyDisp("RESTOCK");
+                    setBf85TemplateId("");
+                    setBf85RuleNote("");
+                  }}
+                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Cancel edit
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Outbound webhooks (BF-44)</h2>
         <p className="mt-1 text-xs text-zinc-600">
           Signed <span className="font-mono text-[11px]">POST</span> JSON to your HTTPS endpoint when milestones occur.
@@ -5587,6 +5864,8 @@ export function WmsClient({
           <span className="font-medium">QA sampling hints</span>, disposition{" "}
           <span className="font-medium">note templates</span> (Setup), and one-click{" "}
           <span className="font-medium">Apply template</span> into the variance note.
+          <span className="font-medium"> BF-85</span> adds tenant pattern rules on Setup and bulk{" "}
+          <span className="font-medium">Apply rules to shipment</span> for customer returns (panel below).
           <span className="font-medium"> BF-59</span> adds JSON{" "}
           <span className="font-medium">ASN pre-advise</span> ingestion (
           <span className="font-mono text-[11px]">POST /api/wms/inbound-asn-advise</span>, idempotent{" "}
@@ -5642,6 +5921,49 @@ export function WmsClient({
             CRM customer JSON
           </a>
         </div>
+        <section className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">BF-85 · Bulk RMA disposition</p>
+          <p className="mt-2 text-xs text-zinc-600">
+            Runs tenant rules from Setup against every line on a{" "}
+            <span className="font-medium">CUSTOMER_RETURN</span> shipment (
+            <span className="font-medium">BF-41</span>). First match wins per line. Existing dispositions are left alone unless{" "}
+            <span className="font-medium">Overwrite</span> is checked.
+          </p>
+          <label className="mt-3 block text-[11px] font-medium text-zinc-600">
+            Shipment id
+            <input
+              value={bf85ApplyShipmentId}
+              disabled={busy || !canEdit}
+              onChange={(e) => setBf85ApplyShipmentId(e.target.value)}
+              placeholder="Shipment id (from inbound grid)"
+              className="mt-1 w-full max-w-xl rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs disabled:bg-zinc-100"
+            />
+          </label>
+          <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-zinc-700">
+            <input
+              type="checkbox"
+              checked={bf85ApplyOverwrite}
+              disabled={busy || !canEdit}
+              onChange={(e) => setBf85ApplyOverwrite(e.target.checked)}
+              className="rounded border-zinc-300"
+            />
+            Overwrite lines that already have return disposition
+          </label>
+          <button
+            type="button"
+            disabled={busy || !canEdit || !bf85ApplyShipmentId.trim()}
+            onClick={() =>
+              void runAction({
+                action: "apply_rma_disposition_rules_bf85",
+                shipmentId: bf85ApplyShipmentId.trim(),
+                wmsRmaDispositionRulesOverwriteBf85: bf85ApplyOverwrite,
+              })
+            }
+            className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            Apply rules to shipment
+          </button>
+        </section>
         {canEdit ? (
           <Fragment>
             <section className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">
