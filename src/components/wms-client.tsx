@@ -6944,6 +6944,41 @@ export function WmsClient({
         ) : null}
       </section>
 
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Search snapshot export (BF-99)</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Paginated JSON Lines (<span className="font-mono text-[11px]">application/x-ndjson</span>) with shallow rows for{" "}
+          <span className="font-medium">Shipment</span>, <span className="font-medium">OutboundOrder</span>, and{" "}
+          <span className="font-medium">WmsTask</span> (tenant slices respect normal WMS read scopes). Each page returns up to{" "}
+          <span className="font-mono text-[11px]">limit</span> lines (default 200, max 500); continue with{" "}
+          <span className="font-mono text-[11px]">cursor</span> from response header{" "}
+          <span className="font-mono text-[11px]">X-Search-Snapshot-Next-Cursor</span> until absent. Schema marker{" "}
+          <span className="font-mono text-[11px]">bf99.v1</span> per line plus header{" "}
+          <span className="font-mono text-[11px]">X-Search-Snapshot-Schema</span>.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+          <a
+            href="/api/wms/search-snapshot?limit=500"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 font-semibold text-white"
+          >
+            Open first page (NDJSON)
+          </a>
+          <a
+            href="/api/wms/search-snapshot?limit=500&attachment=1"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800"
+          >
+            Download first page
+          </a>
+          <span className="self-center text-zinc-500">
+            <span className="font-mono text-[11px]">docs/wms/WMS_SEARCH_SNAPSHOT_BF99.md</span>
+          </span>
+        </div>
+      </section>
+
         </>
       ) : null}
 

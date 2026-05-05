@@ -167,7 +167,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 79 | **BF-96** | C — Dock SLA risk scorer | **Minimal landed** — **`dockSlaRiskScores`** + BF-93 **`dockSlaRiskScorerBf96`** ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-96) |
 | 80 | **BF-97** | Enterprise ESG scope-3 stub | **Minimal landed** — supplier/product upstream g/kg + movement rollup + refresh qty×factor ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-97) |
 | 81 | **BF-98** | C — Partner mutation pilot | **Minimal landed** — **`POST …/mutations/inbound-asn-advise`**, **`INBOUND_ASN_ADVISE_WRITE`** ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-98) |
-| 82 | **BF-99** | C — Search snapshot export | **Draft** — JSON Lines index ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-99) |
+| 82 | **BF-99** | C — Search snapshot export | **Minimal landed** — **`GET /api/wms/search-snapshot`** NDJSON **`bf99.v1`** ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-99) |
 | 83 | **BF-100** | Meta — Blueprint self-check | **Draft** — gap vs actions report ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-100) |
 
 **Parallelization:** historical note — **BF-04** / **BF-05** / commercial (**BF-10**) often ran in parallel when teams differed.
