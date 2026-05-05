@@ -4,7 +4,7 @@
 
 **Enterprise finish line:** **`WE-01` … `WE-12`** — **closed** ([`ENTERPRISE_TRACK.md`](./ENTERPRISE_TRACK.md), [`WMS_ENTERPRISE_EXIT_WE12.md`](./WMS_ENTERPRISE_EXIT_WE12.md)). Next increments → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
-**Blueprint finish (post‑enterprise):** thematic backlog + **`BF-xx` capsules** — [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md); **`BF-02`–`BF-11` roadmap snapshot** — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **mega phases `BF-12`–`BF-20`** — [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md); **mega phases `BF-21`–`BF-30`** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **program `BF-31`–`BF-50`** — [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
+**Blueprint finish (post‑enterprise):** thematic backlog + **`BF-xx` capsules** — [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md); **`BF-02`–`BF-11` roadmap snapshot** — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **mega phases `BF-12`–`BF-20`** — [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md); **mega phases `BF-21`–`BF-30`** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **program `BF-31`–`BF-50`** — [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md); **program `BF-51`–`BF-70`** — [`BF51_BF70_MEGA_PHASES.md`](./BF51_BF70_MEGA_PHASES.md); **draft program `BF-71`–`BF-100`** — [`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md).
 
 **Legend:** ✅ covered · 🟡 partial / simplified · ❌ not in schema or not wired
 

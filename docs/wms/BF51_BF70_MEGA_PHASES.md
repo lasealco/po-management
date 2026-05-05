@@ -12,6 +12,8 @@
 2. Ship → update **[`GAP_MAP.md`](./GAP_MAP.md)** → refresh **[`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md)** → add **`docs/wms/WMS_*_BFxx.md`** (or ADR) when a capsule lands.
 3. Stay inside **`src/app/wms/**`, **`src/app/api/wms/**`, **`src/lib/wms/**`** unless the row explicitly names CRM/CT/platform/integrations — then touch shared surfaces minimally.
 
+**Next program (draft):** **`BF-71` … `BF-100`** — [`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md).
+
 ---
 
 ## Program rollup
@@ -267,4 +269,4 @@
 
 ---
 
-_Last updated: 2026-04-30 — **BF-70** external PDP hook ([`WMS_EXTERNAL_PDP_BF70.md`](./WMS_EXTERNAL_PDP_BF70.md)); **BF-69** carbon intensity hints ([`WMS_CARBON_INTENSITY_BF69.md`](./WMS_CARBON_INTENSITY_BF69.md))._
+_Last updated: 2026-04-30 — **BF-70** external PDP hook ([`WMS_EXTERNAL_PDP_BF70.md`](./WMS_EXTERNAL_PDP_BF70.md)); **BF-69** carbon intensity hints ([`WMS_CARBON_INTENSITY_BF69.md`](./WMS_CARBON_INTENSITY_BF69.md)). **2026-04-29** — draft program **BF-71** … **BF-100** ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md))._
