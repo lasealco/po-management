@@ -3070,6 +3070,7 @@ model Supplier {
   onboardingTasks           SupplierOnboardingTask[]
   srmDocuments              SrmSupplierDocument[]
   srmOperatorNotifications  SrmOperatorNotification[]
+  inventoryBalancesOwnershipBf79 InventoryBalance[] @relation("InventoryBalanceBf79OwnershipSupplier")
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -4894,12 +4895,15 @@ model InventoryBalance {
   holdAppliedById  String?
   /// BF-58 — when set, `release_inventory_freeze` requires this resource → edit unless actor has full `org.wms.inventory` (or legacy `org.wms`) edit.
   holdReleaseGrant String?  @db.VarChar(120)
+  /// BF-79 — vendor/consignment owner (`Supplier`); null = company-owned stock (default).
+  inventoryOwnershipSupplierIdBf79 String?
   updatedAt    DateTime @updatedAt
 
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   warehouse Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   bin       WarehouseBin @relation(fields: [binId], references: [id], onDelete: Cascade)
   product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventoryOwnershipSupplierBf79 Supplier? @relation("InventoryBalanceBf79OwnershipSupplier", fields: [inventoryOwnershipSupplierIdBf79], references: [id], onDelete: SetNull)
   holdAppliedBy User?    @relation("InventoryBalanceHoldAppliedBy", fields: [holdAppliedById], references: [id], onDelete: SetNull)
   wmsInventorySerials WmsInventorySerial[]
   wmsInventorySoftReservations WmsInventorySoftReservation[]
@@ -4907,6 +4911,7 @@ model InventoryBalance {
 
   @@unique([warehouseId, binId, productId, lotCode])
   @@index([tenantId, warehouseId])
+  @@index([tenantId, inventoryOwnershipSupplierIdBf79])
 }
 
 /// BF-36 — time-boxed soft reservation against one balance row (reduces ATP / allocation; not `allocatedQty`).

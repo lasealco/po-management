@@ -108,7 +108,10 @@ export type WmsBody = {
   quantity?: number;
   note?: string | null;
   balanceId?: string;
-  /** Target `WmsReceiveStatus` for `set_wms_receiving_status`. */
+  /** BF-79 — active supplier id for `set_inventory_balance_ownership_bf79`. */
+  inventoryOwnershipSupplierIdBf79?: string | null;
+  /** BF-79 — clear supplier FK → company-owned. */
+  inventoryOwnershipSupplierIdBf79Clear?: boolean;
   toStatus?: string;
   holdReason?: string | null;
   /** BF-58 — `QC_HOLD` | `RECALL` | … on `apply_inventory_freeze`. */

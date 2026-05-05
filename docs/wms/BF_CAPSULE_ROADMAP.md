@@ -147,7 +147,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 59 | **BF-76** | B — Pick path export | **Minimal landed** — [`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md) ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-76) |
 | 60 | **BF-77** | D — Labor variance queue | **Minimal landed** — [`WMS_LABOR_VARIANCE_BF77.md`](./WMS_LABOR_VARIANCE_BF77.md) ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-77) |
 | 61 | **BF-78** | A — STO landed cost notes | ✅ **Minimal landed** — **`landedCostNotesBf78Json`** + export CSV (`GET /api/wms/stock-transfer-export`) ([`WMS_STO_LANDED_COST_BF78.md`](./WMS_STO_LANDED_COST_BF78.md)) |
-| 62 | **BF-79** | R1 — VMI / consignment flags | **Draft** — ownership metadata ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-79) |
+| 62 | **BF-79** | R1 — VMI / consignment flags | ✅ **Minimal landed** — balance supplier FK + filter ([`WMS_VMI_CONSIGNMENT_BF79.md`](./WMS_VMI_CONSIGNMENT_BF79.md)) |
 | 63 | **BF-80** | A — QA close enforcement | **Draft** — sampling gate on close ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-80) |
 | 64 | **BF-81** | R2 — RFID bridge | **Draft** — EPC/TID scan hook ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-81) |
 | 65 | **BF-82** | D — Hash-chain audit export | **Draft** — tamper-evident ledger tail ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-82) |
@@ -248,7 +248,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 
 ### Draft — **`BF-71` … `BF-100`**
 
-Themes span serialization depth, DG/recall, yard geofence + ASN normalize, pick-path export, labor variance queue, labor/finance exports, VMI, QA enforcement, audit hashes, supplier scorecards, ATP tiers, TMS hints, trade screening, feature flags, partner mutations, ESG scope-3, search snapshots, and blueprint self-check — full rollup + exit sketches in [`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md). Standalone **`WMS_*_BF71.md`**–**`WMS_*_BF78.md`** docs ship with landed minimal capsules; **`WMS_*_BF79.md`** … **`WMS_*_BF100.md`** remain backlog until funded.
+Themes span serialization depth, DG/recall, yard geofence + ASN normalize, pick-path export, labor variance queue, labor/finance exports, VMI, QA enforcement, audit hashes, supplier scorecards, ATP tiers, TMS hints, trade screening, feature flags, partner mutations, ESG scope-3, search snapshots, and blueprint self-check — full rollup + exit sketches in [`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md). Standalone **`WMS_*_BF71.md`**–**`WMS_*_BF79.md`** docs ship with landed minimal capsules; **`WMS_*_BF80.md`** … **`WMS_*_BF100.md`** remain backlog until funded.
 
 ---
 

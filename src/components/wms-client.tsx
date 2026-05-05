@@ -372,6 +372,14 @@ type WmsData = {
     timeoutMs: number;
     failOpen: boolean;
   };
+  /** BF-79 — echo of balance ownership filter applied to `balances` (`GET /api/wms` query). */
+  inventoryOwnershipBalanceFilterBf79?: {
+    schemaVersion: string;
+    mode: "all" | "company" | "vendor";
+    supplierId: string | null;
+  };
+  /** BF-79 — supplier selector options for VMI / consignment tagging (active suppliers). */
+  suppliersBf79?: Array<{ id: string; code: string | null; name: string }>;
   /** BF-36 — ATP aggregates per warehouse × SKU (soft reservations reduce ATP). */
   atpByWarehouseProduct?: Array<{
     warehouseId: string;
@@ -480,6 +488,9 @@ type WmsData = {
     holdAppliedAt?: string | null;
     /** BF-58 — delegated release grant resource or null. */
     holdReleaseGrant?: string | null;
+    /** BF-79 — vendor/consignment owner supplier id; null = company-owned. */
+    inventoryOwnershipSupplierIdBf79?: string | null;
+    inventoryOwnershipSupplierBf79?: { id: string; code: string | null; name: string } | null;
   }>;
   openTasks: Array<{
     id: string;
@@ -1148,6 +1159,73 @@ function StoLandedCostBf78Panel({
   );
 }
 
+function BalanceOwnershipBf79Editor({
+  balanceId,
+  supplier,
+  suppliers,
+  canEdit,
+  busy,
+  runAction,
+}: {
+  balanceId: string;
+  supplier: { id: string; code: string | null; name: string } | null;
+  suppliers: Array<{ id: string; code: string | null; name: string }>;
+  canEdit: boolean;
+  busy: boolean;
+  runAction: (body: Record<string, unknown>) => void | Promise<unknown>;
+}) {
+  const [supplierId, setSupplierId] = useState(() => supplier?.id ?? "");
+  useEffect(() => {
+    setSupplierId(supplier?.id ?? "");
+  }, [balanceId, supplier?.id]);
+
+  if (!canEdit) {
+    return supplier ? (
+      <span className="text-[11px] text-zinc-700">
+        {(supplier.code ?? "").trim() ? `${supplier.code} · ` : ""}
+        {supplier.name}
+      </span>
+    ) : (
+      <span className="text-[11px] text-zinc-500">Company</span>
+    );
+  }
+
+  return (
+    <div className="flex min-w-[11rem] flex-col gap-1">
+      <select
+        value={supplierId}
+        onChange={(e) => setSupplierId(e.target.value)}
+        disabled={busy}
+        className="rounded border border-zinc-300 px-1 py-0.5 text-[11px]"
+      >
+        <option value="">Company-owned</option>
+        {suppliers.map((s) => (
+          <option key={s.id} value={s.id}>
+            {(s.code ?? "").trim() ? `${s.code} · ` : ""}
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() =>
+          void runAction({
+            action: "set_inventory_balance_ownership_bf79",
+            balanceId,
+            ...(supplierId.trim()
+              ? { inventoryOwnershipSupplierIdBf79: supplierId.trim() }
+              : { inventoryOwnershipSupplierIdBf79Clear: true }),
+          })
+        }
+        className="w-fit rounded border border-zinc-300 bg-white px-2 py-0.5 text-[10px] font-medium text-zinc-800 disabled:opacity-40"
+      >
+        Apply ownership
+      </button>
+    </div>
+  );
+}
+
 export function WmsClient({
   canEdit,
   section,
@@ -1534,6 +1612,10 @@ export function WmsClient({
   const [balanceSort, setBalanceSort] = useState<
     "bin" | "product" | "availableDesc" | "availableAsc"
   >("bin");
+  const [balanceOwnershipBf79Mode, setBalanceOwnershipBf79Mode] = useState<"all" | "company" | "vendor">(
+    "all",
+  );
+  const [balanceOwnershipBf79SupplierId, setBalanceOwnershipBf79SupplierId] = useState("");
   const [lotBatchProductId, setLotBatchProductId] = useState("");
   const [lotBatchCode, setLotBatchCode] = useState("");
   const [lotBatchExpiry, setLotBatchExpiry] = useState("");
@@ -1757,6 +1839,11 @@ export function WmsClient({
           params.set("traceProductId", serialTraceLookup.productId);
           params.set("traceSerialNo", serialTraceLookup.serialNo);
         }
+        if (balanceOwnershipBf79Mode !== "all") {
+          params.set("balanceOwnership", balanceOwnershipBf79Mode);
+        }
+        const ownSid = balanceOwnershipBf79SupplierId.trim();
+        if (ownSid) params.set("balanceOwnershipSupplierId", ownSid);
       }
       const url = params.toString() ? `/api/wms?${params.toString()}` : "/api/wms";
       const res = await fetch(url, { cache: "no-store" });
@@ -1796,6 +1883,8 @@ export function WmsClient({
     ledgerUntil,
     ledgerLimit,
     serialTraceLookup,
+    balanceOwnershipBf79Mode,
+    balanceOwnershipBf79SupplierId,
   ]);
 
   useEffect(() => {
@@ -12206,6 +12295,36 @@ export function WmsClient({
                 <option value="availableAsc">Available low-high</option>
               </select>
             </label>
+            <label className="flex flex-col gap-1 text-xs text-zinc-600">
+              Ownership (BF-79)
+              <select
+                value={balanceOwnershipBf79Mode}
+                onChange={(e) =>
+                  setBalanceOwnershipBf79Mode(e.target.value as "all" | "company" | "vendor")
+                }
+                className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+              >
+                <option value="all">All balances</option>
+                <option value="company">Company-owned</option>
+                <option value="vendor">Vendor / consignment</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-zinc-600">
+              Supplier narrow
+              <select
+                value={balanceOwnershipBf79SupplierId}
+                onChange={(e) => setBalanceOwnershipBf79SupplierId(e.target.value)}
+                className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+              >
+                <option value="">Any supplier</option>
+                {(data?.suppliersBf79 ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {(s.code ?? "").trim() ? `${s.code} · ` : ""}
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         </div>
         {onHoldOnly ? (
@@ -12214,6 +12333,18 @@ export function WmsClient({
             <a className="underline" href="/wms/stock">
               clear
             </a>
+          </p>
+        ) : null}
+        {data?.inventoryOwnershipBalanceFilterBf79 &&
+        (data.inventoryOwnershipBalanceFilterBf79.mode !== "all" ||
+          Boolean(data.inventoryOwnershipBalanceFilterBf79.supplierId)) ? (
+          <p className="mb-2 rounded border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-950">
+            Server filter BF-79:{" "}
+            <span className="font-medium">{data.inventoryOwnershipBalanceFilterBf79.mode}</span>
+            {data.inventoryOwnershipBalanceFilterBf79.supplierId
+              ? ` · supplier id ${data.inventoryOwnershipBalanceFilterBf79.supplierId.slice(0, 10)}…`
+              : null}
+            .
           </p>
         ) : null}
         <div className="overflow-x-auto">
@@ -12234,13 +12365,14 @@ export function WmsClient({
                 <th className="px-2 py-1">Hold</th>
                 <th className="px-2 py-1">Hold code</th>
                 <th className="px-2 py-1">QC</th>
+                <th className="px-2 py-1">Ownership BF-79</th>
                 <th className="px-2 py-1">Balance id</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {balancesTableRows.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={16} className="px-2 py-3 text-zinc-500">
                     {balancesShown.length === 0
                       ? "No balances in this view."
                       : `No balances match this filter${balanceTextFilter.trim() ? `: "${balanceTextFilter.trim()}"` : "."}`}
@@ -12372,6 +12504,16 @@ export function WmsClient({
                           Clear
                         </button>
                       ) : null}
+                    </td>
+                    <td className="align-top px-2 py-1">
+                      <BalanceOwnershipBf79Editor
+                        balanceId={b.id}
+                        supplier={b.inventoryOwnershipSupplierBf79 ?? null}
+                        suppliers={data?.suppliersBf79 ?? []}
+                        canEdit={stockQtyEdit}
+                        busy={busy}
+                        runAction={runAction}
+                      />
                     </td>
                     <td className="px-2 py-1 font-mono text-[10px] text-zinc-500" title={b.id}>
                       {b.id.slice(0, 10)}…

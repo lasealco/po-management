@@ -107,6 +107,7 @@ describe("wmsMutationTierForPostAction", () => {
   it("maps BF-58 inventory freeze actions to inventory tier", () => {
     expect(wmsMutationTierForPostAction("apply_inventory_freeze")).toBe("inventory");
     expect(wmsMutationTierForPostAction("release_inventory_freeze")).toBe("inventory");
+    expect(wmsMutationTierForPostAction("set_inventory_balance_ownership_bf79")).toBe("inventory");
   });
 
   it("maps BF-73 recall campaign mutations to inventory tier", () => {

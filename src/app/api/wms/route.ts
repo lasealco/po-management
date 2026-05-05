@@ -6,6 +6,7 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { getWmsDashboardPayload } from "@/lib/wms/get-wms-payload";
 import { fetchWmsHomeKpis } from "@/lib/wms/wms-home-kpis";
 import { parseMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
+import { parseInventoryOwnershipBf79BalanceFilter } from "@/lib/wms/inventory-ownership-bf79";
 import { handleWmsPost } from "@/lib/wms/post-actions";
 import { fetchWarehouseTopologyGraph } from "@/lib/wms/warehouse-topology-graph";
 import { evaluateExternalWmsPolicy } from "@/lib/wms/external-pdp-bf70";
@@ -53,7 +54,14 @@ export async function GET(request: Request) {
   const traceSn = url.searchParams.get("traceSerialNo")?.trim();
   const serialTrace =
     tracePid && traceSn ? { productId: tracePid, serialNoRaw: traceSn } : null;
-  const payload = await getWmsDashboardPayload(tenant.id, actorId, movementLedger ?? null, serialTrace);
+  const inventoryOwnershipBf79 = parseInventoryOwnershipBf79BalanceFilter(url.searchParams);
+  const payload = await getWmsDashboardPayload(
+    tenant.id,
+    actorId,
+    movementLedger ?? null,
+    serialTrace,
+    inventoryOwnershipBf79,
+  );
   return NextResponse.json(payload);
 }
 

@@ -34,6 +34,11 @@ import {
   parseLaborVariancePolicyBf77Json,
 } from "@/lib/wms/labor-variance-bf77";
 import { parseStoredLandedCostNotesBf78Json } from "@/lib/wms/landed-cost-notes-bf78";
+import {
+  echoInventoryOwnershipBf79Filter,
+  inventoryOwnershipBf79FilterToWhere,
+  type ParsedInventoryOwnershipBf79BalanceFilter,
+} from "@/lib/wms/inventory-ownership-bf79";
 
 const WMS_PRODUCT_REF_SELECT = {
   id: true,
@@ -108,6 +113,7 @@ export async function getWmsDashboardPayload(
   actorUserId: string,
   movementLedger?: ParsedMovementLedgerQuery | null,
   serialTraceQuery?: SerialTraceQueryInput | null,
+  inventoryOwnershipBalanceFilterBf79?: ParsedInventoryOwnershipBf79BalanceFilter | null,
 ) {
   const [canPickCrmAccounts, viewScope] = await Promise.all([
     userHasGlobalGrant(actorUserId, "org.crm", "view"),
@@ -121,9 +127,12 @@ export async function getWmsDashboardPayload(
     ? movementLedgerWhere(tenantId, movementLedger)
     : { tenantId };
   const recentMovementTake = movementLedger?.limit ?? 80;
-  const balanceWhere: Prisma.InventoryBalanceWhereInput = viewScope.inventoryProduct
+  const ownershipBf79Where = inventoryOwnershipBf79FilterToWhere(inventoryOwnershipBalanceFilterBf79 ?? null);
+  const balanceWhereBase: Prisma.InventoryBalanceWhereInput = viewScope.inventoryProduct
     ? { AND: [{ tenantId }, { product: viewScope.inventoryProduct }] }
     : { tenantId };
+  const balanceWhere: Prisma.InventoryBalanceWhereInput =
+    ownershipBf79Where != null ? { AND: [balanceWhereBase, ownershipBf79Where] } : balanceWhereBase;
   const replenRuleWhere: Prisma.ReplenishmentRuleWhereInput = viewScope.inventoryProduct
     ? { AND: [{ tenantId, isActive: true }, { product: viewScope.inventoryProduct }] }
     : { tenantId, isActive: true };
@@ -285,6 +294,7 @@ export async function getWmsDashboardPayload(
         warehouse: { select: { id: true, code: true, name: true } },
         bin: { select: { id: true, code: true, name: true, zoneId: true, isPickFace: true } },
         product: { select: WMS_PRODUCT_REF_SELECT },
+        inventoryOwnershipSupplierBf79: { select: { id: true, code: true, name: true } },
       },
     }),
     prisma.wmsTask.findMany({
@@ -469,6 +479,13 @@ export async function getWmsDashboardPayload(
       },
     }),
   ]);
+
+  const suppliersBf79 = await prisma.supplier.findMany({
+    where: { tenantId, isActive: true },
+    orderBy: { name: "asc" },
+    take: 400,
+    select: { id: true, code: true, name: true },
+  });
 
   const inboundAsnAdvises = await prisma.wmsInboundAsnAdvise.findMany({
     where: { tenantId },
@@ -894,6 +911,8 @@ export async function getWmsDashboardPayload(
       methodology: CO2E_HINT_METHODOLOGY,
     },
     externalPdpBf70: externalPdpBf70DashboardMeta(),
+    inventoryOwnershipBalanceFilterBf79: echoInventoryOwnershipBf79Filter(inventoryOwnershipBalanceFilterBf79 ?? null),
+    suppliersBf79: suppliersBf79.map((s) => ({ id: s.id, code: s.code, name: s.name })),
     atpByWarehouseProduct,
     softReservations: softReservationRows.map((r) => ({
       id: r.id,
@@ -1155,6 +1174,14 @@ export async function getWmsDashboardPayload(
         holdReasonCode: b.holdReasonCode ?? null,
         holdAppliedAt: b.holdAppliedAt?.toISOString() ?? null,
         holdReleaseGrant: b.holdReleaseGrant ?? null,
+        inventoryOwnershipSupplierIdBf79: b.inventoryOwnershipSupplierIdBf79 ?? null,
+        inventoryOwnershipSupplierBf79: b.inventoryOwnershipSupplierBf79
+          ? {
+              id: b.inventoryOwnershipSupplierBf79.id,
+              code: b.inventoryOwnershipSupplierBf79.code,
+              name: b.inventoryOwnershipSupplierBf79.name,
+            }
+          : null,
         lotBatchProfile: profileRow
           ? {
               expiryDate: profileRow.expiryDate?.toISOString().slice(0, 10) ?? null,

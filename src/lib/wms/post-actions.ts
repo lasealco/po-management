@@ -6018,6 +6018,40 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "set_inventory_balance_ownership_bf79") {
+    const balanceId = input.balanceId?.trim();
+    if (!balanceId) return toApiErrorResponseFromStatus("balanceId required.", 400);
+
+    if (input.inventoryOwnershipSupplierIdBf79Clear === true) {
+      const n = await prisma.inventoryBalance.updateMany({
+        where: { id: balanceId, tenantId },
+        data: { inventoryOwnershipSupplierIdBf79: null },
+      });
+      if (n.count === 0) return toApiErrorResponseFromStatus("Balance row not found.", 404);
+      return NextResponse.json({ ok: true });
+    }
+
+    const sid = input.inventoryOwnershipSupplierIdBf79?.trim();
+    if (!sid) {
+      return toApiErrorResponseFromStatus(
+        "inventoryOwnershipSupplierIdBf79 required (or inventoryOwnershipSupplierIdBf79Clear: true).",
+        400,
+      );
+    }
+    const sup = await prisma.supplier.findFirst({
+      where: { id: sid, tenantId, isActive: true },
+      select: { id: true },
+    });
+    if (!sup) return toApiErrorResponseFromStatus("Supplier not found or inactive.", 404);
+
+    const n = await prisma.inventoryBalance.updateMany({
+      where: { id: balanceId, tenantId },
+      data: { inventoryOwnershipSupplierIdBf79: sid },
+    });
+    if (n.count === 0) return toApiErrorResponseFromStatus("Balance row not found.", 404);
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "release_inventory_freeze") {
     const balanceId = input.balanceId?.trim();
     if (!balanceId) {
