@@ -9608,7 +9608,9 @@ export function WmsClient({
           <span className="font-medium text-zinc-800">pick allocation strategy</span> (Warehouse setup → Pick
           allocation policy). <span className="font-medium text-zinc-800">Batch (BF-56)</span> walks bins in cluster
           order and tags tasks with a <span className="font-medium text-zinc-800">batchGroupKey</span> (source bin) for
-          cart-style picking — not AMR re-batch.
+          cart-style picking — not AMR re-batch. <span className="font-medium text-zinc-800">BF-76</span> exports a
+          deterministic bin visit sequence per wave (<span className="font-mono text-[11px]">GET …/pick-path-export</span>) —
+          see <span className="font-medium">docs/wms/WMS_PICK_PATH_EXPORT_BF76.md</span>.
         </p>
         {selectedWarehouseId &&
         data.warehouses.find((w) => w.id === selectedWarehouseId)?.pickAllocationStrategy === "MANUAL_ONLY" ? (
@@ -9670,6 +9672,22 @@ export function WmsClient({
                 <span className="text-zinc-500">
                   tasks {wave.taskCount} · open {wave.openTaskCount} · qty {wave.totalQty}
                 </span>
+                <a
+                  href={`/api/wms/pick-path-export?waveId=${encodeURIComponent(wave.id)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+                >
+                  BF-76 JSON
+                </a>
+                <a
+                  href={`/api/wms/pick-path-export?waveId=${encodeURIComponent(wave.id)}&format=csv`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+                >
+                  BF-76 CSV
+                </a>
                 {canEdit && wave.status === "OPEN" ? (
                   <button
                     type="button"

@@ -13,11 +13,12 @@
 | **Schema** | `WmsWavePickMode` (**`SINGLE_ORDER`**, **`BATCH`**); **`WmsWave.pickMode`** (default **`SINGLE_ORDER`**); **`WmsTask.batchGroupKey`** (nullable, set for **`BATCH`** picks). |
 | **POST** | **`create_pick_wave`** accepts **`pickWavePickMode`** or alias **`pickMode`**: **`SINGLE_ORDER`** (default, legacy loop) or **`BATCH`**. **Batch is rejected** for **solver prototype** allocation strategies (`SOLVER_PROTOTYPE_*`); use **`SINGLE_ORDER`** there. |
 | **Behavior** | **`BATCH`:** clone slot pools, compute bin visit order, for each bin then each outbound line (stable **`openLines`** order) allocate from matching slot; carton cap + balance allocation same as single-order path. |
+| **GET** | **`/api/wms/pick-path-export?waveId=`** (**BF-76** — [`WMS_PICK_PATH_EXPORT_BF76.md`](./WMS_PICK_PATH_EXPORT_BF76.md)) — topology-stable **`bf76.v1`** visits + CSV for wave **`PICK`** tasks. |
 | **Payload** | **`GET /api/wms`** waves include **`pickMode`**; open pick tasks include **`batchGroupKey`**; task **`wave`** includes **`pickMode`**. |
 
 ## UI
 
-- **`/wms`** — Wave picking section: **Pick wave mode** selector + **Create pick wave**; wave list shows **Batch BF-56** chip; open tasks show **Batch wave** + **Cluster stop · bin …** when **`batchGroupKey`** is set.
+- **`/wms`** — Wave picking section: **Pick wave mode** selector + **Create pick wave**; wave list shows **Batch BF-56** chip; **BF-76 JSON** / **BF-76 CSV** export links per wave; open tasks show **Batch wave** + **Cluster stop · bin …** when **`batchGroupKey`** is set.
 
 ## Out of scope
 
@@ -25,4 +26,4 @@ AMR cluster bots, dynamic **re-batch** during pick, merging multiple outbound li
 
 ---
 
-_Last updated: 2026-04-29 — BF-56 minimal slice._
+_Last updated: 2026-04-29 — BF-56 minimal slice + **BF-76** pick-path export cross-ref._
