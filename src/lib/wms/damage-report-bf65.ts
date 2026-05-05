@@ -124,14 +124,29 @@ export function buildCarrierClaimExportV1(args: {
     carrierClaimReference: string | null;
     shipmentItemId: string | null;
     createdAt: Date;
+    scrapValuePerUnitCentsBf95?: number | null;
   };
   inboundShipment: DamageClaimShipmentSummary | null;
   outboundOrder: DamageClaimOutboundSummary | null;
+  /** BF-95 — optional inbound line scrap hint when report anchors a `ShipmentItem`. */
+  inboundLineScrapValuePerUnitCentsBf95?: number | null;
 }): Record<string, unknown> {
   const parts: string[] = [];
   parts.push(`Damage report ${args.report.id}`);
   parts.push(`Context: ${args.report.context}`);
   if (args.report.damageCategory) parts.push(`Category: ${args.report.damageCategory}`);
+  const drScrap = args.report.scrapValuePerUnitCentsBf95;
+  if (drScrap != null) {
+    parts.push(
+      `BF-95 valuation hint (damage report): ${drScrap} cents per inventory unit (preview only, not a carrier settlement).`,
+    );
+  }
+  const liScrap = args.inboundLineScrapValuePerUnitCentsBf95;
+  if (liScrap != null) {
+    parts.push(
+      `BF-95 inbound line scrap hint: ${liScrap} cents per inventory unit (preview only, not a carrier settlement).`,
+    );
+  }
   if (args.inboundShipment) {
     parts.push(
       `Inbound shipment ${args.inboundShipment.shipmentNo ?? args.inboundShipment.id} (PO ${args.inboundShipment.purchaseOrder?.orderNumber ?? "—"})`,
@@ -164,9 +179,14 @@ export function buildCarrierClaimExportV1(args: {
       carrierClaimReference: args.report.carrierClaimReference,
       shipmentItemId: args.report.shipmentItemId,
       createdAt: args.report.createdAt.toISOString(),
+      scrapValuePerUnitCentsBf95: args.report.scrapValuePerUnitCentsBf95 ?? null,
     },
     inboundShipment: args.inboundShipment,
     outboundOrder: args.outboundOrder,
+    valuationHintsBf95: {
+      damageReportScrapValuePerUnitCents: drScrap ?? null,
+      inboundLineScrapValuePerUnitCents: liScrap ?? null,
+    },
     claimNarrative: parts.join("\n"),
   };
 }

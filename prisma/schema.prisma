@@ -3908,6 +3908,8 @@ model WmsReceivingDispositionTemplate {
   title                        String                             @db.VarChar(256)
   noteTemplate                 String                             @db.VarChar(2000)
   suggestedVarianceDisposition WmsShipmentItemVarianceDisposition?
+  /// BF-95 — optional finance preview: scrap / liquidation cents per unit (applied to lines via template apply).
+  scrapValuePerUnitCentsBf95 Int?
   createdAt                    DateTime                           @default(now())
   updatedAt                    DateTime                           @updatedAt
 
@@ -3958,6 +3960,8 @@ model ShipmentItem {
   wmsVarianceNote        String?                            @db.VarChar(1000)
   /// BF-41 — restock vs scrap vs quarantine path for customer-return lines (`Shipment.wmsInboundSubtype`).
   wmsReturnDisposition WmsReturnLineDisposition?
+  /// BF-95 — optional scrap / liquidation value preview (USD cents per inventory unit).
+  scrapValuePerUnitCentsBf95 Int?
   /// BF-42 — skip-lot style QA hint (informational).
   wmsQaSamplingSkipLot Boolean @default(false)
   /// BF-42 — optional inspect-as-% of shipped qty (0–100).
@@ -4113,6 +4117,8 @@ model WmsDamageReport {
   extraDetailJson       Json?
   /// Operator reference for carrier claim intake (not carrier API).
   carrierClaimReference String?                 @db.VarChar(256)
+  /// BF-95 — optional scrap / liquidation valuation preview (USD cents per unit).
+  scrapValuePerUnitCentsBf95 Int?
   createdById           String
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt

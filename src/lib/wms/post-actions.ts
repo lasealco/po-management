@@ -176,6 +176,7 @@ import {
   customerReturnPutawayBlockedReason,
 } from "./customer-return-policy";
 import { substituteReceivingDispositionNoteTemplate } from "./receiving-disposition-template";
+import { parseScrapValuePerUnitCentsBf95 } from "./scrap-valuation-bf95";
 import {
   allocateUniqueCycleCountReferenceCode,
   cycleCountQtyVariance,
@@ -3807,6 +3808,55 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "set_shipment_item_scrap_valuation_bf95") {
+    const shipmentItemId = input.shipmentItemId?.trim();
+    if (!shipmentItemId) {
+      return toApiErrorResponseFromStatus("shipmentItemId required.", 400);
+    }
+    if (!("scrapValuePerUnitCents" in input)) {
+      return toApiErrorResponseFromStatus(
+        "scrapValuePerUnitCents required (integer ≥ 0 or null to clear).",
+        400,
+      );
+    }
+    const scrapRes = parseScrapValuePerUnitCentsBf95(input.scrapValuePerUnitCents);
+    if (!scrapRes.ok) {
+      return toApiErrorResponseFromStatus(scrapRes.message, 400);
+    }
+    if (scrapRes.mode === "omit") {
+      return toApiErrorResponseFromStatus(
+        "scrapValuePerUnitCents required (integer ≥ 0 or null to clear).",
+        400,
+      );
+    }
+    const rowScrap = await prisma.shipmentItem.findFirst({
+      where: { id: shipmentItemId, shipment: { order: { tenantId } } },
+      select: { id: true, shipmentId: true },
+    });
+    if (!rowScrap) {
+      return toApiErrorResponseFromStatus("Shipment item not found.", 404);
+    }
+    const centsVal = scrapRes.mode === "clear" ? null : scrapRes.cents;
+    await prisma.$transaction(async (tx) => {
+      await tx.shipmentItem.update({
+        where: { id: rowScrap.id },
+        data: { scrapValuePerUnitCentsBf95: centsVal },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: rowScrap.shipmentId,
+          entityType: "SHIPMENT_ITEM",
+          entityId: rowScrap.id,
+          action: "shipment_item_scrap_valuation_bf95_set",
+          payload: { scrapValuePerUnitCentsBf95: centsVal },
+          actorUserId: actorId,
+        },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "create_wms_receiving_disposition_template") {
     const codeRaw =
       input.receivingDispositionTemplateCode?.trim() ?? input.templateCode?.trim() ?? "";
@@ -3849,6 +3899,15 @@ export async function handleWmsPost(
         suggested = u as WmsShipmentItemVarianceDisposition;
       }
     }
+    let scrapTemplateCreate: number | null | undefined = undefined;
+    if (input.scrapValuePerUnitCents !== undefined) {
+      const sr = parseScrapValuePerUnitCentsBf95(input.scrapValuePerUnitCents);
+      if (!sr.ok) {
+        return toApiErrorResponseFromStatus(sr.message, 400);
+      }
+      if (sr.mode === "clear") scrapTemplateCreate = null;
+      else if (sr.mode === "set") scrapTemplateCreate = sr.cents;
+    }
     try {
       const row = await prisma.wmsReceivingDispositionTemplate.create({
         data: {
@@ -3857,6 +3916,9 @@ export async function handleWmsPost(
           title,
           noteTemplate,
           suggestedVarianceDisposition: suggested,
+          ...(scrapTemplateCreate !== undefined
+            ? { scrapValuePerUnitCentsBf95: scrapTemplateCreate }
+            : {}),
         },
         select: { id: true },
       });
@@ -3934,6 +3996,17 @@ export async function handleWmsPost(
           );
         }
         data.suggestedVarianceDisposition = u as WmsShipmentItemVarianceDisposition;
+      }
+    }
+    if (input.scrapValuePerUnitCents !== undefined) {
+      const sr = parseScrapValuePerUnitCentsBf95(input.scrapValuePerUnitCents);
+      if (!sr.ok) {
+        return toApiErrorResponseFromStatus(sr.message, 400);
+      }
+      if (sr.mode === "clear") {
+        data.scrapValuePerUnitCentsBf95 = null;
+      } else if (sr.mode === "set") {
+        data.scrapValuePerUnitCentsBf95 = sr.cents;
       }
     }
     if (Object.keys(data).length === 0) {
@@ -4637,7 +4710,7 @@ export async function handleWmsPost(
     }
     const tpl = await prisma.wmsReceivingDispositionTemplate.findFirst({
       where: { id: resolvedTplId, tenantId },
-      select: { id: true, noteTemplate: true, code: true },
+      select: { id: true, noteTemplate: true, code: true, scrapValuePerUnitCentsBf95: true },
     });
     if (!tpl) {
       return toApiErrorResponseFromStatus("Disposition template not found.", 404);
@@ -4657,7 +4730,10 @@ export async function handleWmsPost(
     await prisma.$transaction(async (tx) => {
       await tx.shipmentItem.update({
         where: { id: row.id },
-        data: { wmsVarianceNote: note },
+        data: {
+          wmsVarianceNote: note,
+          scrapValuePerUnitCentsBf95: tpl.scrapValuePerUnitCentsBf95,
+        },
       });
       await tx.ctAuditLog.create({
         data: {
@@ -4669,6 +4745,7 @@ export async function handleWmsPost(
           payload: {
             receivingDispositionTemplateId: tpl.id,
             templateCode: tpl.code,
+            scrapValuePerUnitCentsBf95: tpl.scrapValuePerUnitCentsBf95,
           },
           actorUserId: actorId,
         },
@@ -5536,6 +5613,16 @@ export async function handleWmsPost(
       }
     }
 
+    let damageScrapCents: number | null | undefined = undefined;
+    if (input.scrapValuePerUnitCents !== undefined) {
+      const sr = parseScrapValuePerUnitCentsBf95(input.scrapValuePerUnitCents);
+      if (!sr.ok) {
+        return toApiErrorResponseFromStatus(sr.message, 400);
+      }
+      if (sr.mode === "clear") damageScrapCents = null;
+      else if (sr.mode === "set") damageScrapCents = sr.cents;
+    }
+
     const row = await prisma.wmsDamageReport.create({
       data: {
         tenantId,
@@ -5554,6 +5641,7 @@ export async function handleWmsPost(
                 extraDetailValue === null ? Prisma.JsonNull : extraDetailValue,
             }),
         carrierClaimReference: claimRef,
+        ...(damageScrapCents !== undefined ? { scrapValuePerUnitCentsBf95: damageScrapCents } : {}),
         createdById: actorId,
       },
       select: { id: true },
@@ -5571,6 +5659,9 @@ export async function handleWmsPost(
           shipmentId,
           outboundOrderId,
           shipmentItemId,
+          ...(damageScrapCents !== undefined
+            ? { scrapValuePerUnitCentsBf95: damageScrapCents }
+            : {}),
         },
         actorUserId: actorId,
       },

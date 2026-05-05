@@ -44,6 +44,12 @@ export type WmsBody = {
   receivingDispositionNoteTemplate?: string;
   /** When set with MATCH | SHORT | OVER | DAMAGED | OTHER suggests BF-01 variance hint on template; null clears on update. */
   receivingDispositionTemplateSuggestedVarianceDisposition?: string | null;
+  /**
+   * BF-95 — preview-only scrap / liquidation valuation (integer USD cents per inventory unit).
+   * Disposition templates (`create_*` / `update_*`), `set_shipment_item_scrap_valuation_bf95`,
+   * and optional `create_wms_damage_report_bf65`; null clears when updating templates.
+   */
+  scrapValuePerUnitCents?: number | string | null;
   /** BF-42 aliases accepted by handlers for ergonomics. */
   templateCode?: string;
   templateTitle?: string;

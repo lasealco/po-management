@@ -163,7 +163,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 75 | **BF-92** | E — Denied-party hook | **Draft** — screening HTTP gate ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-92) |
 | 76 | **BF-93** | Ops — Feature flags JSON | **Draft** — tenant toggle bundle ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-93) |
 | 77 | **BF-94** | R3 — Kit serialization | **Draft** — **`KIT_BUILD`** genealogy ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-94) |
-| 78 | **BF-95** | A — Scrap valuation stub | **Draft** — disposition cents hint ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-95) |
+| 78 | **BF-95** | A — Scrap valuation stub | **Minimal landed** — `scrapValuePerUnitCentsBf95` + **`set_shipment_item_scrap_valuation_bf95`** + claim-export **`valuationHintsBf95`** ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-95) |
 | 79 | **BF-96** | C — Dock SLA risk scorer | **Draft** — heuristic early warning ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-96) |
 | 80 | **BF-97** | Enterprise ESG scope-3 stub | **Draft** — upstream factor ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-97) |
 | 81 | **BF-98** | C — Partner mutation pilot | **Draft** — scoped POST ([`BF71_BF100_MEGA_PHASES.md`](./BF71_BF100_MEGA_PHASES.md) §BF-98) |

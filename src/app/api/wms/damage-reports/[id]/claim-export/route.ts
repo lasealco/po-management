@@ -67,6 +67,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
       createdAt: true,
       shipmentId: true,
       outboundOrderId: true,
+      scrapValuePerUnitCentsBf95: true,
     },
   });
 
@@ -162,6 +163,15 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
     }
   }
 
+  let inboundLineScrapValuePerUnitCentsBf95: number | null | undefined;
+  if (report.shipmentItemId) {
+    const li = await prisma.shipmentItem.findFirst({
+      where: { id: report.shipmentItemId, shipment: { order: { tenantId: tenant.id } } },
+      select: { scrapValuePerUnitCentsBf95: true },
+    });
+    inboundLineScrapValuePerUnitCentsBf95 = li?.scrapValuePerUnitCentsBf95 ?? null;
+  }
+
   const photoUrls = Array.isArray(report.photoUrlsJson)
     ? report.photoUrlsJson.filter((u): u is string => typeof u === "string")
     : [];
@@ -179,9 +189,11 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
       carrierClaimReference: report.carrierClaimReference,
       shipmentItemId: report.shipmentItemId,
       createdAt: report.createdAt,
+      scrapValuePerUnitCentsBf95: report.scrapValuePerUnitCentsBf95,
     },
     inboundShipment,
     outboundOrder,
+    inboundLineScrapValuePerUnitCentsBf95,
   });
 
   return NextResponse.json(payload);

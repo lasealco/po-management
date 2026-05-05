@@ -380,6 +380,8 @@ type WmsData = {
       | "DAMAGED"
       | "OTHER"
       | null;
+    /** BF-95 — scrap / liquidation preview (USD cents per inventory unit). */
+    scrapValuePerUnitCentsBf95: number | null;
     updatedAt: string;
   }>;
   /** BF-85 — tenant rules bulk-applying return disposition (+ optional BF-42 template) on CUSTOMER_RETURN. */
@@ -689,6 +691,8 @@ type WmsData = {
         | "OTHER";
       wmsVarianceNote: string | null;
       wmsReturnDisposition: "RESTOCK" | "SCRAP" | "QUARANTINE" | null;
+      /** BF-95 — optional cents/unit liquidation preview on inbound lines. */
+      scrapValuePerUnitCentsBf95: number | null;
       wmsQaSamplingSkipLot: boolean;
       wmsQaSamplingPct: string | null;
       wmsReceivingDispositionTemplateId: string | null;
@@ -760,6 +764,7 @@ type WmsData = {
     damageCategory: string | null;
     shipmentId: string | null;
     outboundOrderId: string | null;
+    scrapValuePerUnitCentsBf95: number | null;
     createdAt: string;
     createdBy: { id: string; name: string | null };
   }>;
@@ -1612,6 +1617,7 @@ export function WmsClient({
   const [bf65Status, setBf65Status] = useState<"DRAFT" | "SUBMITTED">("DRAFT");
   const [bf65ClaimRef, setBf65ClaimRef] = useState("");
   const [bf65ExtraJson, setBf65ExtraJson] = useState("");
+  const [bf65ScrapCents, setBf65ScrapCents] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -1737,6 +1743,7 @@ export function WmsClient({
   const [bf42TplTitle, setBf42TplTitle] = useState("");
   const [bf42TplNote, setBf42TplNote] = useState("");
   const [bf42TplSuggested, setBf42TplSuggested] = useState("");
+  const [bf42TplScrapCents, setBf42TplScrapCents] = useState("");
   const [bf42EditingTemplateId, setBf42EditingTemplateId] = useState<string | null>(null);
   const [bf85RuleEditingId, setBf85RuleEditingId] = useState<string | null>(null);
   const [bf85Priority, setBf85Priority] = useState("100");
@@ -2980,6 +2987,14 @@ export function WmsClient({
     if (extra !== undefined && bf65ExtraJson.trim()) {
       body.damageExtraDetailJson = extra;
     }
+    if (bf65ScrapCents.trim()) {
+      const sn = Number.parseInt(bf65ScrapCents.trim(), 10);
+      if (!Number.isFinite(sn) || sn < 0) {
+        window.alert("BF-95 scrap cents must be a non-negative integer.");
+        return;
+      }
+      body.scrapValuePerUnitCents = sn;
+    }
     if (bf65Context === "RECEIVING") {
       body.shipmentId = bf65ShipmentId.trim();
       if (bf65LineId.trim()) body.shipmentItemId = bf65LineId.trim();
@@ -2992,6 +3007,7 @@ export function WmsClient({
       setBf65Desc("");
       setBf65Photos("");
       setBf65ExtraJson("");
+      setBf65ScrapCents("");
     }
   }
 
@@ -5819,7 +5835,8 @@ export function WmsClient({
           </span>
           . Operators attach a template per inbound line and use{" "}
           <span className="font-medium">Apply template</span> on the Operations receiving grid to stamp{" "}
-          <span className="font-medium">variance note</span>. Optional suggested disposition is guidance only (not auto-applied).
+          <span className="font-medium">variance note</span> and copy optional{" "}
+          <span className="font-medium">BF-95</span> scrap cents from the template when configured. Optional suggested disposition is guidance only (not auto-applied).
         </p>
         <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-100">
           <table className="min-w-full text-xs">
@@ -5828,6 +5845,7 @@ export function WmsClient({
                 <th className="px-2 py-1.5">Code</th>
                 <th className="px-2 py-1.5">Title</th>
                 <th className="px-2 py-1.5">Suggested disp.</th>
+                <th className="px-2 py-1.5">Scrap ¢/u</th>
                 <th className="px-2 py-1.5">Updated</th>
                 {canEdit ? <th className="px-2 py-1.5"> </th> : null}
               </tr>
@@ -5835,7 +5853,7 @@ export function WmsClient({
             <tbody className="divide-y divide-zinc-100">
               {(!data.receivingDispositionTemplates || data.receivingDispositionTemplates.length === 0) ? (
                 <tr>
-                  <td colSpan={canEdit ? 5 : 4} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 6 : 5} className="px-2 py-3 text-zinc-500">
                     No templates yet — create one below.
                   </td>
                 </tr>
@@ -5845,6 +5863,9 @@ export function WmsClient({
                     <td className="px-2 py-1.5 font-mono text-zinc-800">{t.code}</td>
                     <td className="px-2 py-1.5 text-zinc-700">{t.title}</td>
                     <td className="px-2 py-1.5 text-zinc-600">{t.suggestedVarianceDisposition ?? "—"}</td>
+                    <td className="whitespace-nowrap px-2 py-1.5 font-mono tabular-nums text-zinc-600">
+                      {t.scrapValuePerUnitCentsBf95 != null ? t.scrapValuePerUnitCentsBf95 : "—"}
+                    </td>
                     <td className="whitespace-nowrap px-2 py-1.5 text-zinc-500">
                       {new Date(t.updatedAt).toLocaleString()}
                     </td>
@@ -5859,6 +5880,9 @@ export function WmsClient({
                             setBf42TplTitle(t.title);
                             setBf42TplNote(t.noteTemplate);
                             setBf42TplSuggested(t.suggestedVarianceDisposition ?? "");
+                            setBf42TplScrapCents(
+                              t.scrapValuePerUnitCentsBf95 != null ? String(t.scrapValuePerUnitCentsBf95) : "",
+                            );
                           }}
                           className="rounded border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
                         >
@@ -5932,6 +5956,17 @@ export function WmsClient({
                 <option value="OTHER">Other</option>
               </select>
             </label>
+            <label className="block text-[11px] font-medium text-zinc-600">
+              Scrap / liquidation hint — cents per unit (BF-95, optional)
+              <input
+                inputMode="numeric"
+                value={bf42TplScrapCents}
+                disabled={busy}
+                onChange={(e) => setBf42TplScrapCents(e.target.value)}
+                placeholder="Integer cents — blank omits on save"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm tabular-nums"
+              />
+            </label>
             <div className="flex flex-wrap items-end gap-2 sm:col-span-2">
               <button
                 type="button"
@@ -5942,6 +5977,15 @@ export function WmsClient({
                   !bf42TplNote.trim()
                 }
                 onClick={() => {
+                  let scrapPayloadBf42: number | null | undefined = undefined;
+                  const scrapTrim = bf42TplScrapCents.trim();
+                  if (scrapTrim !== "") {
+                    const sn = Number.parseInt(scrapTrim, 10);
+                    if (!Number.isFinite(sn) || sn < 0) {
+                      return;
+                    }
+                    scrapPayloadBf42 = sn;
+                  }
                   if (bf42EditingTemplateId) {
                     void runAction({
                       action: "update_wms_receiving_disposition_template",
@@ -5950,6 +5994,9 @@ export function WmsClient({
                       receivingDispositionNoteTemplate: bf42TplNote.trim(),
                       receivingDispositionTemplateSuggestedVarianceDisposition:
                         bf42TplSuggested.trim() === "" ? null : bf42TplSuggested.trim(),
+                      ...(scrapPayloadBf42 !== undefined
+                        ? { scrapValuePerUnitCents: scrapPayloadBf42 }
+                        : {}),
                     }).then((res) => {
                       if (res) {
                         setBf42EditingTemplateId(null);
@@ -5957,6 +6004,7 @@ export function WmsClient({
                         setBf42TplTitle("");
                         setBf42TplNote("");
                         setBf42TplSuggested("");
+                        setBf42TplScrapCents("");
                       }
                     });
                   } else {
@@ -5967,12 +6015,14 @@ export function WmsClient({
                       receivingDispositionNoteTemplate: bf42TplNote.trim(),
                       receivingDispositionTemplateSuggestedVarianceDisposition:
                         bf42TplSuggested.trim() === "" ? null : bf42TplSuggested.trim(),
+                      ...(scrapPayloadBf42 !== undefined ? { scrapValuePerUnitCents: scrapPayloadBf42 } : {}),
                     }).then((res) => {
                       if (res) {
                         setBf42TplCode("");
                         setBf42TplTitle("");
                         setBf42TplNote("");
                         setBf42TplSuggested("");
+                        setBf42TplScrapCents("");
                       }
                     });
                   }
@@ -5991,6 +6041,7 @@ export function WmsClient({
                     setBf42TplTitle("");
                     setBf42TplNote("");
                     setBf42TplSuggested("");
+                    setBf42TplScrapCents("");
                   }}
                   className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
                 >
@@ -7713,7 +7764,7 @@ export function WmsClient({
                             ) : null}
                           </div>
                           <div className="mt-2 overflow-x-auto">
-                            <table className="min-w-[1100px] w-full border-collapse text-xs">
+                            <table className="min-w-[1240px] w-full border-collapse text-xs">
                               <thead>
                                 <tr className="border-b border-zinc-200 bg-zinc-100 text-left text-[10px] uppercase text-zinc-600">
                                   <th className="px-2 py-1">Ln</th>
@@ -7725,6 +7776,10 @@ export function WmsClient({
                                   <th className="px-2 py-1">Recorded</th>
                                   <th className="px-2 py-1">Disposition</th>
                                   <th className="px-2 py-1">Return disp.</th>
+                                  <th className="px-2 py-1">
+                                    Scrap ¢/u{" "}
+                                    <span className="font-normal normal-case text-[9px] text-zinc-500">BF-95</span>
+                                  </th>
                                   <th className="px-2 py-1">QA (BF-42)</th>
                                   <th className="px-2 py-1">Note</th>
                                   {canEdit ? <th className="px-2 py-1"> </th> : null}
@@ -7837,6 +7892,32 @@ export function WmsClient({
                                         )
                                       ) : (
                                         <span className="text-zinc-400">—</span>
+                                      )}
+                                    </td>
+                                    <td className="whitespace-nowrap px-2 py-1.5 align-top">
+                                      {canEdit ? (
+                                        <input
+                                          key={`scrap-bf95-${line.shipmentItemId}-${line.scrapValuePerUnitCentsBf95 ?? "none"}`}
+                                          id={`inbound-scrap-bf95-${line.shipmentItemId}`}
+                                          type="number"
+                                          min={0}
+                                          step={1}
+                                          defaultValue={
+                                            line.scrapValuePerUnitCentsBf95 != null
+                                              ? line.scrapValuePerUnitCentsBf95
+                                              : ""
+                                          }
+                                          disabled={busy}
+                                          placeholder="¢/u"
+                                          title="BF-95 scrap / liquidation preview (USD cents per inventory unit)"
+                                          className="w-[5.5rem] rounded border border-zinc-300 px-1 py-1 text-[11px] tabular-nums"
+                                        />
+                                      ) : (
+                                        <span className="tabular-nums text-zinc-600">
+                                          {line.scrapValuePerUnitCentsBf95 != null
+                                            ? line.scrapValuePerUnitCentsBf95
+                                            : "—"}
+                                        </span>
                                       )}
                                     </td>
                                     <td className="min-w-[10rem] max-w-[12rem] px-2 py-1.5 align-top">
@@ -8015,6 +8096,32 @@ export function WmsClient({
                                               ...(catchWeightKg !== undefined ? { catchWeightKg } : {}),
                                             };
                                             void (async () => {
+                                              const scrapEl = document.getElementById(
+                                                `inbound-scrap-bf95-${line.shipmentItemId}`,
+                                              ) as HTMLInputElement | null;
+                                              const scrapTrim = scrapEl?.value?.trim() ?? "";
+                                              const prevScrap = line.scrapValuePerUnitCentsBf95 ?? null;
+                                              let scrapPayloadLine: number | null | undefined = undefined;
+                                              if (scrapTrim === "") {
+                                                if (prevScrap != null) scrapPayloadLine = null;
+                                              } else {
+                                                const sn = Number.parseInt(scrapTrim, 10);
+                                                if (!Number.isFinite(sn) || sn < 0) {
+                                                  return;
+                                                }
+                                                scrapPayloadLine = sn;
+                                              }
+                                              if (scrapPayloadLine !== undefined) {
+                                                const okScrap = await runAction(
+                                                  {
+                                                    action: "set_shipment_item_scrap_valuation_bf95",
+                                                    shipmentItemId: line.shipmentItemId,
+                                                    scrapValuePerUnitCents: scrapPayloadLine,
+                                                  },
+                                                  { reload: false },
+                                                );
+                                                if (!okScrap) return;
+                                              }
                                               if (s.wmsInboundSubtype === "CUSTOMER_RETURN") {
                                                 const rd = retDispEl?.value?.trim() ?? "";
                                                 if (
@@ -8875,7 +8982,10 @@ export function WmsClient({
             <p className="mt-2 text-xs text-amber-950/85">
               Create <span className="font-medium">WmsDamageReport</span> via{" "}
               <span className="font-mono text-[11px]">POST /api/wms</span>{" "}
-              <span className="font-medium">create_wms_damage_report_bf65</span>. Download carrier-oriented JSON from{" "}
+              <span className="font-medium">create_wms_damage_report_bf65</span>. Optional{" "}
+              <span className="font-medium">BF-95</span> scrap cents roll into{" "}
+              <span className="font-mono text-[11px]">claim-export</span>{" "}
+              <span className="font-mono text-[11px]">valuationHintsBf95</span>. Download JSON from{" "}
               <span className="font-mono text-[11px]">GET /api/wms/damage-reports/&lt;id&gt;/claim-export</span>. See{" "}
               <span className="font-medium">docs/wms/WMS_DAMAGE_CLAIM_BF65.md</span>.
             </p>
@@ -8940,6 +9050,16 @@ export function WmsClient({
                 className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
               />
             </div>
+            <label className="mt-2 block text-xs font-medium text-amber-950">
+              Scrap / liquidation hint — cents per unit (BF-95, optional)
+              <input
+                inputMode="numeric"
+                value={bf65ScrapCents}
+                onChange={(e) => setBf65ScrapCents(e.target.value)}
+                placeholder="e.g. 250 — included in claim-export valuationHintsBf95"
+                className="mt-1 w-full max-w-md rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm tabular-nums"
+              />
+            </label>
             <textarea
               value={bf65Desc}
               onChange={(e) => setBf65Desc(e.target.value)}
@@ -8983,6 +9103,7 @@ export function WmsClient({
                       <th className="px-2 py-1">Ctx</th>
                       <th className="px-2 py-1">Status</th>
                       <th className="px-2 py-1">Category</th>
+                      <th className="px-2 py-1">Scrap ¢ BF-95</th>
                       <th className="px-2 py-1">Claim export</th>
                       <th className="px-2 py-1">Created</th>
                     </tr>
@@ -8994,6 +9115,9 @@ export function WmsClient({
                         <td className="px-2 py-1">{r.context}</td>
                         <td className="px-2 py-1">{r.status}</td>
                         <td className="px-2 py-1">{r.damageCategory ?? "—"}</td>
+                        <td className="px-2 py-1 font-mono tabular-nums">
+                          {r.scrapValuePerUnitCentsBf95 != null ? r.scrapValuePerUnitCentsBf95 : "—"}
+                        </td>
                         <td className="px-2 py-1">
                           <a
                             href={`/api/wms/damage-reports/${encodeURIComponent(r.id)}/claim-export`}

@@ -94,6 +94,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_shipment_item_receive_line: "operations",
   set_shipment_item_catch_weight: "operations",
   set_shipment_item_return_disposition: "operations",
+  /** BF-95 — scrap / liquidation cents stub on inbound shipment lines. */
+  set_shipment_item_scrap_valuation_bf95: "operations",
   set_shipment_item_qa_sampling_bf42: "operations",
   apply_wms_disposition_template_to_shipment_item: "operations",
   apply_rma_disposition_rules_bf85: "operations",

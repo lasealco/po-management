@@ -444,6 +444,7 @@ export async function getWmsDashboardPayload(
             wmsVarianceDisposition: true,
             wmsVarianceNote: true,
             wmsReturnDisposition: true,
+            scrapValuePerUnitCentsBf95: true,
             wmsQaSamplingSkipLot: true,
             wmsQaSamplingPct: true,
             wmsReceivingDispositionTemplateId: true,
@@ -597,6 +598,7 @@ export async function getWmsDashboardPayload(
       shipmentId: true,
       outboundOrderId: true,
       createdAt: true,
+      scrapValuePerUnitCentsBf95: true,
       createdBy: { select: { id: true, name: true } },
     },
   });
@@ -934,6 +936,7 @@ export async function getWmsDashboardPayload(
       title: true,
       noteTemplate: true,
       suggestedVarianceDisposition: true,
+      scrapValuePerUnitCentsBf95: true,
       updatedAt: true,
     },
   });
@@ -1184,6 +1187,7 @@ export async function getWmsDashboardPayload(
       title: t.title,
       noteTemplate: t.noteTemplate,
       suggestedVarianceDisposition: t.suggestedVarianceDisposition,
+      scrapValuePerUnitCentsBf95: t.scrapValuePerUnitCentsBf95,
       updatedAt: t.updatedAt.toISOString(),
     })),
     rmaDispositionRulesBf85: rmaDispositionRulesBf85.map((r) => ({
@@ -1409,6 +1413,7 @@ export async function getWmsDashboardPayload(
       damageCategory: r.damageCategory,
       shipmentId: r.shipmentId,
       outboundOrderId: r.outboundOrderId,
+      scrapValuePerUnitCentsBf95: r.scrapValuePerUnitCentsBf95,
       createdAt: r.createdAt.toISOString(),
       createdBy: r.createdBy,
     })),
@@ -1473,6 +1478,7 @@ export async function getWmsDashboardPayload(
             wmsVarianceDisposition: li.wmsVarianceDisposition,
             wmsVarianceNote: li.wmsVarianceNote,
             wmsReturnDisposition: li.wmsReturnDisposition,
+            scrapValuePerUnitCentsBf95: li.scrapValuePerUnitCentsBf95,
             wmsQaSamplingSkipLot: li.wmsQaSamplingSkipLot,
             wmsQaSamplingPct:
               li.wmsQaSamplingPct != null ? li.wmsQaSamplingPct.toString() : null,

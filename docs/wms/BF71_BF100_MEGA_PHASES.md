@@ -299,12 +299,11 @@
 
 ## BF-95 — Scrap / liquidation valuation stub
 
-**Objective:** Optional cents **`scrapValuePerUnit`** on dispositions / damage (**BF-41**/65) for finance preview only.
+**Objective:** Optional integer cents **`scrapValuePerUnitCentsBf95`** on inbound lines, BF-42 disposition templates, and BF-65 damage reports — finance / carrier narrative preview only.
 
-**Exit sketch:** Columns + claim export extension.
+**Shipped (minimal):** Prisma columns; **`set_shipment_item_scrap_valuation_bf95`**; template create/update + **`apply_wms_disposition_template_to_shipment_item`** copies template cents to the line; optional **`scrapValuePerUnitCents`** on **`create_wms_damage_report_bf65`**; **`GET /api/wms/damage-reports/[id]/claim-export`** includes **`damageReport.scrapValuePerUnitCentsBf95`**, linked inbound line scrap when anchored, and top-level **`valuationHintsBf95`**; Operations UI stubs on inbound grid + BF-42 template form + BF-65 form.
 
-**Out of scope:** Auction integrations.
-
+**Out of scope:** Auction integrations, ERP GL postings from these hints.
 ---
 
 ## BF-96 — Dock SLA breach risk scorer

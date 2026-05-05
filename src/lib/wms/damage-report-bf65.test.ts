@@ -44,6 +44,7 @@ describe("damage-report-bf65", () => {
         carrierClaimReference: null,
         shipmentItemId: "li1",
         createdAt: at,
+        scrapValuePerUnitCentsBf95: 125,
       },
       inboundShipment: {
         id: "sh1",
@@ -57,7 +58,12 @@ describe("damage-report-bf65", () => {
       outboundOrder: null,
     });
     expect(exp.schemaVersion).toBe("bf65.v1");
-    expect(exp.claimNarrative).toContain("CRUSHED");
+    expect(exp.claimNarrative).toContain("BF-95");
     expect(exp.damageReport).toMatchObject({ id: "dr1" });
+    expect(exp.damageReport).toMatchObject({ scrapValuePerUnitCentsBf95: 125 });
+    expect(exp.valuationHintsBf95).toMatchObject({
+      damageReportScrapValuePerUnitCents: 125,
+      inboundLineScrapValuePerUnitCents: null,
+    });
   });
 });
