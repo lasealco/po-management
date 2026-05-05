@@ -91,7 +91,10 @@ function pick(arr, rand) {
 }
 
 function customerizeDemoAccountName(name) {
-  return name.replace(/\s+forwarder\s+—\s+/i, " customer — ");
+  if (!name) return name;
+  const dashed = name.replace(/^(.+?)\s+forwarder\s*[—\-–]\s*/i, "$1 customer — ");
+  if (dashed !== name) return dashed;
+  return name.replace(/\s+forwarder\s*[—\-–]\s*/gi, " customer — ");
 }
 
 /** ~12 months past → ~1 month future (14 months span). */

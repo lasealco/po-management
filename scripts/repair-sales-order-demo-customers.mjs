@@ -24,12 +24,19 @@ const prisma = new PrismaClient({
   ),
 });
 
+/** Map demo naming "{Vertical} forwarder — …" → "{Vertical} customer — …" (handles ASCII hyphen + Unicode dashes). */
 function customerizeName(name) {
-  return name.replace(/\s+forwarder\s+—\s+/i, " customer — ");
+  if (!name) return name;
+  const dashed = name.replace(/^(.+?)\s+forwarder\s*[—\-–]\s*/i, "$1 customer — ");
+  if (dashed !== name) return dashed;
+  return name.replace(/\s+forwarder\s*[—\-–]\s*/gi, " customer — ");
 }
 
 function customerizeLegalName(name) {
-  return name.replace(/\s+Logistics\s+/i, " Customer ");
+  if (!name) return name;
+  return name
+    .replace(/\s+Logistics\s+/gi, " Customer ")
+    .replace(/\bForwarder\b/gi, "Customer");
 }
 
 async function main() {
@@ -45,8 +52,10 @@ async function main() {
   const accounts = await prisma.crmAccount.findMany({
     where: {
       tenantId: tenant.id,
-      accountType: "CUSTOMER",
-      name: { contains: "forwarder", mode: "insensitive" },
+      OR: [
+        { name: { contains: "forwarder", mode: "insensitive" } },
+        { legalName: { contains: "forwarder", mode: "insensitive" } },
+      ],
     },
     select: { id: true, name: true, legalName: true },
   });
@@ -70,11 +79,7 @@ async function main() {
   const linkedSalesOrders = await prisma.salesOrder.findMany({
     where: {
       tenantId: tenant.id,
-      customerCrmAccountId: { not: null },
-      OR: [
-        { soNumber: { startsWith: "SO-VOL2K-" } },
-        { customerName: { contains: "forwarder", mode: "insensitive" } },
-      ],
+      customerName: { contains: "forwarder", mode: "insensitive" },
     },
     select: {
       id: true,
@@ -85,7 +90,9 @@ async function main() {
 
   let salesOrdersUpdated = 0;
   for (const salesOrder of linkedSalesOrders) {
-    const nextCustomerName = salesOrder.customerCrmAccount?.name ?? customerizeName(salesOrder.customerName);
+    const nextCustomerName = customerizeName(
+      salesOrder.customerCrmAccount?.name ?? salesOrder.customerName,
+    );
     if (!nextCustomerName || nextCustomerName === salesOrder.customerName) continue;
     await prisma.salesOrder.update({
       where: { id: salesOrder.id },
@@ -95,7 +102,7 @@ async function main() {
   }
 
   console.log(
-    `[repair-so-customers] Updated ${accountsUpdated} CRM customer account(s) and ${salesOrdersUpdated} sales order customer name(s).`,
+    `[repair-so-customers] Updated ${accountsUpdated} CRM account(s) and ${salesOrdersUpdated} sales order customer name(s).`,
   );
 }
 
