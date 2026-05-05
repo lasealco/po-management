@@ -4,7 +4,9 @@ import { fungibleWaveSlot } from "./allocation-strategy";
 import {
   binCubeInsufficientTier,
   computeCartonCubeMm3,
+  effectivePickCartonCapBf89,
   estimatePickCubeMm3,
+  estimatePickCubeMm3Bf89,
   orderPickSlotsMinBinTouchesCubeAware,
   orderPickSlotsMinBinTouchesReservePickFaceCubeAware,
 } from "./carton-cube-allocation";
@@ -55,6 +57,44 @@ describe("binCubeInsufficientTier", () => {
   });
 });
 
+describe("effectivePickCartonCapBf89", () => {
+  it("returns min of warehouse cap and per-SKU slice when both set", () => {
+    expect(effectivePickCartonCapBf89(48, 12)).toBe(12);
+    expect(effectivePickCartonCapBf89(48, "12")).toBe(12);
+  });
+
+  it("returns whichever side is present", () => {
+    expect(effectivePickCartonCapBf89(48, null)).toBe(48);
+    expect(effectivePickCartonCapBf89(null, 24)).toBe(24);
+    expect(effectivePickCartonCapBf89(undefined, undefined)).toBeNull();
+  });
+});
+
+describe("estimatePickCubeMm3Bf89", () => {
+  it("prefers master carton estimate when dims resolve", () => {
+    const r = estimatePickCubeMm3Bf89(10, {
+      cartonLengthMm: 10,
+      cartonWidthMm: 10,
+      cartonHeightMm: 10,
+      cartonUnitsPerMasterCarton: 5,
+    });
+    expect(r.source).toBe("master_carton");
+    expect(r.cubeMm3).toBe(2 * 1000);
+  });
+
+  it("uses unit cm³ when master carton estimate is unavailable", () => {
+    const r = estimatePickCubeMm3Bf89(4, {
+      cartonLengthMm: null,
+      cartonWidthMm: null,
+      cartonHeightMm: null,
+      cartonUnitsPerMasterCarton: null,
+      wmsUnitCubeCm3Bf89: 25,
+    });
+    expect(r.source).toBe("unit_bf89");
+    expect(r.cubeMm3).toBe(100_000);
+  });
+});
+
 describe("orderPickSlotsMinBinTouchesCubeAware", () => {
   const hints = {
     cartonLengthMm: 100,
@@ -102,6 +142,31 @@ describe("orderPickSlotsMinBinTouchesCubeAware", () => {
     ];
     const ordered = orderPickSlotsMinBinTouchesCubeAware(bins, R, hints);
     expect(ordered[0]?.binId).toBe("xd");
+  });
+
+  it("uses BF-89 unit cube when master dims cannot estimate pick cube", () => {
+    const bins = [
+      fungibleWaveSlot({
+        binId: "tight",
+        binCode: "T",
+        available: 100,
+        binCapacityCubeMm3: 80_000,
+      }),
+      fungibleWaveSlot({
+        binId: "roomy",
+        binCode: "R",
+        available: 100,
+        binCapacityCubeMm3: 500_000,
+      }),
+    ];
+    const ordered = orderPickSlotsMinBinTouchesCubeAware(bins, 10, {
+      cartonLengthMm: null,
+      cartonWidthMm: null,
+      cartonHeightMm: null,
+      cartonUnitsPerMasterCarton: null,
+      wmsUnitCubeCm3Bf89: 40,
+    });
+    expect(ordered.map((s) => s.binId)).toEqual(["roomy", "tight"]);
   });
 
   it("falls back to BF-15 when hints do not yield pick cube", () => {

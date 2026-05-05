@@ -62,6 +62,8 @@ const WMS_PRODUCT_REF_SELECT = {
   cartonWidthMm: true,
   cartonHeightMm: true,
   cartonUnitsPerMasterCarton: true,
+  wmsCartonUnitsBf89: true,
+  wmsUnitCubeCm3Bf89: true,
   isCatchWeight: true,
   catchWeightLabelHint: true,
   wmsCo2eFactorGramsPerKgKm: true,
@@ -82,6 +84,8 @@ function mapWmsProductJson(p: {
   cartonWidthMm: number | null;
   cartonHeightMm: number | null;
   cartonUnitsPerMasterCarton: Prisma.Decimal | null;
+  wmsCartonUnitsBf89: Prisma.Decimal | null;
+  wmsUnitCubeCm3Bf89: Prisma.Decimal | null;
   isCatchWeight: boolean;
   catchWeightLabelHint: string | null;
   wmsCo2eFactorGramsPerKgKm: Prisma.Decimal | null;
@@ -102,6 +106,8 @@ function mapWmsProductJson(p: {
     cartonHeightMm: p.cartonHeightMm,
     cartonUnitsPerMasterCarton:
       p.cartonUnitsPerMasterCarton != null ? p.cartonUnitsPerMasterCarton.toString() : null,
+    wmsCartonUnitsBf89: p.wmsCartonUnitsBf89 != null ? p.wmsCartonUnitsBf89.toString() : null,
+    wmsUnitCubeCm3Bf89: p.wmsUnitCubeCm3Bf89 != null ? p.wmsUnitCubeCm3Bf89.toString() : null,
     isCatchWeight: p.isCatchWeight,
     catchWeightLabelHint: p.catchWeightLabelHint,
     wmsCo2eFactorGramsPerKgKm:

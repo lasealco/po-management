@@ -29,6 +29,8 @@ import {
   type WavePickSlot,
 } from "./allocation-strategy";
 import {
+  effectivePickCartonCapBf89,
+  estimatePickCubeMm3Bf89,
   orderPickSlotsMinBinTouchesCubeAware,
   orderPickSlotsMinBinTouchesReservePickFaceCubeAware,
 } from "./carton-cube-allocation";
@@ -885,9 +887,35 @@ export async function handleWmsPost(
       }
     }
 
+    const patchBf89Decimal = (
+      field: "wmsCartonUnitsBf89" | "wmsUnitCubeCm3Bf89",
+      raw: unknown,
+      max: number,
+    ): NextResponse | undefined => {
+      if (raw === undefined) return undefined;
+      if (raw === null || raw === "") {
+        data[field] = null;
+        return undefined;
+      }
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n <= 0 || n > max) {
+        return toApiErrorResponseFromStatus(
+          `${field} must be a positive number ≤ ${max}, null, or omitted.`,
+          400,
+        );
+      }
+      data[field] = n.toString();
+      return undefined;
+    };
+
+    const e4 = patchBf89Decimal("wmsCartonUnitsBf89", input.wmsCartonUnitsBf89, 1_000_000);
+    if (e4) return e4;
+    const e5 = patchBf89Decimal("wmsUnitCubeCm3Bf89", input.wmsUnitCubeCm3Bf89, 10_000_000);
+    if (e5) return e5;
+
     if (Object.keys(data).length === 0) {
       return toApiErrorResponseFromStatus(
-        "Send at least one of cartonLengthMm, cartonWidthMm, cartonHeightMm, cartonUnitsPerMasterCarton to update.",
+        "Send at least one of cartonLengthMm, cartonWidthMm, cartonHeightMm, cartonUnitsPerMasterCarton, wmsCartonUnitsBf89, wmsUnitCubeCm3Bf89 to update.",
         400,
       );
     }
@@ -1981,6 +2009,8 @@ export async function handleWmsPost(
             cartonWidthMm: true,
             cartonHeightMm: true,
             cartonUnitsPerMasterCarton: true,
+            wmsCartonUnitsBf89: true,
+            wmsUnitCubeCm3Bf89: true,
           },
         },
       },
@@ -2001,6 +2031,28 @@ export async function handleWmsPost(
         mv.referenceId,
         (pickedMap.get(mv.referenceId) ?? 0) + Number(mv.quantity),
       );
+    }
+    const waveAllocationBf89 = {
+      warehouseCartonCap: cartonCap,
+      lines: [] as Array<{
+        outboundLineId: string;
+        effectiveCap: number | null;
+        remainingQty: number;
+        pickCubeSource: "master_carton" | "unit_bf89" | "none";
+      }>,
+    };
+    for (const item of openLines) {
+      if (!item.productId) continue;
+      const alreadyPicked = pickedMap.get(item.id) ?? 0;
+      const rem = Math.max(0, Number(item.quantity) - Number(item.pickedQty) - alreadyPicked);
+      if (rem <= 0) continue;
+      const hints = item.product;
+      waveAllocationBf89.lines.push({
+        outboundLineId: item.id,
+        effectiveCap: effectivePickCartonCapBf89(cartonCap, hints.wmsCartonUnitsBf89),
+        remainingQty: rem,
+        pickCubeSource: estimatePickCubeMm3Bf89(rem, hints).source,
+      });
     }
     const byProduct = new Map<string, WavePickSlot[]>();
 
@@ -2132,6 +2184,7 @@ export async function handleWmsPost(
           const alreadyPicked = pickedMap.get(item.id) ?? 0;
           let remaining = Math.max(0, Number(item.quantity) - Number(item.pickedQty) - alreadyPicked);
           if (remaining <= 0) continue;
+          const lineCap = effectivePickCartonCapBf89(cartonCap, item.product.wmsCartonUnitsBf89);
           const binsRaw = byProduct.get(item.productId) ?? [];
           const productHints = item.product;
           let binsForProduct: WavePickSlot[];
@@ -2153,7 +2206,7 @@ export async function handleWmsPost(
           for (const slot of binsForProduct) {
             if (remaining <= 0) break;
             let take = Math.min(remaining, slot.available);
-            if (cartonCap != null) take = Math.min(take, cartonCap);
+            if (lineCap != null) take = Math.min(take, lineCap);
             if (take <= 0) continue;
             await tx.wmsTask.create({
               data: {
@@ -2202,12 +2255,13 @@ export async function handleWmsPost(
             if (!item.productId) continue;
             const rem = lineRemaining.get(item.id) ?? 0;
             if (rem <= 0) continue;
+            const lineCap = effectivePickCartonCapBf89(cartonCap, item.product.wmsCartonUnitsBf89);
             const slots = mutablePools.get(item.productId);
             if (!slots) continue;
             const slot = slots.find((s) => s.binId === binId && s.available > 0);
             if (!slot) continue;
             let take = Math.min(rem, slot.available);
-            if (cartonCap != null) take = Math.min(take, cartonCap);
+            if (lineCap != null) take = Math.min(take, lineCap);
             if (take <= 0) continue;
             await tx.wmsTask.create({
               data: {
@@ -2245,7 +2299,7 @@ export async function handleWmsPost(
       }
       return { waveId: wave.id, waveNo: wave.waveNo, createdTasks };
     });
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, ...result, waveAllocationBf89 });
   }
 
   if (action === "release_wave") {

@@ -3379,6 +3379,10 @@ model Product {
   cartonHeightMm Int?
   /// BF-33 — SKU units packed in one master carton when dims are set (defaults to 1 in wave heuristic when null).
   cartonUnitsPerMasterCarton Decimal? @db.Decimal(14, 3)
+  /// BF-89 — optional pick slice size (units) combined with warehouse `pickWaveCartonUnits` via min(); caps automated wave picks per SKU.
+  wmsCartonUnitsBf89 Decimal? @db.Decimal(14, 3)
+  /// BF-89 — optional each-unit cube (cm³) for pick cube estimate when master carton dims do not resolve.
+  wmsUnitCubeCm3Bf89 Decimal? @db.Decimal(18, 6)
 
   /// BF-63 — variable net-weight / catch-weight SKU; receiving records `ShipmentItem.catchWeightKg` vs declared `cargoGrossWeightKg`.
   isCatchWeight        Boolean @default(false)

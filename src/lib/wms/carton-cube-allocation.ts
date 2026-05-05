@@ -5,13 +5,54 @@ import {
   type WavePickSlot,
 } from "./allocation-strategy";
 
-/** Optional master-carton hints from `Product` (BF-33). */
+/** Optional master-carton + BF-89 hints from `Product` (BF-33 / BF-89). */
 export type ProductCartonCubeHints = {
   cartonLengthMm: number | null;
   cartonWidthMm: number | null;
   cartonHeightMm: number | null;
   cartonUnitsPerMasterCarton: unknown;
+  /** BF-89 — cm³ per each (stored on Product); used when master carton dims do not resolve a cube. */
+  wmsUnitCubeCm3Bf89?: unknown;
 };
+
+export type PickCubeEstimateBf89 = {
+  cubeMm3: number | null;
+  source: "master_carton" | "unit_bf89" | "none";
+};
+
+/** BF-89 — combine warehouse wave unit cap with optional per-SKU pick slice size (min of positives). */
+export function effectivePickCartonCapBf89(
+  warehouseCartonCap: number | null | undefined,
+  productCartonUnitsBf89: unknown,
+): number | null {
+  const wh =
+    warehouseCartonCap != null && Number.isFinite(warehouseCartonCap) && warehouseCartonCap > 0
+      ? warehouseCartonCap
+      : null;
+  const puRaw = productCartonUnitsBf89;
+  const pu = puRaw != null ? Number(puRaw as number | string) : NaN;
+  const pOk = Number.isFinite(pu) && pu > 0 ? pu : null;
+  if (wh == null && pOk == null) return null;
+  if (wh != null && pOk != null) return Math.min(wh, pOk);
+  return wh ?? pOk;
+}
+
+/**
+ * BF-89 — pick cube estimate: master carton heuristic first, else `remainingQty × unitCubeCm3 × 1000` mm³.
+ */
+export function estimatePickCubeMm3Bf89(
+  remainingQty: number,
+  hints: ProductCartonCubeHints | null | undefined,
+): PickCubeEstimateBf89 {
+  const master = estimatePickCubeMm3(remainingQty, hints);
+  if (master != null) return { cubeMm3: master, source: "master_carton" };
+  const R = Math.max(0, remainingQty);
+  if (R <= 0) return { cubeMm3: null, source: "none" };
+  const ucRaw = hints?.wmsUnitCubeCm3Bf89;
+  const uc = ucRaw != null ? Number(ucRaw as number | string) : NaN;
+  if (!Number.isFinite(uc) || uc <= 0) return { cubeMm3: null, source: "none" };
+  return { cubeMm3: R * uc * 1000, source: "unit_bf89" };
+}
 
 export function computeCartonCubeMm3(
   lengthMm: number | null | undefined,
@@ -83,7 +124,7 @@ export function orderPickSlotsMinBinTouchesCubeAware(
   lineRemainingQty: number,
   product: ProductCartonCubeHints | null | undefined,
 ): WavePickSlot[] {
-  const pickCube = estimatePickCubeMm3(lineRemainingQty, product);
+  const pickCube = estimatePickCubeMm3Bf89(lineRemainingQty, product).cubeMm3;
   if (pickCube == null) {
     return orderPickSlotsMinBinTouches(slots, lineRemainingQty);
   }
@@ -122,7 +163,7 @@ export function orderPickSlotsMinBinTouchesReservePickFaceCubeAware(
   lineRemainingQty: number,
   product: ProductCartonCubeHints | null | undefined,
 ): WavePickSlot[] {
-  const pickCube = estimatePickCubeMm3(lineRemainingQty, product);
+  const pickCube = estimatePickCubeMm3Bf89(lineRemainingQty, product).cubeMm3;
   if (pickCube == null) {
     return orderPickSlotsMinBinTouchesReservePickFace(slots, lineRemainingQty);
   }

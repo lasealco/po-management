@@ -368,6 +368,10 @@ export type WmsBody = {
   cartonWidthMm?: number | null;
   cartonHeightMm?: number | null;
   cartonUnitsPerMasterCarton?: number | string | null;
+  /** BF-89 — units per pick slice vs warehouse wave cap (`set_product_carton_cube_hints`). */
+  wmsCartonUnitsBf89?: number | string | null;
+  /** BF-89 — each-unit cube cm³ for pick estimate fallback (`set_product_carton_cube_hints`). */
+  wmsUnitCubeCm3Bf89?: number | string | null;
   /** BF-63 — `set_product_catch_weight_bf63` — SKU receives variable net weight. */
   isCatchWeight?: boolean;
   /** BF-63 — optional operator / label hint (e.g. “Weigh master carton”). */

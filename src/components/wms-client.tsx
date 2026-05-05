@@ -91,6 +91,10 @@ type WmsProductRef = {
   cartonWidthMm: number | null;
   cartonHeightMm: number | null;
   cartonUnitsPerMasterCarton: string | null;
+  /** BF-89 — optional pick slice units vs warehouse wave cap. */
+  wmsCartonUnitsBf89?: string | null;
+  /** BF-89 — optional each-unit cube (cm³) for pick estimate fallback. */
+  wmsUnitCubeCm3Bf89?: string | null;
   isCatchWeight: boolean;
   catchWeightLabelHint: string | null;
   /** BF-69 — grams CO₂e per kg·km planning factor (nullable). */
@@ -1631,6 +1635,8 @@ export function WmsClient({
   const [bf33CartonW, setBf33CartonW] = useState("");
   const [bf33CartonH, setBf33CartonH] = useState("");
   const [bf33CartonUnits, setBf33CartonUnits] = useState("");
+  const [bf89PickUnits, setBf89PickUnits] = useState("");
+  const [bf89UnitCubeCm3, setBf89UnitCubeCm3] = useState("");
   const [bf33OutboundCubeOrderId, setBf33OutboundCubeOrderId] = useState("");
   const [bf33EstimatedCubeCbm, setBf33EstimatedCubeCbm] = useState("");
   const [bf63CatchProductId, setBf63CatchProductId] = useState("");
@@ -2473,6 +2479,26 @@ export function WmsClient({
     data?.outboundOrders,
     selectedWarehouseId,
   ]);
+
+  useEffect(() => {
+    if (!bf33CartonProductId) {
+      setBf33CartonL("");
+      setBf33CartonW("");
+      setBf33CartonH("");
+      setBf33CartonUnits("");
+      setBf89PickUnits("");
+      setBf89UnitCubeCm3("");
+      return;
+    }
+    const p = productPickOptionsForWarehouse.find((x) => x.id === bf33CartonProductId);
+    if (!p) return;
+    setBf33CartonL(p.cartonLengthMm != null ? String(p.cartonLengthMm) : "");
+    setBf33CartonW(p.cartonWidthMm != null ? String(p.cartonWidthMm) : "");
+    setBf33CartonH(p.cartonHeightMm != null ? String(p.cartonHeightMm) : "");
+    setBf33CartonUnits(p.cartonUnitsPerMasterCarton ?? "");
+    setBf89PickUnits(p.wmsCartonUnitsBf89 ?? "");
+    setBf89UnitCubeCm3(p.wmsUnitCubeCm3Bf89 ?? "");
+  }, [bf33CartonProductId, productPickOptionsForWarehouse]);
 
   const balanceLinesByBinId = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -3323,9 +3349,11 @@ export function WmsClient({
         <h2 className="text-sm font-semibold text-zinc-900">BF-33 · Carton & cube hints</h2>
         <p className="mt-1 text-xs text-zinc-600">
           Master-carton dimensions (mm) and units-per-carton drive estimated pick cube for{" "}
-          <span className="font-medium">GREEDY_*_CUBE_AWARE</span> strategies. Optional bin soft capacity (mm³) on create
-          nudges ordering when product hints resolve to cube. Outbound estimated cube (cbm) is surfaced on the payload for
-          planning dashboards.
+          <span className="font-medium">GREEDY_*_CUBE_AWARE</span> strategies.{" "}
+          <span className="font-medium">BF-89</span> adds optional pick-slice units (min with warehouse wave cap) and
+          per-unit cube (cm³) when outer dims are incomplete. Optional bin soft capacity (mm³) on create nudges ordering
+          when product hints resolve to cube. Outbound estimated cube (cbm) is surfaced on the payload for planning
+          dashboards.
         </p>
         {!selectedWarehouseId ? (
           <p className="mt-3 text-sm text-zinc-500">
@@ -3397,8 +3425,34 @@ export function WmsClient({
                     className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
                   />
                 </label>
+                <label className="block sm:col-span-2">
+                  <span className="text-[10px] font-medium uppercase text-zinc-500">
+                    BF-89 · Pick slice max units (optional)
+                  </span>
+                  <input
+                    value={bf89PickUnits}
+                    onChange={(e) => setBf89PickUnits(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="Min with warehouse BF-15 wave cap when both set"
+                    disabled={!canEdit || busy}
+                    className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="text-[10px] font-medium uppercase text-zinc-500">
+                    BF-89 · Unit cube (cm³, optional)
+                  </span>
+                  <input
+                    value={bf89UnitCubeCm3}
+                    onChange={(e) => setBf89UnitCubeCm3(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="Pick cube fallback when L/W/H master carton incomplete"
+                    disabled={!canEdit || busy}
+                    className="mt-0.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  />
+                </label>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <ActionButton
                   disabled={!canEdit || busy || !bf33CartonProductId}
                   onClick={() => {
@@ -3406,6 +3460,8 @@ export function WmsClient({
                     const W = bf33CartonW.trim() === "" ? undefined : Number(bf33CartonW.trim());
                     const H = bf33CartonH.trim() === "" ? undefined : Number(bf33CartonH.trim());
                     const u = bf33CartonUnits.trim() === "" ? undefined : Number(bf33CartonUnits.trim());
+                    const bf89u = bf89PickUnits.trim() === "" ? undefined : Number(bf89PickUnits.trim());
+                    const bf89c = bf89UnitCubeCm3.trim() === "" ? undefined : Number(bf89UnitCubeCm3.trim());
                     void runAction({
                       action: "set_product_carton_cube_hints",
                       productId: bf33CartonProductId,
@@ -3414,11 +3470,32 @@ export function WmsClient({
                       cartonHeightMm: H !== undefined && Number.isFinite(H) ? Math.trunc(H) : undefined,
                       cartonUnitsPerMasterCarton:
                         u !== undefined && Number.isFinite(u) && u > 0 ? u : undefined,
+                      ...(bf89u !== undefined && Number.isFinite(bf89u) && bf89u > 0
+                        ? { wmsCartonUnitsBf89: bf89u }
+                        : {}),
+                      ...(bf89c !== undefined && Number.isFinite(bf89c) && bf89c > 0
+                        ? { wmsUnitCubeCm3Bf89: bf89c }
+                        : {}),
                     });
                   }}
                 >
                   Save carton hints
                 </ActionButton>
+                <button
+                  type="button"
+                  disabled={!canEdit || busy || !bf33CartonProductId}
+                  onClick={() =>
+                    void runAction({
+                      action: "set_product_carton_cube_hints",
+                      productId: bf33CartonProductId,
+                      wmsCartonUnitsBf89: null,
+                      wmsUnitCubeCm3Bf89: null,
+                    })
+                  }
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Clear BF-89 fields
+                </button>
               </div>
             </div>
             <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
